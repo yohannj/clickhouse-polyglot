@@ -19,18 +19,12 @@ import scala.util.{Failure, Success}
     functionNames <- functionNamesF
 
     checksF = functionNames.map { functionName =>
-      for {
-        isFunction0 <- Fuzzer.fuzzFunction0(functionName)
-
-        function1Types <- Fuzzer.fuzzFunction1(functionName)
-        isFunction1 = function1Types.nonEmpty
-      } yield {
-        CHFunctionFuzzResult(
-          name = functionName,
-          isFunction0 = isFunction0,
-          isFunction1 = isFunction1
-        )
-      }
+      Fuzzer
+        .fuzzFunctionN(CHFunctionFuzzResult(name = functionName))
+        .flatMap(Fuzzer.fuzzFunction0)
+        .flatMap(Fuzzer.fuzzFunction1)
+        .flatMap(Fuzzer.fuzzFunction2)
+        .flatMap(Fuzzer.fuzzFunction3)
     }
 
     res <- Future.sequence(checksF)
@@ -38,4 +32,10 @@ import scala.util.{Failure, Success}
     res
   }
 
-  println(Await.result(checksF, 200.seconds).filter(c => c.isFunction0 || c.isFunction1).mkString("\n"))
+  val r = Await
+    .result(checksF, 200.seconds)
+    .filter(f =>
+      !f.isFunction0 && f.functionNTypes.isEmpty && f.function1Types.isEmpty && f.function2Types.isEmpty && f.function3Types.isEmpty
+    )
+
+  print(r.size)

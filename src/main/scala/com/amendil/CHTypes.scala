@@ -1,6 +1,8 @@
 package com.amendil
 
 enum CHTypes[T](val name: String, val fuzzingValues: Seq[T]) {
+
+  // Numbers
   case Int8 extends CHTypes[Short]("Int8", Seq(-128, 127))
   case Int16 extends CHTypes[Short]("Int16", Seq(-32768, 32767))
   case Int32 extends CHTypes[Int]("Int32", Seq(-2147483648, 2147483647))
@@ -28,4 +30,30 @@ enum CHTypes[T](val name: String, val fuzzingValues: Seq[T]) {
         "UInt256",
         Seq(0, BigInt("115792089237316195423570985008687907853269984665640564039457584007913129639935"))
       )
+
+  // Others
+  case StringType extends CHTypes[String]("String", Seq("'foo'"))
+}
+
+enum CHAbstractTypes(val fuzzingValue: Any, val chTypes: Seq[CHTypes[_]]) {
+  case Numbers
+      extends CHAbstractTypes(
+        1,
+        Seq(
+          CHTypes.Int8,
+          CHTypes.Int16,
+          CHTypes.Int32,
+          CHTypes.Int64,
+          CHTypes.Int128,
+          CHTypes.Int256,
+          CHTypes.UInt8,
+          CHTypes.UInt16,
+          CHTypes.UInt32,
+          CHTypes.UInt64,
+          CHTypes.UInt128,
+          CHTypes.UInt256
+        )
+      )
+
+  case String extends CHAbstractTypes(CHTypes.StringType.fuzzingValues.head, Seq(CHTypes.StringType))
 }
