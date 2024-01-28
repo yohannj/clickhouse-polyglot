@@ -117,6 +117,25 @@ enum CHType(val name: String, val fuzzingValues: Seq[String]) {
       )
 
   // Others
+  case Enum extends CHType("Enum", Seq("'hello'::Enum('hello' = 1, 'world' = 2)", "'hello'::Enum('hello', 'world')"))
+  case Enum8
+      extends CHType(
+        "Enum",
+        Seq(
+          "'hello'::Enum8('hello' = -128, 'world' = 2)",
+          "'hello'::Enum8('hello' = 127, 'world' = 2)",
+          "'hello'::Enum8('hello', 'world')"
+        )
+      )
+  case Enum16
+      extends CHType(
+        "Enum",
+        Seq(
+          "'hello'::Enum16('hello' = -32768, 'world' = 2)",
+          "'hello'::Enum16('hello' = 32767, 'world' = 2)",
+          "'hello'::Enum16('hello', 'world')"
+        )
+      )
   case FixedString extends CHType("FixedString", Seq("'azertyuiop'::FixedString(10)", "''::FixedString(1)"))
   case StringType extends CHType("String", Seq("'foo'::String", "''::String"))
   case UUID
@@ -129,6 +148,7 @@ enum CHType(val name: String, val fuzzingValues: Seq[String]) {
 enum CHAbstractType(val fuzzingValue: Any, val chTypes: Seq[CHType]) {
   case Date extends CHAbstractType("'1970-01-02'::Date", Seq(CHType.Date, CHType.Date32))
   case DateTime extends CHAbstractType("'1970-01-02 00:00:00'::DateTime", Seq(CHType.DateTime, CHType.DateTime64))
+  case Enum extends CHAbstractType(CHType.Enum.fuzzingValues.head, Seq(CHType.Enum, CHType.Enum8, CHType.Enum16))
   case Numbers
       extends CHAbstractType(
         1,
