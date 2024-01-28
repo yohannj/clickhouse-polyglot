@@ -143,11 +143,11 @@ enum CHType(val name: String, val fuzzingValues: Seq[String]) {
         )
       )
 
-  // Others
+  // Misc
   case Enum extends CHType("Enum", Seq("'hello'::Enum('hello' = 1, 'world' = 2)", "'hello'::Enum('hello', 'world')"))
   case Enum8
       extends CHType(
-        "Enum",
+        "Enum8",
         Seq(
           "'hello'::Enum8('hello' = -128, 'world' = 2)",
           "'hello'::Enum8('hello' = 127, 'world' = 2)",
@@ -156,7 +156,7 @@ enum CHType(val name: String, val fuzzingValues: Seq[String]) {
       )
   case Enum16
       extends CHType(
-        "Enum",
+        "Enum16",
         Seq(
           "'hello'::Enum16('hello' = -32768, 'world' = 2)",
           "'hello'::Enum16('hello' = 32767, 'world' = 2)",
@@ -174,6 +174,37 @@ enum CHType(val name: String, val fuzzingValues: Seq[String]) {
         "UUID",
         Seq("'00000000-0000-0000-0000-000000000000'::UUID", "'61f0c404-5cb3-11e7-907b-a6006ad3dba0'::UUID")
       )
+
+  // Array
+  case ArrayInt8 extends CHType("Array(Int8)", Seq(s"[${Int8.fuzzingValues.mkString(", ")}]"))
+  case ArrayInt16 extends CHType("Array(Int16)", Seq(s"[${Int16.fuzzingValues.mkString(", ")}]"))
+  case ArrayInt32 extends CHType("Array(Int32)", Seq(s"[${Int32.fuzzingValues.mkString(", ")}]"))
+  case ArrayInt64 extends CHType("Array(Int64)", Seq(s"[${Int64.fuzzingValues.mkString(", ")}]"))
+  case ArrayInt128 extends CHType("Array(Int128)", Seq(s"[${Int128.fuzzingValues.mkString(", ")}]"))
+  case ArrayInt256 extends CHType("Array(Int256)", Seq(s"[${Int256.fuzzingValues.mkString(", ")}]"))
+  case ArrayUInt8 extends CHType("Array(UInt8)", Seq(s"[${UInt8.fuzzingValues.mkString(", ")}]"))
+  case ArrayUInt16 extends CHType("Array(UInt16)", Seq(s"[${UInt16.fuzzingValues.mkString(", ")}]"))
+  case ArrayUInt32 extends CHType("Array(UInt32)", Seq(s"[${UInt32.fuzzingValues.mkString(", ")}]"))
+  case ArrayUInt64 extends CHType("Array(UInt64)", Seq(s"[${UInt64.fuzzingValues.mkString(", ")}]"))
+  case ArrayUInt128 extends CHType("Array(UInt128)", Seq(s"[${UInt128.fuzzingValues.mkString(", ")}]"))
+  case ArrayUInt256 extends CHType("Array(UInt256)", Seq(s"[${UInt256.fuzzingValues.mkString(", ")}]"))
+  case ArrayFloat32 extends CHType("Array(Float32)", Seq(s"[${Float32.fuzzingValues.mkString(", ")}]"))
+  case ArrayFloat64 extends CHType("Array(Float64)", Seq(s"[${Float64.fuzzingValues.mkString(", ")}]"))
+  case ArrayDecimal32 extends CHType("Array(Decimal32)", Seq(s"[${Decimal32.fuzzingValues.mkString(", ")}]"))
+  case ArrayDecimal64 extends CHType("Array(Decimal64)", Seq(s"[${Decimal64.fuzzingValues.mkString(", ")}]"))
+  case ArrayDecimal128 extends CHType("Array(Decimal128)", Seq(s"[${Decimal128.fuzzingValues.mkString(", ")}]"))
+  case ArrayDecimal256 extends CHType("Array(Decimal256)", Seq(s"[${Decimal256.fuzzingValues.mkString(", ")}]"))
+  case ArrayDate extends CHType("Array(Date)", Seq(s"[${Date.fuzzingValues.mkString(", ")}]"))
+  case ArrayDate32 extends CHType("Array(Date32)", Seq(s"[${Date32.fuzzingValues.mkString(", ")}]"))
+  case ArrayDateTime extends CHType("Array(DateTime)", Seq(s"[${DateTime.fuzzingValues.mkString(", ")}]"))
+  case ArrayDateTime64 extends CHType("Array(DateTime64)", Seq(s"[${DateTime64.fuzzingValues.mkString(", ")}]"))
+  case ArrayEnum extends CHType("Array(Enum)", Seq(s"[${Enum.fuzzingValues.mkString(", ")}]"))
+  case ArrayEnum8 extends CHType("Array(Enum8)", Seq(s"[${Enum8.fuzzingValues.mkString(", ")}]"))
+  case ArrayEnum16 extends CHType("Array(Enum16)", Seq(s"[${Enum16.fuzzingValues.mkString(", ")}]"))
+  case ArrayFixedString extends CHType("Array(FixedString)", Seq(s"[${FixedString.fuzzingValues.mkString(", ")}]"))
+  case ArrayString extends CHType("Array(String)", Seq(s"[${StringType.fuzzingValues.mkString(", ")}]"))
+  case ArrayUUID extends CHType("Array(UUID)", Seq(s"[${UUID.fuzzingValues.mkString(", ")}]"))
+
 }
 
 enum CHAbstractType(val fuzzingValue: Any, val chTypes: Seq[CHType]) {
@@ -207,4 +238,36 @@ enum CHAbstractType(val fuzzingValue: Any, val chTypes: Seq[CHType]) {
 
   case String extends CHAbstractType(CHType.StringType.fuzzingValues.head, Seq(CHType.StringType, CHType.FixedString))
   case UUID extends CHAbstractType(CHType.UUID.fuzzingValues.head, Seq(CHType.UUID))
+
+  case ArrayDate extends CHAbstractType(s"[${Date.fuzzingValue}]", Seq(CHType.ArrayDate, CHType.ArrayDate32))
+  case ArrayDateTime
+      extends CHAbstractType(s"[${DateTime.fuzzingValue}]", Seq(CHType.ArrayDateTime, CHType.ArrayDateTime64))
+  case ArrayEnum
+      extends CHAbstractType(s"[${Enum.fuzzingValue}]", Seq(CHType.ArrayEnum, CHType.ArrayEnum8, CHType.ArrayEnum16))
+  case ArrayNumbers
+      extends CHAbstractType(
+        s"[${Numbers.fuzzingValue}]",
+        Seq(
+          CHType.ArrayInt8,
+          CHType.ArrayInt16,
+          CHType.ArrayInt32,
+          CHType.ArrayInt64,
+          CHType.ArrayInt128,
+          CHType.ArrayInt256,
+          CHType.ArrayUInt8,
+          CHType.ArrayUInt16,
+          CHType.ArrayUInt32,
+          CHType.ArrayUInt64,
+          CHType.ArrayUInt128,
+          CHType.ArrayUInt256,
+          CHType.ArrayFloat32,
+          CHType.ArrayFloat64,
+          CHType.ArrayDecimal32,
+          CHType.ArrayDecimal64,
+          CHType.ArrayDecimal128,
+          CHType.ArrayDecimal256
+        )
+      )
+  case ArrayString extends CHAbstractType(s"[${String.fuzzingValue}]", Seq(CHType.ArrayFixedString, CHType.ArrayString))
+  case ArrayUUID extends CHAbstractType(s"[${UUID.fuzzingValue}]", Seq(CHType.ArrayUUID))
 }

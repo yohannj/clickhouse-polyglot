@@ -6,7 +6,7 @@ import com.typesafe.scalalogging.Logger
 
 import java.util.concurrent.Executors
 import scala.concurrent.{Await, ExecutionContext}
-import scala.concurrent.duration.DurationInt
+import scala.concurrent.duration.Duration
 
 @main def app: Unit =
   val logger = Logger("Main")
@@ -40,7 +40,7 @@ import scala.concurrent.duration.DurationInt
   }
 
   val r = Await
-    .result(checksF, 600.seconds)
+    .result(checksF, Duration.Inf)
     .filter(f =>
       !f.isFunction0
         && f.functionNTypes.isEmpty
