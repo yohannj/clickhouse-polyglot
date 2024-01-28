@@ -204,7 +204,6 @@ enum CHType(val name: String, val fuzzingValues: Seq[String]) {
   case ArrayFixedString extends CHType("Array(FixedString)", Seq(s"[${FixedString.fuzzingValues.mkString(", ")}]"))
   case ArrayString extends CHType("Array(String)", Seq(s"[${StringType.fuzzingValues.mkString(", ")}]"))
   case ArrayUUID extends CHType("Array(UUID)", Seq(s"[${UUID.fuzzingValues.mkString(", ")}]"))
-
 }
 
 enum CHAbstractType(val fuzzingValue: Any, val chTypes: Seq[CHType]) {

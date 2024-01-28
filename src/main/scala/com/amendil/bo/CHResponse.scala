@@ -2,7 +2,7 @@ package com.amendil.bo
 
 final case class CHResponse(
     meta: Seq[CHMetaElement],
-    data: Seq[Seq[String]],
+    data: Seq[Seq[_]],
     rows: Int,
     statistics: CHResponseStatistics
 )

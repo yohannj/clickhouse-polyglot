@@ -5,7 +5,7 @@ import com.amendil.http.CHClient
 import com.typesafe.scalalogging.Logger
 
 import java.util.concurrent.Executors
-import scala.concurrent.{Await, ExecutionContext}
+import scala.concurrent.{Await, ExecutionContext, Future}
 import scala.concurrent.duration.Duration
 
 @main def app: Unit =
@@ -16,16 +16,17 @@ import scala.concurrent.duration.Duration
   val functionNamesF =
     client
       .execute("SELECT name, is_aggregate FROM system.functions")
-      .map(_.data.map(_.head).sorted)
+      .map(_.data.map(_.head.asInstanceOf[String]).sorted)
 
   val checksF = for {
-    functionNames <- functionNamesF
+    // functionNames <- functionNamesF
+    functionNames <- Future.successful(unknownFunctions)
 
     functionCount = functionNames.size
     res <- ConcurrencyUtils.executeInSequence(
       functionNames.zipWithIndex,
       (functionName: String, idx: Int) =>
-        if (idx % (functionCount / 20) == 0)
+        if (idx % Math.max(functionCount / 20, 1) == 0)
           logger.info(s"${100 * idx / functionCount}%")
 
         Fuzzer
@@ -50,4 +51,5 @@ import scala.concurrent.duration.Duration
         && f.function4Types.isEmpty
     )
 
-  print(r.size)
+  println(r.size)
+  println(r.map(_.name).sorted.mkString("\"", "\", \"", "\""))
