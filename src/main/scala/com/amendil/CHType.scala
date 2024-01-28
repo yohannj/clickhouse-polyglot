@@ -86,9 +86,39 @@ enum CHType(val name: String, val fuzzingValues: Seq[String]) {
         )
       )
 
+  // Date
+  case Date extends CHType("Date", Seq("'1970-01-01'::Date", "'2149-06-06'::Date"))
+  case Date32 extends CHType("Date32", Seq("'1900-01-01'::Date32", "'2299-12-31'::Date32"))
+  case DateTime
+      extends CHType(
+        "DateTime",
+        Seq(
+          "'1970-01-01 00:00:00'::DateTime('Asia/Istanbul')",
+          "'2106-02-07 06:28:15'::DateTime('Asia/Istanbul')",
+          "'1970-01-01 00:00:00'::DateTime",
+          "'2106-02-07 06:28:15'::DateTime"
+        )
+      )
+  case DateTime64
+      extends CHType(
+        "DateTime64",
+        Seq(
+          "'1900-01-01 00:00:00'::DateTime64(0, 'Asia/Istanbul')",
+          "'1900-01-01 00:00:00'::DateTime64(9, 'Asia/Istanbul')",
+          "'2299-12-31 23:59:59.99999999'::DateTime64(0, 'Asia/Istanbul')",
+          "'2299-12-31 23:59:59.99999999'::DateTime64(8, 'Asia/Istanbul')",
+          "'2262-04-12 02:47:16.854775807'::DateTime64(9, 'Asia/Istanbul')",
+          "'1900-01-01 00:00:00'::DateTime64(0)",
+          "'1900-01-01 00:00:00'::DateTime64(9)",
+          "'2299-12-31 23:59:59.99999999'::DateTime64(0)",
+          "'2299-12-31 23:59:59.99999999'::DateTime64(8)",
+          "'2262-04-11 23:47:16.854775807'::DateTime64(9)"
+        )
+      )
+
   // Others
-  case FixedString extends CHType("FixedString", Seq("'azertyuiop'::FixedString(10)"))
-  case StringType extends CHType("String", Seq("'foo'::String"))
+  case FixedString extends CHType("FixedString", Seq("'azertyuiop'::FixedString(10)", "''::FixedString(1)"))
+  case StringType extends CHType("String", Seq("'foo'::String", "''::String"))
   case UUID
       extends CHType(
         "UUID",
@@ -97,6 +127,8 @@ enum CHType(val name: String, val fuzzingValues: Seq[String]) {
 }
 
 enum CHAbstractType(val fuzzingValue: Any, val chTypes: Seq[CHType]) {
+  case Date extends CHAbstractType("'1970-01-02'::Date", Seq(CHType.Date, CHType.Date32))
+  case DateTime extends CHAbstractType("'1970-01-02 00:00:00'::DateTime", Seq(CHType.DateTime, CHType.DateTime64))
   case Numbers
       extends CHAbstractType(
         1,
