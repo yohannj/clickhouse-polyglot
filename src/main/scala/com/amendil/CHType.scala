@@ -96,9 +96,9 @@ enum CHType(val name: String, val fuzzingValues: Seq[String]) {
       )
 }
 
-enum CHAbstractTypes(val fuzzingValue: Any, val chTypes: Seq[CHType]) {
+enum CHAbstractType(val fuzzingValue: Any, val chTypes: Seq[CHType]) {
   case Numbers
-      extends CHAbstractTypes(
+      extends CHAbstractType(
         1,
         Seq(
           CHType.Int8,
@@ -122,6 +122,6 @@ enum CHAbstractTypes(val fuzzingValue: Any, val chTypes: Seq[CHType]) {
         )
       )
 
-  case String extends CHAbstractTypes(CHType.StringType.fuzzingValues.head, Seq(CHType.StringType, CHType.FixedString))
-  case UUID extends CHAbstractTypes(CHType.UUID.fuzzingValues.head, Seq(CHType.UUID))
+  case String extends CHAbstractType(CHType.StringType.fuzzingValues.head, Seq(CHType.StringType, CHType.FixedString))
+  case UUID extends CHAbstractType(CHType.UUID.fuzzingValues.head, Seq(CHType.UUID))
 }

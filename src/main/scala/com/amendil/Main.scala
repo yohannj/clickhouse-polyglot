@@ -10,10 +10,8 @@ import scala.concurrent.duration.DurationInt
 
 @main def app: Unit =
   val logger = Logger("Main")
-  implicit val ec: ExecutionContext = ExecutionContext.global
-
-  val singleThreadEc = ExecutionContext.fromExecutorService(Executors.newSingleThreadExecutor())
-  implicit val client: CHClient = CHClient(8123)(singleThreadEc)
+  implicit val ec: ExecutionContext = ExecutionContext.fromExecutorService(Executors.newFixedThreadPool(2))
+  implicit val client: CHClient = CHClient(8123)
 
   val functionNamesF =
     client

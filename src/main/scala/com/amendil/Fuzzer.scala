@@ -14,7 +14,7 @@ object Fuzzer extends StrictLogging {
     Future
       .sequence(
         for {
-          type1 <- CHAbstractTypes.values
+          type1 <- CHAbstractType.values
           arg1 = s"${type1.fuzzingValue}"
         } yield {
           client
@@ -58,36 +58,14 @@ object Fuzzer extends StrictLogging {
     if (fn.functionNTypes.nonEmpty) {
       Future.successful(fn)
     } else {
-      Future
-        .sequence(
-          for {
-            type1 <- CHAbstractTypes.values
-            arg1 = s"${type1.fuzzingValue}"
-          } yield {
-            client
-              .execute(
-                s"SELECT ${fn.name}($arg1)"
-              )
-              .flatMap { _ =>
-                val calls = for {
-                  subType1 <- type1.chTypes
-                  subArg1 = subType1.fuzzingValues.head
-                } yield {
-                  client
-                    .execute(
-                      s"SELECT ${fn.name}($subArg1)"
-                    )
-                    .map(_ => Success(subType1))
-                    .recover(Failure(_))
-                }
-
-                Future.sequence(calls)
-              }
-              .recover(e => Seq(Failure(e)))
+      fuzzFunctionNType(fn.name, 1)
+        .map { list =>
+          val validTypes = list.map { types =>
+            types match
+              case Seq(type1) => type1
+              case _          => throw new Exception(s"Expected 1 type, found ${list.size} types")
           }
-        )
-        .map { results =>
-          val validTypes = results.flatten.collect { case Success(value) => value }.toSeq
+
           fn.copy(function1Types = validTypes)
         }
     }
@@ -98,42 +76,14 @@ object Fuzzer extends StrictLogging {
     if (fn.functionNTypes.nonEmpty) {
       Future.successful(fn)
     } else {
-      Future
-        .sequence(
-          for {
-            type1 <- CHAbstractTypes.values
-            arg1 = s"${type1.fuzzingValue}"
-
-            type2 <- CHAbstractTypes.values
-            arg2 = s"${type2.fuzzingValue}"
-          } yield {
-            client
-              .execute(
-                s"SELECT ${fn.name}($arg1, $arg2)"
-              )
-              .flatMap { _ =>
-                val calls = for {
-                  subType1 <- type1.chTypes
-                  subArg1 = subType1.fuzzingValues.head
-
-                  subType2 <- type2.chTypes
-                  subArg2 = subType2.fuzzingValues.head
-                } yield {
-                  client
-                    .execute(
-                      s"SELECT ${fn.name}($subArg1, $subArg2)"
-                    )
-                    .map(_ => Success((subType1, subType2)))
-                    .recover(Failure(_))
-                }
-
-                Future.sequence(calls)
-              }
-              .recover(e => Seq(Failure(e)))
+      fuzzFunctionNType(fn.name, 2)
+        .map { list =>
+          val validTypes = list.map { types =>
+            types match
+              case Seq(type1, type2) => (type1, type2)
+              case _                 => throw new Exception(s"Expected 2 types, found ${list.size} types")
           }
-        )
-        .map { results =>
-          val validTypes = results.flatten.collect { case Success(value) => value }.toSeq
+
           fn.copy(function2Types = validTypes)
         }
     }
@@ -144,50 +94,53 @@ object Fuzzer extends StrictLogging {
     if (fn.functionNTypes.nonEmpty) {
       Future.successful(fn)
     } else {
-      Future
-        .sequence(
-          for {
-            type1 <- CHAbstractTypes.values
-            arg1 = s"${type1.fuzzingValue}"
-
-            type2 <- CHAbstractTypes.values
-            arg2 = s"${type2.fuzzingValue}"
-
-            type3 <- CHAbstractTypes.values
-            arg3 = s"${type3.fuzzingValue}"
-          } yield {
-            client
-              .execute(
-                s"SELECT ${fn.name}($arg1, $arg2, $arg3)"
-              )
-              .flatMap { _ =>
-                val calls = for {
-                  subType1 <- type1.chTypes
-                  subArg1 = subType1.fuzzingValues.head
-
-                  subType2 <- type2.chTypes
-                  subArg2 = subType2.fuzzingValues.head
-
-                  subType3 <- type3.chTypes
-                  subArg3 = subType3.fuzzingValues.head
-                } yield {
-                  client
-                    .execute(
-                      s"SELECT ${fn.name}($subArg1, $subArg2, $subArg3)"
-                    )
-                    .map(_ => Success((subType1, subType2, subType3)))
-                    .recover(Failure(_))
-                }
-
-                Future.sequence(calls)
-              }
-              .recover(e => Seq(Failure(e)))
+      fuzzFunctionNType(fn.name, 3)
+        .map { list =>
+          val validTypes = list.map { types =>
+            types match
+              case Seq(type1, type2, type3) => (type1, type2, type3)
+              case _                        => throw new Exception(s"Expected 3 types, found ${list.size} types")
           }
-        )
-        .map { results =>
-          val validTypes = results.flatten.collect { case Success(value) => value }.toSeq
+
           fn.copy(function3Types = validTypes)
         }
+    }
+
+  private def fuzzFunctionNType(
+      fnName: String,
+      argCount: Int,
+      currentArgs: Seq[CHAbstractType] = Seq.empty
+  )(implicit client: CHClient, ec: ExecutionContext): Future[Seq[Seq[CHType]]] =
+    if (argCount > 0) {
+      val checkF = CHAbstractType.values.toSeq.map { abstractType =>
+        fuzzFunctionNType(fnName, argCount - 1, currentArgs :+ abstractType)
+      }
+
+      Future.sequence(checkF).map(_.flatten.filter(_.nonEmpty))
+    } else {
+      client
+        .execute(s"SELECT $fnName(${currentArgs.map(_.fuzzingValue).mkString(", ")})")
+        .flatMap { _ => fuzzFunctionNType(fnName, currentArgs, Seq.empty) }
+        .recover(_ => Seq.empty)
+    }
+
+  private def fuzzFunctionNType(
+      fnName: String,
+      abstractTypes: Seq[CHAbstractType],
+      currentArgs: Seq[CHType]
+  )(implicit client: CHClient, ec: ExecutionContext): Future[Seq[Seq[CHType]]] =
+    abstractTypes match {
+      case head :: tail =>
+        val checkF = head.chTypes.map { chType =>
+          fuzzFunctionNType(fnName, tail, currentArgs :+ chType)
+        }
+
+        Future.sequence(checkF).map(_.flatten.filter(_.nonEmpty))
+      case _ =>
+        client
+          .execute(s"SELECT $fnName(${currentArgs.map(_.fuzzingValues.head).mkString(", ")})")
+          .map { _ => Seq(currentArgs) }
+          .recover(_ => Seq.empty)
     }
 
 }

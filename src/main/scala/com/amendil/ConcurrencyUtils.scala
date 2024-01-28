@@ -1,7 +1,6 @@
 package com.amendil
 
-import scala.concurrent.Future
-import scala.concurrent.ExecutionContext
+import scala.concurrent.{ExecutionContext, Future}
 
 object ConcurrencyUtils {
 
