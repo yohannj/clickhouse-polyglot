@@ -1,13 +1,13 @@
 package com.amendil
 
 import com.amendil.bo.CHFunctionFuzzResult
+import com.amendil.http.CHClient
+import com.typesafe.scalalogging.StrictLogging
 
 import scala.concurrent.{ExecutionContext, Future}
 import scala.util.{Failure, Success}
-import java.time.Instant
-import java.util.concurrent.TimeUnit
 
-object Fuzzer {
+object Fuzzer extends StrictLogging {
   def fuzzFunctionN(
       fn: CHFunctionFuzzResult
   )(implicit client: CHClient, ec: ExecutionContext): Future[CHFunctionFuzzResult] =
