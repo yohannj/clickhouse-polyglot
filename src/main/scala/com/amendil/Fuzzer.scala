@@ -24,7 +24,7 @@ object Fuzzer {
             .flatMap { _ =>
               val calls = for {
                 subType1 <- type1.chTypes
-                subArg1 = s"${subType1.fuzzingValues.head}::${subType1.name}"
+                subArg1 = subType1.fuzzingValues.head
               } yield {
                 client
                   .execute(
@@ -71,7 +71,7 @@ object Fuzzer {
               .flatMap { _ =>
                 val calls = for {
                   subType1 <- type1.chTypes
-                  subArg1 = s"${subType1.fuzzingValues.head}::${subType1.name}"
+                  subArg1 = subType1.fuzzingValues.head
                 } yield {
                   client
                     .execute(
@@ -114,10 +114,10 @@ object Fuzzer {
               .flatMap { _ =>
                 val calls = for {
                   subType1 <- type1.chTypes
-                  subArg1 = s"${subType1.fuzzingValues.head}::${subType1.name}"
+                  subArg1 = subType1.fuzzingValues.head
 
                   subType2 <- type2.chTypes
-                  subArg2 = s"${subType2.fuzzingValues.head}::${subType2.name}"
+                  subArg2 = subType2.fuzzingValues.head
                 } yield {
                   client
                     .execute(
@@ -163,13 +163,13 @@ object Fuzzer {
               .flatMap { _ =>
                 val calls = for {
                   subType1 <- type1.chTypes
-                  subArg1 = s"${subType1.fuzzingValues.head}::${subType1.name}"
+                  subArg1 = subType1.fuzzingValues.head
 
                   subType2 <- type2.chTypes
-                  subArg2 = s"${subType2.fuzzingValues.head}::${subType2.name}"
+                  subArg2 = subType2.fuzzingValues.head
 
                   subType3 <- type3.chTypes
-                  subArg3 = s"${subType3.fuzzingValues.head}::${subType3.name}"
+                  subArg3 = subType3.fuzzingValues.head
                 } yield {
                   client
                     .execute(
