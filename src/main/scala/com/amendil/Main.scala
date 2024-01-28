@@ -42,7 +42,12 @@ import scala.concurrent.duration.DurationInt
   val r = Await
     .result(checksF, 600.seconds)
     .filter(f =>
-      !f.isFunction0 && f.functionNTypes.isEmpty && f.function1Types.isEmpty && f.function2Types.isEmpty && f.function3Types.isEmpty
+      !f.isFunction0
+        && f.functionNTypes.isEmpty
+        && f.function1Types.isEmpty
+        && f.function2Types.isEmpty
+        && f.function3Types.isEmpty
+        && f.function4Types.isEmpty
     )
 
   print(r.size)

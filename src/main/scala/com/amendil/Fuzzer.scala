@@ -106,6 +106,24 @@ object Fuzzer extends StrictLogging {
         }
     }
 
+  def fuzzFunction4(
+      fn: CHFunctionFuzzResult
+  )(implicit client: CHClient, ec: ExecutionContext): Future[CHFunctionFuzzResult] =
+    if (fn.functionNTypes.nonEmpty) {
+      Future.successful(fn)
+    } else {
+      fuzzFunctionNType(fn.name, 4)
+        .map { list =>
+          val validTypes = list.map { types =>
+            types match
+              case Seq(type1, type2, type3, type4) => (type1, type2, type3, type4)
+              case _                        => throw new Exception(s"Expected 4 types, found ${list.size} types")
+          }
+
+          fn.copy(function4Types = validTypes)
+        }
+    }
+
   private def fuzzFunctionNType(
       fnName: String,
       argCount: Int,
