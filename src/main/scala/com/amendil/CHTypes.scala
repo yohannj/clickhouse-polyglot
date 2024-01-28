@@ -31,6 +31,9 @@ enum CHTypes[T](val name: String, val fuzzingValues: Seq[T]) {
         Seq(0, BigInt("115792089237316195423570985008687907853269984665640564039457584007913129639935"))
       )
 
+  case Float32 extends CHTypes[String]("Float32", Seq("-inf", "nan", "0.5"))
+  case Float64 extends CHTypes[String]("Float64", Seq("-inf", "nan", "0.5"))
+
   // Others
   case StringType extends CHTypes[String]("String", Seq("'foo'"))
 }
@@ -51,7 +54,9 @@ enum CHAbstractTypes(val fuzzingValue: Any, val chTypes: Seq[CHTypes[_]]) {
           CHTypes.UInt32,
           CHTypes.UInt64,
           CHTypes.UInt128,
-          CHTypes.UInt256
+          CHTypes.UInt256,
+          CHTypes.Float32,
+          CHTypes.Float64
         )
       )
 
