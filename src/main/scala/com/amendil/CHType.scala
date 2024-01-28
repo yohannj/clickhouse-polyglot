@@ -3,36 +3,56 @@ package com.amendil
 enum CHType(val name: String, val fuzzingValues: Seq[String]) {
 
   // Numbers
-  case Int8 extends CHType("Int8", Seq("-128::Int8", "127::Int8"))
-  case Int16 extends CHType("Int16", Seq("-32768::Int16", "32767::Int16"))
-  case Int32 extends CHType("Int32", Seq("-2147483648::Int32", "2147483647::Int32"))
-  case Int64 extends CHType("Int64", Seq("-9223372036854775808::Int64", "9223372036854775807::Int64"))
+  case Int8 extends CHType("Int8", Seq("-128::Int8", "127::Int8", "-128::LowCardinality(Int8)"))
+  case Int16 extends CHType("Int16", Seq("-32768::Int16", "32767::Int16", "-32768::LowCardinality(Int16)"))
+  case Int32
+      extends CHType("Int32", Seq("-2147483648::Int32", "2147483647::Int32", "-2147483648::LowCardinality(Int32)"))
+  case Int64
+      extends CHType(
+        "Int64",
+        Seq("-9223372036854775808::Int64", "9223372036854775807::Int64", "-9223372036854775808::LowCardinality(Int64)")
+      )
   case Int128
       extends CHType(
         "Int128",
-        Seq("-170141183460469231731687303715884105728::Int128", "170141183460469231731687303715884105727::Int128")
+        Seq(
+          "-170141183460469231731687303715884105728::Int128",
+          "170141183460469231731687303715884105727::Int128",
+          "-170141183460469231731687303715884105728::LowCardinality(Int128)"
+        )
       )
   case Int256
       extends CHType(
         "Int256",
         Seq(
           "-57896044618658097711785492504343953926634992332820282019728792003956564819968::Int256",
-          "57896044618658097711785492504343953926634992332820282019728792003956564819967::Int256"
+          "57896044618658097711785492504343953926634992332820282019728792003956564819967::Int256",
+          "-57896044618658097711785492504343953926634992332820282019728792003956564819968::LowCardinality(Int256)"
         )
       )
-  case UInt8 extends CHType("UInt8", Seq("0::UInt8", "1::UInt8", "255::UInt8"))
-  case UInt16 extends CHType("UInt16", Seq("0::UInt16", "65535::UInt16"))
-  case UInt32 extends CHType("UInt32", Seq("0::UInt32", "4294967295::UInt32"))
-  case UInt64 extends CHType("UInt64", Seq("0::UInt64", "18446744073709551615::UInt64"))
-  case UInt128 extends CHType("UInt128", Seq("0::UInt128", "340282366920938463463374607431768211455::UInt128"))
+  case UInt8 extends CHType("UInt8", Seq("0::UInt8", "1::UInt8", "255::UInt8", "0::LowCardinality(UInt8)"))
+  case UInt16 extends CHType("UInt16", Seq("0::UInt16", "65535::UInt16", "0::LowCardinality(UInt16)"))
+  case UInt32 extends CHType("UInt32", Seq("0::UInt32", "4294967295::UInt32", "0::LowCardinality(UInt32)"))
+  case UInt64 extends CHType("UInt64", Seq("0::UInt64", "18446744073709551615::UInt64", "0::LowCardinality(UInt64)"))
+  case UInt128
+      extends CHType(
+        "UInt128",
+        Seq("0::UInt128", "340282366920938463463374607431768211455::UInt128", "0::LowCardinality(UInt128)")
+      )
   case UInt256
       extends CHType(
         "UInt256",
-        Seq("0::UInt256", "115792089237316195423570985008687907853269984665640564039457584007913129639935::UInt256")
+        Seq(
+          "0::UInt256",
+          "115792089237316195423570985008687907853269984665640564039457584007913129639935::UInt256",
+          "0::LowCardinality(UInt256)"
+        )
       )
 
-  case Float32 extends CHType("Float32", Seq("-inf::Float32", "nan::Float32", "0.5::Float32"))
-  case Float64 extends CHType("Float64", Seq("-inf::Float64", "nan::Float64", "0.5::Float64"))
+  case Float32
+      extends CHType("Float32", Seq("-inf::Float32", "nan::Float32", "0.5::Float32", "-inf::LowCardinality(Float32)"))
+  case Float64
+      extends CHType("Float64", Seq("-inf::Float64", "nan::Float64", "0.5::Float64", "-inf::LowCardinality(Float64)"))
   case Decimal32
       extends CHType(
         "Decimal32",
@@ -87,8 +107,13 @@ enum CHType(val name: String, val fuzzingValues: Seq[String]) {
       )
 
   // Date
-  case Date extends CHType("Date", Seq("'1970-01-01'::Date", "'2149-06-06'::Date"))
-  case Date32 extends CHType("Date32", Seq("'1900-01-01'::Date32", "'2299-12-31'::Date32"))
+  case Date
+      extends CHType("Date", Seq("'1970-01-01'::Date", "'2149-06-06'::Date", "'1970-01-01'::LowCardinality(Date)"))
+  case Date32
+      extends CHType(
+        "Date32",
+        Seq("'1900-01-01'::Date32", "'2299-12-31'::Date32", "'1900-01-01'::LowCardinality(Date32)")
+      )
   case DateTime
       extends CHType(
         "DateTime",
@@ -96,7 +121,8 @@ enum CHType(val name: String, val fuzzingValues: Seq[String]) {
           "'1970-01-01 00:00:00'::DateTime('Asia/Istanbul')",
           "'2106-02-07 06:28:15'::DateTime('Asia/Istanbul')",
           "'1970-01-01 00:00:00'::DateTime",
-          "'2106-02-07 06:28:15'::DateTime"
+          "'2106-02-07 06:28:15'::DateTime",
+          "'1970-01-01 00:00:00'::LowCardinality(DateTime)"
         )
       )
   case DateTime64
@@ -112,7 +138,8 @@ enum CHType(val name: String, val fuzzingValues: Seq[String]) {
           "'1900-01-01 00:00:00'::DateTime64(9)",
           "'2299-12-31 23:59:59.99999999'::DateTime64(0)",
           "'2299-12-31 23:59:59.99999999'::DateTime64(8)",
-          "'2262-04-11 23:47:16.854775807'::DateTime64(9)"
+          "'2262-04-11 23:47:16.854775807'::DateTime64(9)",
+          "'2262-04-11 23:47:16.854775807'::LowCardinality(DateTime64(9))"
         )
       )
 
@@ -136,8 +163,12 @@ enum CHType(val name: String, val fuzzingValues: Seq[String]) {
           "'hello'::Enum16('hello', 'world')"
         )
       )
-  case FixedString extends CHType("FixedString", Seq("'azertyuiop'::FixedString(10)", "''::FixedString(1)"))
-  case StringType extends CHType("String", Seq("'foo'::String", "''::String"))
+  case FixedString
+      extends CHType(
+        "FixedString",
+        Seq("'azertyuiop'::FixedString(10)", "''::FixedString(1)", "'foo'::LowCardinality(FixedString(3))")
+      )
+  case StringType extends CHType("String", Seq("'foo'::String", "''::String", "'foo'::LowCardinality(String)"))
   case UUID
       extends CHType(
         "UUID",

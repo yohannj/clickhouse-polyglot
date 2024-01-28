@@ -34,7 +34,11 @@ class CHClient(port: Int)(implicit ec: ExecutionContext):
       HttpRequest
         .newBuilder()
         .uri(new URI(s"$url"))
-        .POST(HttpRequest.BodyPublishers.ofString(s"$query FORMAT JSONCompact;"))
+        .POST(
+          HttpRequest.BodyPublishers.ofString(
+            s"$query SETTINGS allow_suspicious_low_cardinality_types=1 FORMAT JSONCompact;"
+          )
+        )
         .setHeader("Content-Type", "application/x-www-form-urlencoded")
         .build()
     )
