@@ -206,6 +206,50 @@ enum CHType(val name: String, val fuzzingValues: Seq[String]) {
   case ArrayJson extends CHType("Array(JSON)", Seq(s"[${Json.fuzzingValues.mkString(", ")}]"))
   case ArrayString extends CHType("Array(String)", Seq(s"[${StringType.fuzzingValues.mkString(", ")}]"))
   case ArrayUUID extends CHType("Array(UUID)", Seq(s"[${UUID.fuzzingValues.mkString(", ")}]"))
+
+  // Tuple1
+  case Tuple1Int8 extends CHType("Tuple(Int8)", Seq(s"(${Int8.fuzzingValues.mkString(", ")})::Tuple(Int8)"))
+  case Tuple1Int16 extends CHType("Tuple(Int16)", Seq(s"(${Int16.fuzzingValues.mkString(", ")})::Tuple(Int16)"))
+  case Tuple1Int32 extends CHType("Tuple(Int32)", Seq(s"(${Int32.fuzzingValues.mkString(", ")})::Tuple(Int32)"))
+  case Tuple1Int64 extends CHType("Tuple(Int64)", Seq(s"(${Int64.fuzzingValues.mkString(", ")})::Tuple(Int64)"))
+  case Tuple1Int128 extends CHType("Tuple(Int128)", Seq(s"(${Int128.fuzzingValues.mkString(", ")})::Tuple(Int128)"))
+  case Tuple1Int256 extends CHType("Tuple(Int256)", Seq(s"(${Int256.fuzzingValues.mkString(", ")})::Tuple(Int256)"))
+  case Tuple1UInt8 extends CHType("Tuple(UInt8)", Seq(s"(${UInt8.fuzzingValues.mkString(", ")})::Tuple(UInt8)"))
+  case Tuple1UInt16 extends CHType("Tuple(UInt16)", Seq(s"(${UInt16.fuzzingValues.mkString(", ")})::Tuple(UInt16)"))
+  case Tuple1UInt32 extends CHType("Tuple(UInt32)", Seq(s"(${UInt32.fuzzingValues.mkString(", ")})::Tuple(UInt32)"))
+  case Tuple1UInt64 extends CHType("Tuple(UInt64)", Seq(s"(${UInt64.fuzzingValues.mkString(", ")})::Tuple(UInt64)"))
+  case Tuple1UInt128 extends CHType("Tuple(UInt128)", Seq(s"(${UInt128.fuzzingValues.mkString(", ")})::Tuple(UInt128)"))
+  case Tuple1UInt256 extends CHType("Tuple(UInt256)", Seq(s"(${UInt256.fuzzingValues.mkString(", ")})::Tuple(UInt256)"))
+  case Tuple1Float32 extends CHType("Tuple(Float32)", Seq(s"(${Float32.fuzzingValues.mkString(", ")})::Tuple(Float32)"))
+  case Tuple1Float64 extends CHType("Tuple(Float64)", Seq(s"(${Float64.fuzzingValues.mkString(", ")})::Tuple(Float64)"))
+  case Tuple1Decimal32
+      extends CHType("Tuple(Decimal32)", Seq(s"(${Decimal32.fuzzingValues.mkString(", ")})::Tuple(Decimal32)"))
+  case Tuple1Decimal64
+      extends CHType("Tuple(Decimal64)", Seq(s"(${Decimal64.fuzzingValues.mkString(", ")})::Tuple(Decimal64)"))
+  case Tuple1Decimal128
+      extends CHType("Tuple(Decimal128)", Seq(s"(${Decimal128.fuzzingValues.mkString(", ")})::Tuple(Decimal128)"))
+  case Tuple1Decimal256
+      extends CHType("Tuple(Decimal256)", Seq(s"(${Decimal256.fuzzingValues.mkString(", ")})::Tuple(Decimal256)"))
+  case Tuple1Date extends CHType("Tuple(Date)", Seq(s"(${Date.fuzzingValues.mkString(", ")})::Tuple(Date)"))
+  case Tuple1Date32 extends CHType("Tuple(Date32)", Seq(s"(${Date32.fuzzingValues.mkString(", ")})::Tuple(Date32)"))
+  case Tuple1DateTime
+      extends CHType("Tuple(DateTime)", Seq(s"(${DateTime.fuzzingValues.mkString(", ")})::Tuple(DateTime)"))
+  case Tuple1DateTime64
+      extends CHType("Tuple(DateTime64)", Seq(s"(${DateTime64.fuzzingValues.mkString(", ")})::Tuple(DateTime64)"))
+  case Tuple1Enum extends CHType("Tuple(Enum)", Seq(s"(${Enum.fuzzingValues.mkString(", ")})::Tuple(Enum)"))
+  case Tuple1Enum8 extends CHType("Tuple(Enum8)", Seq(s"(${Enum8.fuzzingValues.mkString(", ")})::Tuple(Enum8)"))
+  case Tuple1Enum16 extends CHType("Tuple(Enum16)", Seq(s"(${Enum16.fuzzingValues.mkString(", ")})::Tuple(Enum16)"))
+  case Tuple1FixedString
+      extends CHType("Tuple(FixedString)", Seq(s"(${FixedString.fuzzingValues.mkString(", ")})::Tuple(FixedString)"))
+  case Tuple1Json extends CHType("Tuple(JSON)", Seq(s"(${Json.fuzzingValues.mkString(", ")})::Tuple(JSON)"))
+  case Tuple1String extends CHType("Tuple(String)", Seq(s"(${StringType.fuzzingValues.mkString(", ")})::Tuple(String)"))
+  case Tuple1UUID extends CHType("Tuple(UUID)", Seq(s"(${UUID.fuzzingValues.mkString(", ")})::Tuple(UUID)"))
+
+  // Special
+  case Tuple1ArrayUInt8
+      extends CHType("Tuple(Array(UInt8))", Seq(s"(${ArrayUInt8.fuzzingValues.mkString(", ")})::Tuple(Array(UInt8))"))
+  case ArrayTuple1UInt8
+      extends CHType("Array(Tuple(UInt8))", Seq(s"(${Tuple1UInt8.fuzzingValues.mkString(", ")})::Array(Tuple(UInt8))"))
 }
 
 enum CHAbstractType(val fuzzingValue: Any, val chTypes: Seq[CHType]) {
@@ -241,6 +285,7 @@ enum CHAbstractType(val fuzzingValue: Any, val chTypes: Seq[CHType]) {
   case String extends CHAbstractType(CHType.StringType.fuzzingValues.head, Seq(CHType.StringType, CHType.FixedString))
   case UUID extends CHAbstractType(CHType.UUID.fuzzingValues.head, Seq(CHType.UUID))
 
+  // Array
   case ArrayDate extends CHAbstractType(s"[${Date.fuzzingValue}]", Seq(CHType.ArrayDate, CHType.ArrayDate32))
   case ArrayDateTime
       extends CHAbstractType(s"[${DateTime.fuzzingValue}]", Seq(CHType.ArrayDateTime, CHType.ArrayDateTime64))
@@ -273,4 +318,55 @@ enum CHAbstractType(val fuzzingValue: Any, val chTypes: Seq[CHType]) {
       )
   case ArrayString extends CHAbstractType(s"[${String.fuzzingValue}]", Seq(CHType.ArrayFixedString, CHType.ArrayString))
   case ArrayUUID extends CHAbstractType(s"[${UUID.fuzzingValue}]", Seq(CHType.ArrayUUID))
+
+  // Tuple1
+  case Tuple1Date
+      extends CHAbstractType(s"(${Date.fuzzingValue})::Tuple(Date)", Seq(CHType.Tuple1Date, CHType.Tuple1Date32))
+  case Tuple1DateTime
+      extends CHAbstractType(
+        s"(${DateTime.fuzzingValue})::Tuple(DateTime)",
+        Seq(CHType.Tuple1DateTime, CHType.Tuple1DateTime64)
+      )
+  case Tuple1Enum
+      extends CHAbstractType(
+        s"(${Enum.fuzzingValue})::Tuple(Enum('hello' = 1, 'world' = 2))",
+        Seq(CHType.Tuple1Enum, CHType.Tuple1Enum8, CHType.Tuple1Enum16)
+      )
+  case Tuple1Json extends CHAbstractType(s"(${Json.fuzzingValue})::Tuple(JSON)", Seq(CHType.Tuple1Json))
+  case Tuple1Numbers
+      extends CHAbstractType(
+        s"(${Numbers.fuzzingValue})::Tuple(UInt8)",
+        Seq(
+          CHType.Tuple1Int8,
+          CHType.Tuple1Int16,
+          CHType.Tuple1Int32,
+          CHType.Tuple1Int64,
+          CHType.Tuple1Int128,
+          CHType.Tuple1Int256,
+          CHType.Tuple1UInt8,
+          CHType.Tuple1UInt16,
+          CHType.Tuple1UInt32,
+          CHType.Tuple1UInt64,
+          CHType.Tuple1UInt128,
+          CHType.Tuple1UInt256,
+          CHType.Tuple1Float32,
+          CHType.Tuple1Float64,
+          CHType.Tuple1Decimal32,
+          CHType.Tuple1Decimal64,
+          CHType.Tuple1Decimal128,
+          CHType.Tuple1Decimal256
+        )
+      )
+  case Tuple1String
+      extends CHAbstractType(
+        s"(${String.fuzzingValue})::Tuple(String)",
+        Seq(CHType.Tuple1FixedString, CHType.Tuple1String)
+      )
+  case Tuple1UUID extends CHAbstractType(s"(${UUID.fuzzingValue})::Tuple(UUID)", Seq(CHType.Tuple1UUID))
+
+  // Special
+  case Tuple1ArrayNumbers
+      extends CHAbstractType(s"(${ArrayNumbers.fuzzingValue})::Tuple(Array(UInt8))", Seq(CHType.Tuple1ArrayUInt8))
+  case ArrayTuple1Numbers
+      extends CHAbstractType(s"[${Tuple1Numbers.fuzzingValue}]::Array(Tuple(UInt8))", Seq(CHType.ArrayTuple1UInt8))
 }
