@@ -13,10 +13,10 @@ import scala.concurrent.duration.Duration
   implicit val ec: ExecutionContext = ExecutionContext.fromExecutorService(Executors.newFixedThreadPool(2))
   implicit val client: CHClient = CHClient(8123)
 
-  val functionNamesF =
-    client
-      .execute("SELECT name, is_aggregate FROM system.functions")
-      .map(_.data.map(_.head.asInstanceOf[String]).sorted)
+  // val functionNamesF =
+  //   client
+  //     .execute("SELECT name, is_aggregate FROM system.functions")
+  //     .map(_.data.map(_.head.asInstanceOf[String]).sorted)
 
   val checksF = for {
     // functionNames <- functionNamesF
