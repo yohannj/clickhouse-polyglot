@@ -36,7 +36,7 @@ class CHClient(port: Int)(implicit ec: ExecutionContext):
         .uri(new URI(s"$url"))
         .POST(
           HttpRequest.BodyPublishers.ofString(
-            s"$query SETTINGS allow_suspicious_low_cardinality_types=1 FORMAT JSONCompact;"
+            s"$query SETTINGS ${CHClient.settings} FORMAT JSONCompact;"
           )
         )
         .setHeader("Content-Type", "application/x-www-form-urlencoded")
@@ -67,3 +67,10 @@ class CHClient(port: Int)(implicit ec: ExecutionContext):
         }
       }
     }
+
+object CHClient {
+  private val settings: String = Seq(
+    "allow_suspicious_low_cardinality_types=1",
+    "allow_experimental_object_type=1"
+  ).mkString(", ")
+}

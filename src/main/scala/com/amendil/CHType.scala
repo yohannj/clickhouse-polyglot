@@ -168,6 +168,7 @@ enum CHType(val name: String, val fuzzingValues: Seq[String]) {
         "FixedString",
         Seq("'azertyuiop'::FixedString(10)", "''::FixedString(1)", "'foo'::LowCardinality(FixedString(3))")
       )
+  case Json extends CHType("JSON", Seq("""'{"a": 1, "b": { "c": "foo", "d": [1, 2, 3] }, "c": null}'::JSON"""))
   case StringType extends CHType("String", Seq("'foo'::String", "''::String", "'foo'::LowCardinality(String)"))
   case UUID
       extends CHType(
@@ -202,6 +203,7 @@ enum CHType(val name: String, val fuzzingValues: Seq[String]) {
   case ArrayEnum8 extends CHType("Array(Enum8)", Seq(s"[${Enum8.fuzzingValues.mkString(", ")}]"))
   case ArrayEnum16 extends CHType("Array(Enum16)", Seq(s"[${Enum16.fuzzingValues.mkString(", ")}]"))
   case ArrayFixedString extends CHType("Array(FixedString)", Seq(s"[${FixedString.fuzzingValues.mkString(", ")}]"))
+  case ArrayJson extends CHType("Array(JSON)", Seq(s"[${Json.fuzzingValues.mkString(", ")}]"))
   case ArrayString extends CHType("Array(String)", Seq(s"[${StringType.fuzzingValues.mkString(", ")}]"))
   case ArrayUUID extends CHType("Array(UUID)", Seq(s"[${UUID.fuzzingValues.mkString(", ")}]"))
 }
@@ -210,6 +212,7 @@ enum CHAbstractType(val fuzzingValue: Any, val chTypes: Seq[CHType]) {
   case Date extends CHAbstractType("'1970-01-02'::Date", Seq(CHType.Date, CHType.Date32))
   case DateTime extends CHAbstractType("'1970-01-02 00:00:00'::DateTime", Seq(CHType.DateTime, CHType.DateTime64))
   case Enum extends CHAbstractType(CHType.Enum.fuzzingValues.head, Seq(CHType.Enum, CHType.Enum8, CHType.Enum16))
+  case Json extends CHAbstractType(CHType.Json.fuzzingValues.head, Seq(CHType.Json))
   case Numbers
       extends CHAbstractType(
         1,
@@ -243,6 +246,7 @@ enum CHAbstractType(val fuzzingValue: Any, val chTypes: Seq[CHType]) {
       extends CHAbstractType(s"[${DateTime.fuzzingValue}]", Seq(CHType.ArrayDateTime, CHType.ArrayDateTime64))
   case ArrayEnum
       extends CHAbstractType(s"[${Enum.fuzzingValue}]", Seq(CHType.ArrayEnum, CHType.ArrayEnum8, CHType.ArrayEnum16))
+  case ArrayJson extends CHAbstractType(s"[${Json.fuzzingValue}]", Seq(CHType.ArrayJson))
   case ArrayNumbers
       extends CHAbstractType(
         s"[${Numbers.fuzzingValue}]",
