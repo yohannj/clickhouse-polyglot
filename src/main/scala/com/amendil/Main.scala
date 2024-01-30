@@ -1,6 +1,5 @@
 package com.amendil
 
-import com.amendil.bo.CHFunctionFuzzResult
 import com.amendil.http.CHClient
 import com.typesafe.scalalogging.Logger
 
@@ -13,35 +12,17 @@ import scala.concurrent.duration.Duration
   implicit val ec: ExecutionContext = ExecutionContext.fromExecutorService(Executors.newFixedThreadPool(2))
   implicit val client: CHClient = CHClient(8123)
 
-  // val functionNamesF =
-  //   client
-  //     .execute("SELECT name, is_aggregate FROM system.functions")
-  //     .map(_.data.map(_.head.asInstanceOf[String]).sorted)
-
-  val checksF = for {
-    // functionNames <- functionNamesF
-    functionNames <- Future.successful(unknownFunctions)
-
-    functionCount = functionNames.size
-    res <- ConcurrencyUtils.executeInSequence(
-      functionNames.zipWithIndex,
-      (functionName: String, idx: Int) =>
-        if (idx % Math.max(functionCount / 20, 1) == 0)
-          logger.info(s"${100 * idx / functionCount}%")
-
-        Fuzzer
-          .fuzzFunctionN(CHFunctionFuzzResult(name = functionName))
-          .flatMap(Fuzzer.fuzzFunction0)
-          .flatMap(Fuzzer.fuzzFunction1)
-          .flatMap(Fuzzer.fuzzFunction2)
-          .flatMap(Fuzzer.fuzzFunction3)
-    )
-  } yield {
-    res
-  }
+  val checkFuzzingValues = Future.sequence(
+    (CHType.values.toSeq.flatMap(_.fuzzingValues) ++ CHAbstractType.values.toSeq.map(_.fuzzingValue))
+      .map(v =>
+        client
+          .execute(s"SELECT $v")
+          .recover(err => logger.error(s"Invalid fuzzing value $v: ${err.getMessage}"))
+      )
+  )
 
   val r = Await
-    .result(checksF, Duration.Inf)
+    .result(checkFuzzingValues.flatMap(_ => Fuzzer.fuzz()), Duration.Inf)
     .filter(f =>
       !f.isFunction0
         && f.functionNTypes.isEmpty

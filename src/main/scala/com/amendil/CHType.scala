@@ -260,7 +260,6 @@ enum CHType(val name: String, val fuzzingValues: Seq[String]) {
           "'2299-12-31 23:59:59.99999999'::DateTime64(0)",
           "'2299-12-31 23:59:59.99999999'::DateTime64(8)",
           "'2262-04-11 23:47:16.854775807'::DateTime64(9)",
-          "'2262-04-11 23:47:16.854775807'::LowCardinality(DateTime64(9))",
           "'1900-01-01 00:00:00'::Nullable(DateTime64(0, 'Asia/Istanbul'))",
           "null::Nullable(DateTime64(0, 'Asia/Istanbul'))"
         )
@@ -314,9 +313,7 @@ enum CHType(val name: String, val fuzzingValues: Seq[String]) {
       extends CHType(
         "JSON",
         Seq(
-          """'{"a": 1, "b": { "c": "foo", "d": [1, 2, 3] }, "c": null}'::JSON""",
-          """'{"a": 1, "b": { "c": "foo", "d": [1, 2, 3] }, "c": null}'::Nullable(JSON)""",
-          "null::Nullable(JSON)"
+          """'{"a": 1, "b": { "c": "foo", "d": [1, 2, 3] }, "c": null}'::JSON"""
         )
       )
   case StringType
@@ -346,261 +343,203 @@ enum CHType(val name: String, val fuzzingValues: Seq[String]) {
       extends CHType(
         "Array(Int8)",
         Seq(
-          s"[${Int8.fuzzingValues.mkString(", ")}]::Array(Int8)",
-          s"[${Int8.fuzzingValues.mkString(", ")}]::Nullable(Array(Int8))",
-          "null::Nullable(Array(Int8))"
+          s"[${Int8.fuzzingValues.mkString(", ")}]::Array(Nullable(Int8))"
         )
       )
   case ArrayInt16
       extends CHType(
         "Array(Int16)",
         Seq(
-          s"[${Int16.fuzzingValues.mkString(", ")}]::Array(Int16)",
-          s"[${Int16.fuzzingValues.mkString(", ")}]::Nullable(Array(Int16))",
-          "null::Nullable(Array(Int16))"
+          s"[${Int16.fuzzingValues.mkString(", ")}]::Array(Nullable(Int16))"
         )
       )
   case ArrayInt32
       extends CHType(
         "Array(Int32)",
         Seq(
-          s"[${Int32.fuzzingValues.mkString(", ")}]::Array(Int32)",
-          s"[${Int32.fuzzingValues.mkString(", ")}]::Nullable(Array(Int32))",
-          "null::Nullable(Array(Int32))"
+          s"[${Int32.fuzzingValues.mkString(", ")}]::Array(Nullable(Int32))"
         )
       )
   case ArrayInt64
       extends CHType(
         "Array(Int64)",
         Seq(
-          s"[${Int64.fuzzingValues.mkString(", ")}]::Array(Int64)",
-          s"[${Int64.fuzzingValues.mkString(", ")}]::Nullable(Array(Int64))",
-          "null::Nullable(Array(Int64))"
+          s"[${Int64.fuzzingValues.mkString(", ")}]::Array(Nullable(Int64))"
         )
       )
   case ArrayInt128
       extends CHType(
         "Array(Int128)",
         Seq(
-          s"[${Int128.fuzzingValues.mkString(", ")}]::Array(Int128)",
-          s"[${Int128.fuzzingValues.mkString(", ")}]::Nullable(Array(Int128))",
-          "null::Nullable(Array(Int128))"
+          s"[${Int128.fuzzingValues.mkString(", ")}]::Array(Nullable(Int128))"
         )
       )
   case ArrayInt256
       extends CHType(
         "Array(Int256)",
         Seq(
-          s"[${Int256.fuzzingValues.mkString(", ")}]::Array(Int256)",
-          s"[${Int256.fuzzingValues.mkString(", ")}]::Nullable(Array(Int256))",
-          "null::Nullable(Array(Int256))"
+          s"[${Int256.fuzzingValues.mkString(", ")}]::Array(Nullable(Int256))"
         )
       )
   case ArrayUInt8
       extends CHType(
         "Array(UInt8)",
         Seq(
-          s"[${UInt8.fuzzingValues.mkString(", ")}]::Array(UInt8)",
-          s"[${UInt8.fuzzingValues.mkString(", ")}]::Nullable(Array(UInt8))",
-          "null::Nullable(Array(UInt8))"
+          s"[${UInt8.fuzzingValues.mkString(", ")}]::Array(Nullable(UInt8))"
         )
       )
   case ArrayUInt16
       extends CHType(
         "Array(UInt16)",
         Seq(
-          s"[${UInt16.fuzzingValues.mkString(", ")}]::Array(UInt16)",
-          s"[${UInt16.fuzzingValues.mkString(", ")}]::Nullable(Array(UInt16))",
-          "null::Nullable(Array(UInt16))"
+          s"[${UInt16.fuzzingValues.mkString(", ")}]::Array(Nullable(UInt16))"
         )
       )
   case ArrayUInt32
       extends CHType(
         "Array(UInt32)",
         Seq(
-          s"[${UInt32.fuzzingValues.mkString(", ")}]::Array(UInt32)",
-          s"[${UInt32.fuzzingValues.mkString(", ")}]::Nullable(Array(UInt32))",
-          "null::Nullable(Array(UInt32))"
+          s"[${UInt32.fuzzingValues.mkString(", ")}]::Array(Nullable(UInt32))"
         )
       )
   case ArrayUInt64
       extends CHType(
         "Array(UInt64)",
         Seq(
-          s"[${UInt64.fuzzingValues.mkString(", ")}]::Array(UInt64)",
-          s"[${UInt64.fuzzingValues.mkString(", ")}]::Nullable(Array(UInt64))",
-          "null::Nullable(Array(UInt64))"
+          s"[${UInt64.fuzzingValues.mkString(", ")}]::Array(Nullable(UInt64))"
         )
       )
   case ArrayUInt128
       extends CHType(
         "Array(UInt128)",
         Seq(
-          s"[${UInt128.fuzzingValues.mkString(", ")}]::Array(UInt128)",
-          s"[${UInt128.fuzzingValues.mkString(", ")}]::Nullable(Array(UInt128))",
-          "null::Nullable(Array(UInt128))"
+          s"[${UInt128.fuzzingValues.mkString(", ")}]::Array(Nullable(UInt128))"
         )
       )
   case ArrayUInt256
       extends CHType(
         "Array(UInt256)",
         Seq(
-          s"[${UInt256.fuzzingValues.mkString(", ")}]::Array(UInt256)",
-          s"[${UInt256.fuzzingValues.mkString(", ")}]::Nullable(Array(UInt256))",
-          "null::Nullable(Array(UInt256))"
+          s"[${UInt256.fuzzingValues.mkString(", ")}]::Array(Nullable(UInt256))"
         )
       )
   case ArrayFloat32
       extends CHType(
         "Array(Float32)",
         Seq(
-          s"[${Float32.fuzzingValues.mkString(", ")}]::Array(Float32)",
-          s"[${Float32.fuzzingValues.mkString(", ")}]::Nullable(Array(Float32))",
-          "null::Nullable(Array(Float32))"
+          s"[${Float32.fuzzingValues.mkString(", ")}]::Array(Nullable(Float32))"
         )
       )
   case ArrayFloat64
       extends CHType(
         "Array(Float64)",
         Seq(
-          s"[${Float64.fuzzingValues.mkString(", ")}]::Array(Float64)",
-          s"[${Float64.fuzzingValues.mkString(", ")}]::Nullable(Array(Float64))",
-          "null::Nullable(Array(Float64))"
+          s"[${Float64.fuzzingValues.mkString(", ")}]::Array(Nullable(Float64))"
         )
       )
   case ArrayDecimal32
       extends CHType(
         "Array(Decimal32)",
         Seq(
-          s"[${Decimal32.fuzzingValues.mkString(", ")}]::Array(Decimal32)",
-          s"[${Decimal32.fuzzingValues.mkString(", ")}]::Nullable(Array(Decimal32))",
-          "null::Nullable(Array(Decimal32))"
+          s"[-999999999::Decimal32(0)]::Array(Decimal32(0))"
         )
       )
   case ArrayDecimal64
       extends CHType(
         "Array(Decimal64)",
         Seq(
-          s"[${Decimal64.fuzzingValues.mkString(", ")}]::Array(Decimal64)",
-          s"[${Decimal64.fuzzingValues.mkString(", ")}]::Nullable(Array(Decimal64))",
-          "null::Nullable(Array(Decimal64))"
+          s"[-999999999999999999::Decimal64(0)]::Array(Decimal64(0))"
         )
       )
   case ArrayDecimal128
       extends CHType(
         "Array(Decimal128)",
         Seq(
-          s"[${Decimal128.fuzzingValues.mkString(", ")}]::Array(Decimal128)",
-          s"[${Decimal128.fuzzingValues.mkString(", ")}]::Nullable(Array(Decimal128))",
-          "null::Nullable(Array(Decimal128))"
+          s"[-999999999999999999999999999999999999::Decimal128(0)]::Array(Decimal128(0))"
         )
       )
   case ArrayDecimal256
       extends CHType(
         "Array(Decimal256)",
         Seq(
-          s"[${Decimal256.fuzzingValues.mkString(", ")}]::Array(Decimal256)",
-          s"[${Decimal256.fuzzingValues.mkString(", ")}]::Nullable(Array(Decimal256))",
-          "null::Nullable(Array(Decimal256))"
+          s"[-999999999999999999999999999999999999999999999999999999999999999999999999::Decimal256(0)]::Array(Decimal256(0))"
         )
       )
   case ArrayDate
       extends CHType(
         "Array(Date)",
         Seq(
-          s"[${Date.fuzzingValues.mkString(", ")}]::Array(Date)",
-          s"[${Date.fuzzingValues.mkString(", ")}]::Nullable(Array(Date))",
-          "null::Nullable(Array(Date))"
+          s"[${Date.fuzzingValues.mkString(", ")}]::Array(Nullable(Date))"
         )
       )
   case ArrayDate32
       extends CHType(
         "Array(Date32)",
         Seq(
-          s"[${Date32.fuzzingValues.mkString(", ")}]::Array(Date32)",
-          s"[${Date32.fuzzingValues.mkString(", ")}]::Nullable(Array(Date32))",
-          "null::Nullable(Array(Date32))"
+          s"[${Date32.fuzzingValues.mkString(", ")}]::Array(Nullable(Date32))"
         )
       )
   case ArrayDateTime
       extends CHType(
         "Array(DateTime)",
         Seq(
-          s"[${DateTime.fuzzingValues.mkString(", ")}]::Array(DateTime)",
-          s"[${DateTime.fuzzingValues.mkString(", ")}]::Nullable(Array(DateTime))",
-          "null::Nullable(Array(DateTime))"
+          s"['1970-01-01 00:00:00'::DateTime('Asia/Istanbul')]::Array(DateTime('Asia/Istanbul'))"
         )
       )
   case ArrayDateTime64
       extends CHType(
         "Array(DateTime64)",
         Seq(
-          s"[${DateTime64.fuzzingValues.mkString(", ")}]::Array(DateTime64)",
-          s"[${DateTime64.fuzzingValues.mkString(", ")}]::Nullable(Array(DateTime64))",
-          "null::Nullable(Array(DateTime64))"
+          s"['1900-01-01 00:00:00'::DateTime64(0, 'Asia/Istanbul')]::Array(DateTime64(0, 'Asia/Istanbul'))"
         )
       )
   case ArrayEnum
       extends CHType(
         "Array(Enum)",
         Seq(
-          s"[${Enum.fuzzingValues.mkString(", ")}]::Array(Enum)",
-          s"[${Enum.fuzzingValues.mkString(", ")}]::Nullable(Array(Enum))",
-          "null::Nullable(Array(Enum))"
+          s"['hello'::Enum('hello' = 1, 'world' = 2)]::Array(Enum('hello' = 1, 'world' = 2))"
         )
       )
   case ArrayEnum8
       extends CHType(
         "Array(Enum8)",
         Seq(
-          s"[${Enum8.fuzzingValues.mkString(", ")}]::Array(Enum8)",
-          s"[${Enum8.fuzzingValues.mkString(", ")}]::Nullable(Array(Enum8))",
-          "null::Nullable(Array(Enum8))"
+          s"['hello'::Enum8('hello' = -128, 'world' = 2)]::Array(Enum8('hello' = -128, 'world' = 2))"
         )
       )
   case ArrayEnum16
       extends CHType(
         "Array(Enum16)",
         Seq(
-          s"[${Enum16.fuzzingValues.mkString(", ")}]::Array(Enum16)",
-          s"[${Enum16.fuzzingValues.mkString(", ")}]::Nullable(Array(Enum16))",
-          "null::Nullable(Array(Enum16))"
+          s"['hello'::Enum16('hello' = -32768, 'world' = 2)]::Array(Enum16('hello' = -32768, 'world' = 2))"
         )
       )
   case ArrayFixedString
       extends CHType(
         "Array(FixedString)",
         Seq(
-          s"[${FixedString.fuzzingValues.mkString(", ")}]::Array(FixedString(10))",
-          s"[${FixedString.fuzzingValues.mkString(", ")}]::Nullable(Array(FixedString(10)))",
-          "null::Nullable(Array(FixedString(10)))"
+          s"[${FixedString.fuzzingValues.mkString(", ")}]::Array(Nullable(FixedString(10)))"
         )
       )
   case ArrayJson
       extends CHType(
         "Array(JSON)",
         Seq(
-          s"[${Json.fuzzingValues.mkString(", ")}]::Array(JSON)",
-          s"[${Json.fuzzingValues.mkString(", ")}]::Nullable(Array(JSON))",
-          "null::Nullable(Array(JSON))"
+          s"[${Json.fuzzingValues.mkString(", ")}]::Array(JSON)"
         )
       )
   case ArrayString
       extends CHType(
         "Array(String)",
         Seq(
-          s"[${StringType.fuzzingValues.mkString(", ")}]::Array(String)",
-          s"[${StringType.fuzzingValues.mkString(", ")}]::Nullable(Array(String))",
-          "null::Nullable(Array(String))"
+          s"[${StringType.fuzzingValues.mkString(", ")}]::Array(Nullable(String))"
         )
       )
   case ArrayUUID
       extends CHType(
         "Array(UUID)",
         Seq(
-          s"[${UUID.fuzzingValues.mkString(", ")}]::Array(UUID)",
-          s"[${UUID.fuzzingValues.mkString(", ")}]::Nullable(Array(UUID))",
-          "null::Nullable(Array(UUID))"
+          s"[${UUID.fuzzingValues.mkString(", ")}]::Array(Nullable(UUID))"
         )
       )
 
@@ -609,261 +548,203 @@ enum CHType(val name: String, val fuzzingValues: Seq[String]) {
       extends CHType(
         "Tuple(Int8)",
         Seq(
-          s"(${Int8.fuzzingValues.mkString(", ")})::Tuple(Int8)",
-          s"(${Int8.fuzzingValues.mkString(", ")})::Nullable(Tuple(Int8))",
-          "null::Nullable(Tuple(Int8))"
+          s"tuple(${Int8.fuzzingValues.head})::Tuple(Int8)"
         )
       )
   case Tuple1Int16
       extends CHType(
         "Tuple(Int16)",
         Seq(
-          s"(${Int16.fuzzingValues.mkString(", ")})::Tuple(Int16)",
-          s"(${Int16.fuzzingValues.mkString(", ")})::Nullable(Tuple(Int16))",
-          "null::Nullable(Tuple(Int16))"
+          s"tuple(${Int16.fuzzingValues.head})::Tuple(Int16)"
         )
       )
   case Tuple1Int32
       extends CHType(
         "Tuple(Int32)",
         Seq(
-          s"(${Int32.fuzzingValues.mkString(", ")})::Tuple(Int32)",
-          s"(${Int32.fuzzingValues.mkString(", ")})::Nullable(Tuple(Int32))",
-          "null::Nullable(Tuple(Int32))"
+          s"tuple(${Int32.fuzzingValues.head})::Tuple(Int32)"
         )
       )
   case Tuple1Int64
       extends CHType(
         "Tuple(Int64)",
         Seq(
-          s"(${Int64.fuzzingValues.mkString(", ")})::Tuple(Int64)",
-          s"(${Int64.fuzzingValues.mkString(", ")})::Nullable(Tuple(Int64))",
-          "null::Nullable(Tuple(Int64))"
+          s"tuple(${Int64.fuzzingValues.head})::Tuple(Int64)"
         )
       )
   case Tuple1Int128
       extends CHType(
         "Tuple(Int128)",
         Seq(
-          s"(${Int128.fuzzingValues.mkString(", ")})::Tuple(Int128)",
-          s"(${Int128.fuzzingValues.mkString(", ")})::Nullable(Tuple(Int128))",
-          "null::Nullable(Tuple(Int128))"
+          s"tuple(${Int128.fuzzingValues.head})::Tuple(Int128)"
         )
       )
   case Tuple1Int256
       extends CHType(
         "Tuple(Int256)",
         Seq(
-          s"(${Int256.fuzzingValues.mkString(", ")})::Tuple(Int256)",
-          s"(${Int256.fuzzingValues.mkString(", ")})::Nullable(Tuple(Int256))",
-          "null::Nullable(Tuple(Int256))"
+          s"tuple(${Int256.fuzzingValues.head})::Tuple(Int256)"
         )
       )
   case Tuple1UInt8
       extends CHType(
         "Tuple(UInt8)",
         Seq(
-          s"(${UInt8.fuzzingValues.mkString(", ")})::Tuple(UInt8)",
-          s"(${UInt8.fuzzingValues.mkString(", ")})::Nullable(Tuple(UInt8))",
-          "null::Nullable(Tuple(UInt8))"
+          s"tuple(${UInt8.fuzzingValues.head})::Tuple(UInt8)"
         )
       )
   case Tuple1UInt16
       extends CHType(
         "Tuple(UInt16)",
         Seq(
-          s"(${UInt16.fuzzingValues.mkString(", ")})::Tuple(UInt16)",
-          s"(${UInt16.fuzzingValues.mkString(", ")})::Nullable(Tuple(UInt16))",
-          "null::Nullable(Tuple(UInt16))"
+          s"tuple(${UInt16.fuzzingValues.head})::Tuple(UInt16)"
         )
       )
   case Tuple1UInt32
       extends CHType(
         "Tuple(UInt32)",
         Seq(
-          s"(${UInt32.fuzzingValues.mkString(", ")})::Tuple(UInt32)",
-          s"(${UInt32.fuzzingValues.mkString(", ")})::Nullable(Tuple(UInt32))",
-          "null::Nullable(Tuple(UInt32))"
+          s"tuple(${UInt32.fuzzingValues.head})::Tuple(UInt32)"
         )
       )
   case Tuple1UInt64
       extends CHType(
         "Tuple(UInt64)",
         Seq(
-          s"(${UInt64.fuzzingValues.mkString(", ")})::Tuple(UInt64)",
-          s"(${UInt64.fuzzingValues.mkString(", ")})::Nullable(Tuple(UInt64))",
-          "null::Nullable(Tuple(UInt64))"
+          s"tuple(${UInt64.fuzzingValues.head})::Tuple(UInt64)"
         )
       )
   case Tuple1UInt128
       extends CHType(
         "Tuple(UInt128)",
         Seq(
-          s"(${UInt128.fuzzingValues.mkString(", ")})::Tuple(UInt128)",
-          s"(${UInt128.fuzzingValues.mkString(", ")})::Nullable(Tuple(UInt128))",
-          "null::Nullable(Tuple(UInt128))"
+          s"tuple(${UInt128.fuzzingValues.head})::Tuple(UInt128)"
         )
       )
   case Tuple1UInt256
       extends CHType(
         "Tuple(UInt256)",
         Seq(
-          s"(${UInt256.fuzzingValues.mkString(", ")})::Tuple(UInt256)",
-          s"(${UInt256.fuzzingValues.mkString(", ")})::Nullable(Tuple(UInt256))",
-          "null::Nullable(Tuple(UInt256))"
+          s"tuple(${UInt256.fuzzingValues.head})::Tuple(UInt256)"
         )
       )
   case Tuple1Float32
       extends CHType(
         "Tuple(Float32)",
         Seq(
-          s"(${Float32.fuzzingValues.mkString(", ")})::Tuple(Float32)",
-          s"(${Float32.fuzzingValues.mkString(", ")})::Nullable(Tuple(Float32))",
-          "null::Nullable(Tuple(Float32))"
+          s"tuple(${Float32.fuzzingValues.head})::Tuple(Float32)"
         )
       )
   case Tuple1Float64
       extends CHType(
         "Tuple(Float64)",
         Seq(
-          s"(${Float64.fuzzingValues.mkString(", ")})::Tuple(Float64)",
-          s"(${Float64.fuzzingValues.mkString(", ")})::Nullable(Tuple(Float64))",
-          "null::Nullable(Tuple(Float64))"
+          s"tuple(${Float64.fuzzingValues.head})::Tuple(Float64)"
         )
       )
   case Tuple1Decimal32
       extends CHType(
         "Tuple(Decimal32)",
         Seq(
-          s"(${Decimal32.fuzzingValues.mkString(", ")})::Tuple(Decimal32)",
-          s"(${Decimal32.fuzzingValues.mkString(", ")})::Nullable(Tuple(Decimal32))",
-          "null::Nullable(Tuple(Decimal32))"
+          s"tuple(${Decimal32.fuzzingValues.head})::Tuple(Decimal32(0))"
         )
       )
   case Tuple1Decimal64
       extends CHType(
         "Tuple(Decimal64)",
         Seq(
-          s"(${Decimal64.fuzzingValues.mkString(", ")})::Tuple(Decimal64)",
-          s"(${Decimal64.fuzzingValues.mkString(", ")})::Nullable(Tuple(Decimal64))",
-          "null::Nullable(Tuple(Decimal64))"
+          s"tuple(${Decimal64.fuzzingValues.head})::Tuple(Decimal64(0))"
         )
       )
   case Tuple1Decimal128
       extends CHType(
         "Tuple(Decimal128)",
         Seq(
-          s"(${Decimal128.fuzzingValues.mkString(", ")})::Tuple(Decimal128)",
-          s"(${Decimal128.fuzzingValues.mkString(", ")})::Nullable(Tuple(Decimal128))",
-          "null::Nullable(Tuple(Decimal128))"
+          s"tuple(${Decimal128.fuzzingValues.head})::Tuple(Decimal128(0))"
         )
       )
   case Tuple1Decimal256
       extends CHType(
         "Tuple(Decimal256)",
         Seq(
-          s"(${Decimal256.fuzzingValues.mkString(", ")})::Tuple(Decimal256)",
-          s"(${Decimal256.fuzzingValues.mkString(", ")})::Nullable(Tuple(Decimal256))",
-          "null::Nullable(Tuple(Decimal256))"
+          s"tuple(${Decimal256.fuzzingValues.head})::Tuple(Decimal256(0))"
         )
       )
   case Tuple1Date
       extends CHType(
         "Tuple(Date)",
         Seq(
-          s"(${Date.fuzzingValues.mkString(", ")})::Tuple(Date)",
-          s"(${Date.fuzzingValues.mkString(", ")})::Nullable(Tuple(Date))",
-          "null::Nullable(Tuple(Date))"
+          s"tuple(${Date.fuzzingValues.head})::Tuple(Date)"
         )
       )
   case Tuple1Date32
       extends CHType(
         "Tuple(Date32)",
         Seq(
-          s"(${Date32.fuzzingValues.mkString(", ")})::Tuple(Date32)",
-          s"(${Date32.fuzzingValues.mkString(", ")})::Nullable(Tuple(Date32))",
-          "null::Nullable(Tuple(Date32))"
+          s"tuple(${Date32.fuzzingValues.head})::Tuple(Date32)"
         )
       )
   case Tuple1DateTime
       extends CHType(
         "Tuple(DateTime)",
         Seq(
-          s"(${DateTime.fuzzingValues.mkString(", ")})::Tuple(DateTime)",
-          s"(${DateTime.fuzzingValues.mkString(", ")})::Nullable(Tuple(DateTime))",
-          "null::Nullable(Tuple(DateTime))"
+          s"tuple(${DateTime.fuzzingValues.head})::Tuple(DateTime)"
         )
       )
   case Tuple1DateTime64
       extends CHType(
         "Tuple(DateTime64)",
         Seq(
-          s"(${DateTime64.fuzzingValues.mkString(", ")})::Tuple(DateTime64)",
-          s"(${DateTime64.fuzzingValues.mkString(", ")})::Nullable(Tuple(DateTime64))",
-          "null::Nullable(Tuple(DateTime64))"
+          s"tuple(${DateTime64.fuzzingValues.head})::Tuple(DateTime64)"
         )
       )
   case Tuple1Enum
       extends CHType(
         "Tuple(Enum)",
         Seq(
-          s"(${Enum.fuzzingValues.mkString(", ")})::Tuple(Enum)",
-          s"(${Enum.fuzzingValues.mkString(", ")})::Nullable(Tuple(Enum))",
-          "null::Nullable(Tuple(Enum))"
+          s"tuple('hello'::Enum('hello' = 1, 'world' = 2))::Tuple(Enum('hello' = 1, 'world' = 2))"
         )
       )
   case Tuple1Enum8
       extends CHType(
         "Tuple(Enum8)",
         Seq(
-          s"(${Enum8.fuzzingValues.mkString(", ")})::Tuple(Enum8)",
-          s"(${Enum8.fuzzingValues.mkString(", ")})::Nullable(Tuple(Enum8))",
-          "null::Nullable(Tuple(Enum8))"
+          s"tuple('hello'::Enum8('hello' = -128, 'world' = 2))::Tuple(Enum8('hello' = -128, 'world' = 2))"
         )
       )
   case Tuple1Enum16
       extends CHType(
         "Tuple(Enum16)",
         Seq(
-          s"(${Enum16.fuzzingValues.mkString(", ")})::Tuple(Enum16)",
-          s"(${Enum16.fuzzingValues.mkString(", ")})::Nullable(Tuple(Enum16))",
-          "null::Nullable(Tuple(Enum16))"
+          s"tuple('hello'::Enum16('hello' = -32768, 'world' = 2))::Tuple(Enum16('hello' = -32768, 'world' = 2))"
         )
       )
   case Tuple1FixedString
       extends CHType(
         "Tuple(FixedString)",
         Seq(
-          s"(${FixedString.fuzzingValues.mkString(", ")})::Tuple(FixedString)",
-          s"(${FixedString.fuzzingValues.mkString(", ")})::Nullable(Tuple(FixedString))",
-          "null::Nullable(Tuple(FixedString))"
+          s"tuple('azertyuiop'::FixedString(10))::Tuple(FixedString(10))"
         )
       )
   case Tuple1Json
       extends CHType(
         "Tuple(JSON)",
         Seq(
-          s"(${Json.fuzzingValues.mkString(", ")})::Tuple(JSON)",
-          s"(${Json.fuzzingValues.mkString(", ")})::Nullable(Tuple(JSON))",
-          "null::Nullable(Tuple(JSON))"
+          s"tuple(${Json.fuzzingValues.head})::Tuple(JSON)"
         )
       )
   case Tuple1String
       extends CHType(
         "Tuple(String)",
         Seq(
-          s"(${StringType.fuzzingValues.mkString(", ")})::Tuple(String)",
-          s"(${StringType.fuzzingValues.mkString(", ")})::Nullable(Tuple(String))",
-          "null::Nullable(Tuple(String))"
+          s"tuple(${StringType.fuzzingValues.head})::Tuple(String)"
         )
       )
   case Tuple1UUID
       extends CHType(
         "Tuple(UUID)",
         Seq(
-          s"(${UUID.fuzzingValues.mkString(", ")})::Tuple(UUID)",
-          s"(${UUID.fuzzingValues.mkString(", ")})::Nullable(Tuple(UUID))",
-          "null::Nullable(Tuple(UUID))"
+          s"tuple(${UUID.fuzzingValues.head})::Tuple(UUID)"
         )
       )
 
@@ -872,30 +753,26 @@ enum CHType(val name: String, val fuzzingValues: Seq[String]) {
       extends CHType(
         "Tuple(Array(UInt8))",
         Seq(
-          s"(${ArrayUInt8.fuzzingValues.mkString(", ")})::Tuple(Array(UInt8))",
-          s"(${ArrayUInt8.fuzzingValues.mkString(", ")})::Nullable(Tuple(Array(UInt8)))",
-          "null::Nullable(Tuple(Array(UInt8)))"
+          s"tuple(${ArrayUInt8.fuzzingValues.mkString(", ")})::Tuple(Array(Nullable(UInt8)))"
         )
       )
   case ArrayTuple1UInt8
       extends CHType(
         "Array(Tuple(UInt8))",
         Seq(
-          s"(${Tuple1UInt8.fuzzingValues.mkString(", ")})::Array(Tuple(UInt8))",
-          s"(${Tuple1UInt8.fuzzingValues.mkString(", ")})::Nullable(Array(Tuple(UInt8)))",
-          "null::Nullable(Array(Tuple(UInt8)))"
+          s"[${Tuple1UInt8.fuzzingValues.head}]::Array(Tuple(UInt8))"
         )
       )
 }
 
-enum CHAbstractType(val fuzzingValue: Any, val chTypes: Seq[CHType]) {
+enum CHAbstractType(val fuzzingValue: String, val chTypes: Seq[CHType]) {
   case Date extends CHAbstractType("'1970-01-02'::Date", Seq(CHType.Date, CHType.Date32))
   case DateTime extends CHAbstractType("'1970-01-02 00:00:00'::DateTime", Seq(CHType.DateTime, CHType.DateTime64))
   case Enum extends CHAbstractType(CHType.Enum.fuzzingValues.head, Seq(CHType.Enum, CHType.Enum8, CHType.Enum16))
   case Json extends CHAbstractType(CHType.Json.fuzzingValues.head, Seq(CHType.Json))
   case Numbers
       extends CHAbstractType(
-        1,
+        "1",
         Seq(
           CHType.Int8,
           CHType.Int16,
@@ -965,21 +842,21 @@ enum CHAbstractType(val fuzzingValue: Any, val chTypes: Seq[CHType]) {
 
   // Tuple1
   case Tuple1Date
-      extends CHAbstractType(s"(${Date.fuzzingValue})::Tuple(Date)", Seq(CHType.Tuple1Date, CHType.Tuple1Date32))
+      extends CHAbstractType(s"tuple(${Date.fuzzingValue})::Tuple(Date)", Seq(CHType.Tuple1Date, CHType.Tuple1Date32))
   case Tuple1DateTime
       extends CHAbstractType(
-        s"(${DateTime.fuzzingValue})::Tuple(DateTime)",
+        s"tuple(${DateTime.fuzzingValue})::Tuple(DateTime)",
         Seq(CHType.Tuple1DateTime, CHType.Tuple1DateTime64)
       )
   case Tuple1Enum
       extends CHAbstractType(
-        s"(${Enum.fuzzingValue})::Tuple(Enum('hello' = 1, 'world' = 2))",
+        s"tuple(${Enum.fuzzingValue})::Tuple(Enum('hello' = 1, 'world' = 2))",
         Seq(CHType.Tuple1Enum, CHType.Tuple1Enum8, CHType.Tuple1Enum16)
       )
-  case Tuple1Json extends CHAbstractType(s"(${Json.fuzzingValue})::Tuple(JSON)", Seq(CHType.Tuple1Json))
+  case Tuple1Json extends CHAbstractType(s"tuple(${Json.fuzzingValue})::Tuple(JSON)", Seq(CHType.Tuple1Json))
   case Tuple1Numbers
       extends CHAbstractType(
-        s"(${Numbers.fuzzingValue})::Tuple(UInt8)",
+        s"tuple(${Numbers.fuzzingValue})::Tuple(UInt8)",
         Seq(
           CHType.Tuple1Int8,
           CHType.Tuple1Int16,
@@ -1003,14 +880,14 @@ enum CHAbstractType(val fuzzingValue: Any, val chTypes: Seq[CHType]) {
       )
   case Tuple1String
       extends CHAbstractType(
-        s"(${String.fuzzingValue})::Tuple(String)",
+        s"tuple(${String.fuzzingValue})::Tuple(String)",
         Seq(CHType.Tuple1FixedString, CHType.Tuple1String)
       )
-  case Tuple1UUID extends CHAbstractType(s"(${UUID.fuzzingValue})::Tuple(UUID)", Seq(CHType.Tuple1UUID))
+  case Tuple1UUID extends CHAbstractType(s"tuple(${UUID.fuzzingValue})::Tuple(UUID)", Seq(CHType.Tuple1UUID))
 
   // Special
   case Tuple1ArrayNumbers
-      extends CHAbstractType(s"(${ArrayNumbers.fuzzingValue})::Tuple(Array(UInt8))", Seq(CHType.Tuple1ArrayUInt8))
+      extends CHAbstractType(s"tuple(${ArrayNumbers.fuzzingValue})::Tuple(Array(UInt8))", Seq(CHType.Tuple1ArrayUInt8))
   case ArrayTuple1Numbers
       extends CHAbstractType(s"[${Tuple1Numbers.fuzzingValue}]::Array(Tuple(UInt8))", Seq(CHType.ArrayTuple1UInt8))
 }

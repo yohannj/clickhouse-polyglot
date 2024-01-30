@@ -8,7 +8,35 @@ import scala.concurrent.{ExecutionContext, Future}
 import scala.util.{Failure, Success}
 
 object Fuzzer extends StrictLogging {
-  def fuzzFunctionN(
+  def fuzz()(implicit client: CHClient, ec: ExecutionContext): Future[Seq[CHFunctionFuzzResult]] =
+    // val functionNamesF =
+    //   client
+    //     .execute("SELECT name, is_aggregate FROM system.functions")
+    //     .map(_.data.map(_.head.asInstanceOf[String]).sorted)
+
+    for {
+      // functionNames <- functionNamesF
+      functionNames <- Future.successful(unknownFunctions)
+
+      functionCount = functionNames.size
+      res <- ConcurrencyUtils.executeInSequence(
+        functionNames.zipWithIndex,
+        (functionName: String, idx: Int) =>
+          if (idx % Math.max(functionCount / 20, 1) == 0)
+            logger.info(s"${100 * idx / functionCount}%")
+
+          Fuzzer
+            .fuzzFunctionN(CHFunctionFuzzResult(name = functionName))
+            .flatMap(Fuzzer.fuzzFunction0)
+            .flatMap(Fuzzer.fuzzFunction1)
+            .flatMap(Fuzzer.fuzzFunction2)
+            .flatMap(Fuzzer.fuzzFunction3)
+      )
+    } yield {
+      res
+    }
+
+  private def fuzzFunctionN(
       fn: CHFunctionFuzzResult
   )(implicit client: CHClient, ec: ExecutionContext): Future[CHFunctionFuzzResult] =
     Future
@@ -44,7 +72,7 @@ object Fuzzer extends StrictLogging {
         fn.copy(functionNTypes = validTypes)
       }
 
-  def fuzzFunction0(
+  private def fuzzFunction0(
       fn: CHFunctionFuzzResult
   )(implicit client: CHClient, ec: ExecutionContext): Future[CHFunctionFuzzResult] =
     client
@@ -52,7 +80,7 @@ object Fuzzer extends StrictLogging {
       .map(_ => fn.copy(isFunction0 = true))
       .recover(_ => fn)
 
-  def fuzzFunction1(
+  private def fuzzFunction1(
       fn: CHFunctionFuzzResult
   )(implicit client: CHClient, ec: ExecutionContext): Future[CHFunctionFuzzResult] =
     if (fn.functionNTypes.nonEmpty) {
@@ -70,7 +98,7 @@ object Fuzzer extends StrictLogging {
         }
     }
 
-  def fuzzFunction2(
+  private def fuzzFunction2(
       fn: CHFunctionFuzzResult
   )(implicit client: CHClient, ec: ExecutionContext): Future[CHFunctionFuzzResult] =
     if (fn.functionNTypes.nonEmpty) {
@@ -88,7 +116,7 @@ object Fuzzer extends StrictLogging {
         }
     }
 
-  def fuzzFunction3(
+  private def fuzzFunction3(
       fn: CHFunctionFuzzResult
   )(implicit client: CHClient, ec: ExecutionContext): Future[CHFunctionFuzzResult] =
     if (fn.functionNTypes.nonEmpty || (fn.function1Types.nonEmpty && fn.function2Types.isEmpty)) {
@@ -106,7 +134,7 @@ object Fuzzer extends StrictLogging {
         }
     }
 
-  def fuzzFunction4(
+  private def fuzzFunction4(
       fn: CHFunctionFuzzResult
   )(implicit client: CHClient, ec: ExecutionContext): Future[CHFunctionFuzzResult] =
     if (
