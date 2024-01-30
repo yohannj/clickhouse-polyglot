@@ -13,7 +13,7 @@ import scala.concurrent.duration.Duration
   implicit val client: CHClient = CHClient(8123)
 
   val checkFuzzingValues = Future.sequence(
-    (CHType.values.toSeq.flatMap(_.fuzzingValues) ++ CHAbstractType.values.toSeq.map(_.fuzzingValue))
+    (CHType.values.flatMap(_.fuzzingValues) ++ CHAbstractType.values.flatMap(_.fuzzingValues))
       .map(v =>
         client
           .execute(s"SELECT $v")

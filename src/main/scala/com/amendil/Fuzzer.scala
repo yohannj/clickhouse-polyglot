@@ -1,5 +1,6 @@
 package com.amendil
 
+import com.amendil.ConcurrencyUtils.executeUntilSuccess
 import com.amendil.bo.CHFunctionFuzzResult
 import com.amendil.http.CHClient
 import com.typesafe.scalalogging.StrictLogging
@@ -43,7 +44,7 @@ object Fuzzer extends StrictLogging {
       .sequence(
         for {
           type1 <- CHAbstractType.values
-          arg1 = s"${type1.fuzzingValue}"
+          arg1 = s"${type1.fuzzingValues.head}"
         } yield {
           client
             .execute(
@@ -166,10 +167,17 @@ object Fuzzer extends StrictLogging {
 
       Future.sequence(checkF).map(_.flatten.filter(_.nonEmpty))
     } else {
-      client
-        .execute(s"SELECT $fnName(${currentArgs.map(_.fuzzingValue).mkString(", ")})")
-        .flatMap { _ => fuzzFunctionNType(fnName, currentArgs, Seq.empty) }
-        .recover(_ => Seq.empty)
+      val queries =
+        buildFuzzingValuesArgs(currentArgs.map(_.fuzzingValues))
+          .map(args => s"SELECT $fnName($args)")
+
+      executeUntilSuccess(queries, client.execute).flatMap { foundAValidQuery =>
+        if (foundAValidQuery) {
+          fuzzFunctionNType(fnName, currentArgs, Seq.empty)
+        } else {
+          Future.successful(Seq.empty)
+        }
+      }
     }
 
   private def fuzzFunctionNType(
@@ -191,4 +199,11 @@ object Fuzzer extends StrictLogging {
           .recover(_ => Seq.empty)
     }
 
+  private def buildFuzzingValuesArgs(argumentsValues: Seq[Seq[String]]): Seq[String] =
+    argumentsValues match
+      case Seq()   => throw IllegalArgumentException("Tried to fuzz an argument without any value")
+      case Seq(el) => el
+      case head :: tail =>
+        val subChoices = buildFuzzingValuesArgs(tail)
+        head.flatMap(el => subChoices.map(subChoice => s"$el, $subChoice"))
 }

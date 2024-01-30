@@ -765,14 +765,14 @@ enum CHType(val name: String, val fuzzingValues: Seq[String]) {
       )
 }
 
-enum CHAbstractType(val fuzzingValue: String, val chTypes: Seq[CHType]) {
-  case Date extends CHAbstractType("'1970-01-02'::Date", Seq(CHType.Date, CHType.Date32))
-  case DateTime extends CHAbstractType("'1970-01-02 00:00:00'::DateTime", Seq(CHType.DateTime, CHType.DateTime64))
-  case Enum extends CHAbstractType(CHType.Enum.fuzzingValues.head, Seq(CHType.Enum, CHType.Enum8, CHType.Enum16))
-  case Json extends CHAbstractType(CHType.Json.fuzzingValues.head, Seq(CHType.Json))
+enum CHAbstractType(val fuzzingValues: Seq[String], val chTypes: Seq[CHType]) {
+  case Date extends CHAbstractType(Seq("'1970-01-02'::Date"), Seq(CHType.Date, CHType.Date32))
+  case DateTime extends CHAbstractType(Seq("'1970-01-02 00:00:00'::DateTime"), Seq(CHType.DateTime, CHType.DateTime64))
+  case Enum extends CHAbstractType(Seq(CHType.Enum.fuzzingValues.head), Seq(CHType.Enum, CHType.Enum8, CHType.Enum16))
+  case Json extends CHAbstractType(Seq(CHType.Json.fuzzingValues.head), Seq(CHType.Json))
   case Numbers
       extends CHAbstractType(
-        "1",
+        Seq("1"),
         Seq(
           CHType.Int8,
           CHType.Int16,
@@ -795,23 +795,30 @@ enum CHAbstractType(val fuzzingValue: String, val chTypes: Seq[CHType]) {
         )
       )
 
-  case String extends CHAbstractType(CHType.StringType.fuzzingValues.head, Seq(CHType.StringType, CHType.FixedString))
-  case UUID extends CHAbstractType(CHType.UUID.fuzzingValues.head, Seq(CHType.UUID))
+  case String
+      extends CHAbstractType(Seq(CHType.StringType.fuzzingValues.head), Seq(CHType.StringType, CHType.FixedString))
+  case UUID extends CHAbstractType(Seq(CHType.UUID.fuzzingValues.head), Seq(CHType.UUID))
 
   // Array
   case ArrayDate
-      extends CHAbstractType(s"[${Date.fuzzingValue}]::Array(Date)", Seq(CHType.ArrayDate, CHType.ArrayDate32))
+      extends CHAbstractType(
+        Seq(s"[${Date.fuzzingValues.head}]::Array(Date)"),
+        Seq(CHType.ArrayDate, CHType.ArrayDate32)
+      )
   case ArrayDateTime
       extends CHAbstractType(
-        s"[${DateTime.fuzzingValue}]::Array(DateTime)",
+        Seq(s"[${DateTime.fuzzingValues.head}]::Array(DateTime)"),
         Seq(CHType.ArrayDateTime, CHType.ArrayDateTime64)
       )
   case ArrayEnum
-      extends CHAbstractType(s"[${Enum.fuzzingValue}]", Seq(CHType.ArrayEnum, CHType.ArrayEnum8, CHType.ArrayEnum16))
-  case ArrayJson extends CHAbstractType(s"[${Json.fuzzingValue}]::Array(JSON)", Seq(CHType.ArrayJson))
+      extends CHAbstractType(
+        Seq(s"[${Enum.fuzzingValues.head}]"),
+        Seq(CHType.ArrayEnum, CHType.ArrayEnum8, CHType.ArrayEnum16)
+      )
+  case ArrayJson extends CHAbstractType(Seq(s"[${Json.fuzzingValues.head}]::Array(JSON)"), Seq(CHType.ArrayJson))
   case ArrayNumbers
       extends CHAbstractType(
-        s"array(${Numbers.fuzzingValue})",
+        Seq(s"array(${Numbers.fuzzingValues.head})"),
         Seq(
           CHType.ArrayInt8,
           CHType.ArrayInt16,
@@ -835,28 +842,31 @@ enum CHAbstractType(val fuzzingValue: String, val chTypes: Seq[CHType]) {
       )
   case ArrayString
       extends CHAbstractType(
-        s"[${String.fuzzingValue}]::Array(String)",
+        Seq(s"[${String.fuzzingValues.head}]::Array(String)"),
         Seq(CHType.ArrayFixedString, CHType.ArrayString)
       )
-  case ArrayUUID extends CHAbstractType(s"[${UUID.fuzzingValue}]::Array(UUID)", Seq(CHType.ArrayUUID))
+  case ArrayUUID extends CHAbstractType(Seq(s"[${UUID.fuzzingValues.head}]::Array(UUID)"), Seq(CHType.ArrayUUID))
 
   // Tuple1
   case Tuple1Date
-      extends CHAbstractType(s"tuple(${Date.fuzzingValue})::Tuple(Date)", Seq(CHType.Tuple1Date, CHType.Tuple1Date32))
+      extends CHAbstractType(
+        Seq(s"tuple(${Date.fuzzingValues.head})::Tuple(Date)"),
+        Seq(CHType.Tuple1Date, CHType.Tuple1Date32)
+      )
   case Tuple1DateTime
       extends CHAbstractType(
-        s"tuple(${DateTime.fuzzingValue})::Tuple(DateTime)",
+        Seq(s"tuple(${DateTime.fuzzingValues.head})::Tuple(DateTime)"),
         Seq(CHType.Tuple1DateTime, CHType.Tuple1DateTime64)
       )
   case Tuple1Enum
       extends CHAbstractType(
-        s"tuple(${Enum.fuzzingValue})::Tuple(Enum('hello' = 1, 'world' = 2))",
+        Seq(s"tuple(${Enum.fuzzingValues.head})::Tuple(Enum('hello' = 1, 'world' = 2))"),
         Seq(CHType.Tuple1Enum, CHType.Tuple1Enum8, CHType.Tuple1Enum16)
       )
-  case Tuple1Json extends CHAbstractType(s"tuple(${Json.fuzzingValue})::Tuple(JSON)", Seq(CHType.Tuple1Json))
+  case Tuple1Json extends CHAbstractType(Seq(s"tuple(${Json.fuzzingValues.head})::Tuple(JSON)"), Seq(CHType.Tuple1Json))
   case Tuple1Numbers
       extends CHAbstractType(
-        s"tuple(${Numbers.fuzzingValue})::Tuple(UInt8)",
+        Seq(s"tuple(${Numbers.fuzzingValues.head})::Tuple(UInt8)"),
         Seq(
           CHType.Tuple1Int8,
           CHType.Tuple1Int16,
@@ -880,14 +890,20 @@ enum CHAbstractType(val fuzzingValue: String, val chTypes: Seq[CHType]) {
       )
   case Tuple1String
       extends CHAbstractType(
-        s"tuple(${String.fuzzingValue})::Tuple(String)",
+        Seq(s"tuple(${String.fuzzingValues.head})::Tuple(String)"),
         Seq(CHType.Tuple1FixedString, CHType.Tuple1String)
       )
-  case Tuple1UUID extends CHAbstractType(s"tuple(${UUID.fuzzingValue})::Tuple(UUID)", Seq(CHType.Tuple1UUID))
+  case Tuple1UUID extends CHAbstractType(Seq(s"tuple(${UUID.fuzzingValues.head})::Tuple(UUID)"), Seq(CHType.Tuple1UUID))
 
   // Special
   case Tuple1ArrayNumbers
-      extends CHAbstractType(s"tuple(${ArrayNumbers.fuzzingValue})::Tuple(Array(UInt8))", Seq(CHType.Tuple1ArrayUInt8))
+      extends CHAbstractType(
+        Seq(s"tuple(${ArrayNumbers.fuzzingValues.head})::Tuple(Array(UInt8))"),
+        Seq(CHType.Tuple1ArrayUInt8)
+      )
   case ArrayTuple1Numbers
-      extends CHAbstractType(s"[${Tuple1Numbers.fuzzingValue}]::Array(Tuple(UInt8))", Seq(CHType.ArrayTuple1UInt8))
+      extends CHAbstractType(
+        Seq(s"[${Tuple1Numbers.fuzzingValues.head}]::Array(Tuple(UInt8))"),
+        Seq(CHType.ArrayTuple1UInt8)
+      )
 }
