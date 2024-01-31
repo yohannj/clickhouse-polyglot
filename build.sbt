@@ -30,5 +30,3 @@ lazy val root = project
       "org.scala-lang.modules" %% "scala-java8-compat" % "1.0.2"
     )
   )
-
-ThisBuild / scalafixDependencies += "com.github.liancheng" %% "organize-imports" % "0.6.0"
