@@ -264,6 +264,89 @@ enum CHType(val name: String, val fuzzingValues: Seq[String]) {
           "null::Nullable(DateTime64(0, 'Asia/Istanbul'))"
         )
       )
+  case IntervalNanosecond
+      extends CHType(
+        "IntervalNanosecond",
+        Seq(
+          "INTERVAL 1 Nanosecond::IntervalNanosecond",
+          "INTERVAL 1 Nanosecond::Nullable(IntervalNanosecond)",
+          "null::Nullable(IntervalNanosecond)"
+        )
+      )
+  case IntervalMicrosecond
+      extends CHType(
+        "IntervalMicrosecond",
+        Seq(
+          "INTERVAL 1 Microsecond::IntervalMicrosecond",
+          "INTERVAL 1 Microsecond::Nullable(IntervalMicrosecond)",
+          "null::Nullable(IntervalMicrosecond)"
+        )
+      )
+  case IntervalMillisecond
+      extends CHType(
+        "IntervalMillisecond",
+        Seq(
+          "INTERVAL 1 Millisecond::IntervalMillisecond",
+          "INTERVAL 1 Millisecond::Nullable(IntervalMillisecond)",
+          "null::Nullable(IntervalMillisecond)"
+        )
+      )
+  case IntervalSecond
+      extends CHType(
+        "IntervalSecond",
+        Seq(
+          "INTERVAL 1 Second::IntervalSecond",
+          "INTERVAL 1 Second::Nullable(IntervalSecond)",
+          "null::Nullable(IntervalSecond)"
+        )
+      )
+  case IntervalMinute
+      extends CHType(
+        "IntervalMinute",
+        Seq(
+          "INTERVAL 1 Minute::IntervalMinute",
+          "INTERVAL 1 Minute::Nullable(IntervalMinute)",
+          "null::Nullable(IntervalMinute)"
+        )
+      )
+  case IntervalHour
+      extends CHType(
+        "IntervalHour",
+        Seq("INTERVAL 1 Hour::IntervalHour", "INTERVAL 1 Hour::Nullable(IntervalHour)", "null::Nullable(IntervalHour)")
+      )
+  case IntervalDay
+      extends CHType(
+        "IntervalDay",
+        Seq("INTERVAL 1 Day::IntervalDay", "INTERVAL 1 Day::Nullable(IntervalDay)", "null::Nullable(IntervalDay)")
+      )
+  case IntervalWeek
+      extends CHType(
+        "IntervalWeek",
+        Seq("INTERVAL 1 Week::IntervalWeek", "INTERVAL 1 Week::Nullable(IntervalWeek)", "null::Nullable(IntervalWeek)")
+      )
+  case IntervalMonth
+      extends CHType(
+        "IntervalMonth",
+        Seq(
+          "INTERVAL 1 Month::IntervalMonth",
+          "INTERVAL 1 Month::Nullable(IntervalMonth)",
+          "null::Nullable(IntervalMonth)"
+        )
+      )
+  case IntervalQuarter
+      extends CHType(
+        "IntervalQuarter",
+        Seq(
+          "INTERVAL 1 Quarter::IntervalQuarter",
+          "INTERVAL 1 Quarter::Nullable(IntervalQuarter)",
+          "null::Nullable(IntervalQuarter)"
+        )
+      )
+  case IntervalYear
+      extends CHType(
+        "IntervalYear",
+        Seq("INTERVAL 1 Year::IntervalYear", "INTERVAL 1 Year::Nullable(IntervalYear)", "null::Nullable(IntervalYear)")
+      )
 
   // Misc
   case Enum
@@ -494,6 +577,30 @@ enum CHType(val name: String, val fuzzingValues: Seq[String]) {
           s"['1900-01-01 00:00:00'::DateTime64(0, 'Asia/Istanbul')]::Array(DateTime64(0, 'Asia/Istanbul'))"
         )
       )
+  case ArrayIntervalNanosecond
+      extends CHType("Array(IntervalNanosecond)", Seq("[INTERVAL 1 Nanosecond]::Array(Nullable(IntervalNanosecond))"))
+  case ArrayIntervalMicrosecond
+      extends CHType(
+        "Array(IntervalMicrosecond)",
+        Seq("[INTERVAL 1 Microsecond]::Array(Nullable(IntervalMicrosecond))")
+      )
+  case ArrayIntervalMillisecond
+      extends CHType(
+        "Array(IntervalMillisecond)",
+        Seq("[INTERVAL 1 Millisecond]::Array(Nullable(IntervalMillisecond))")
+      )
+  case ArrayIntervalSecond
+      extends CHType("Array(IntervalSecond)", Seq("[INTERVAL 1 Second]::Array(Nullable(IntervalSecond))"))
+  case ArrayIntervalMinute
+      extends CHType("Array(IntervalMinute)", Seq("[INTERVAL 1 Minute]::Array(Nullable(IntervalMinute))"))
+  case ArrayIntervalHour extends CHType("Array(IntervalHour)", Seq("[INTERVAL 1 Hour]::Array(Nullable(IntervalHour))"))
+  case ArrayIntervalDay extends CHType("Array(IntervalDay)", Seq("[INTERVAL 1 Day]::Array(Nullable(IntervalDay))"))
+  case ArrayIntervalWeek extends CHType("Array(IntervalWeek)", Seq("[INTERVAL 1 Week]::Array(Nullable(IntervalWeek))"))
+  case ArrayIntervalMonth
+      extends CHType("Array(IntervalMonth)", Seq("[INTERVAL 1 Month]::Array(Nullable(IntervalMonth))"))
+  case ArrayIntervalQuarter
+      extends CHType("Array(IntervalQuarter)", Seq("[INTERVAL 1 Quarter]::Array(Nullable(IntervalQuarter))"))
+  case ArrayIntervalYear extends CHType("Array(IntervalYear)", Seq("[INTERVAL 1 Year]::Array(Nullable(IntervalYear))"))
   case ArrayEnum
       extends CHType(
         "Array(Enum)",
@@ -701,6 +808,23 @@ enum CHType(val name: String, val fuzzingValues: Seq[String]) {
           s"tuple(${DateTime64.fuzzingValues.head})::Tuple(DateTime64)"
         )
       )
+  case Tuple1IntervalNanosecond
+      extends CHType("Tuple(IntervalNanosecond)", Seq("tuple(INTERVAL 1 Nanosecond)::Tuple(IntervalNanosecond)"))
+  case Tuple1IntervalMicrosecond
+      extends CHType("Tuple(IntervalMicrosecond)", Seq("tuple(INTERVAL 1 Microsecond)::Tuple(IntervalMicrosecond)"))
+  case Tuple1IntervalMillisecond
+      extends CHType("Tuple(IntervalMillisecond)", Seq("tuple(INTERVAL 1 Millisecond)::Tuple(IntervalMillisecond)"))
+  case Tuple1IntervalSecond
+      extends CHType("Tuple(IntervalSecond)", Seq("tuple(INTERVAL 1 Second)::Tuple(IntervalSecond)"))
+  case Tuple1IntervalMinute
+      extends CHType("Tuple(IntervalMinute)", Seq("tuple(INTERVAL 1 Minute)::Tuple(IntervalMinute)"))
+  case Tuple1IntervalHour extends CHType("Tuple(IntervalHour)", Seq("tuple(INTERVAL 1 Hour)::Tuple(IntervalHour)"))
+  case Tuple1IntervalDay extends CHType("Tuple(IntervalDay)", Seq("tuple(INTERVAL 1 Day)::Tuple(IntervalDay)"))
+  case Tuple1IntervalWeek extends CHType("Tuple(IntervalWeek)", Seq("tuple(INTERVAL 1 Week)::Tuple(IntervalWeek)"))
+  case Tuple1IntervalMonth extends CHType("Tuple(IntervalMonth)", Seq("tuple(INTERVAL 1 Month)::Tuple(IntervalMonth)"))
+  case Tuple1IntervalQuarter
+      extends CHType("Tuple(IntervalQuarter)", Seq("tuple(INTERVAL 1 Quarter)::Tuple(IntervalQuarter)"))
+  case Tuple1IntervalYear extends CHType("Tuple(IntervalYear)", Seq("tuple(INTERVAL 1 Year)::Tuple(IntervalYear)"))
   case Tuple1Enum
       extends CHType(
         "Tuple(Enum)",
@@ -773,6 +897,23 @@ enum CHAbstractType(val fuzzingValues: Seq[String], val chTypes: Seq[CHType]) {
   case Date extends CHAbstractType(Seq("'1970-01-02'::Date"), Seq(CHType.Date, CHType.Date32))
   case DateTime extends CHAbstractType(Seq("'1970-01-02 00:00:00'::DateTime"), Seq(CHType.DateTime, CHType.DateTime64))
   case Enum extends CHAbstractType(Seq(CHType.Enum.fuzzingValues.head), Seq(CHType.Enum, CHType.Enum8, CHType.Enum16))
+  case IntervalDate
+      extends CHAbstractType(
+        Seq(CHType.IntervalDay.fuzzingValues.head),
+        Seq(CHType.IntervalDay, CHType.IntervalWeek, CHType.IntervalMonth, CHType.IntervalQuarter, CHType.IntervalYear)
+      )
+  case IntervalDateTime
+      extends CHAbstractType(
+        Seq(CHType.IntervalNanosecond.fuzzingValues.head),
+        Seq(
+          CHType.IntervalNanosecond,
+          CHType.IntervalMicrosecond,
+          CHType.IntervalMillisecond,
+          CHType.IntervalSecond,
+          CHType.IntervalMinute,
+          CHType.IntervalHour
+        )
+      )
   case Json extends CHAbstractType(Seq(CHType.Json.fuzzingValues.head), Seq(CHType.Json))
   case Nothing extends CHAbstractType(CHType.Nothing.fuzzingValues, Seq(CHType.Nothing))
   case Numbers
@@ -818,6 +959,29 @@ enum CHAbstractType(val fuzzingValues: Seq[String], val chTypes: Seq[CHType]) {
       extends CHAbstractType(
         Seq(s"[${Enum.fuzzingValues.head}]"),
         Seq(CHType.ArrayEnum, CHType.ArrayEnum8, CHType.ArrayEnum16)
+      )
+  case ArrayIntervalDate
+      extends CHAbstractType(
+        Seq(CHType.ArrayIntervalDay.fuzzingValues.head),
+        Seq(
+          CHType.ArrayIntervalDay,
+          CHType.ArrayIntervalWeek,
+          CHType.ArrayIntervalMonth,
+          CHType.ArrayIntervalQuarter,
+          CHType.ArrayIntervalYear
+        )
+      )
+  case ArrayIntervalDateTime
+      extends CHAbstractType(
+        Seq(CHType.ArrayIntervalNanosecond.fuzzingValues.head),
+        Seq(
+          CHType.ArrayIntervalNanosecond,
+          CHType.ArrayIntervalMicrosecond,
+          CHType.ArrayIntervalMillisecond,
+          CHType.ArrayIntervalSecond,
+          CHType.ArrayIntervalMinute,
+          CHType.ArrayIntervalHour
+        )
       )
   case ArrayJson extends CHAbstractType(Seq(s"[${Json.fuzzingValues.head}]::Array(JSON)"), Seq(CHType.ArrayJson))
   case ArrayNothing extends CHAbstractType(CHType.ArrayNothing.fuzzingValues, Seq(CHType.ArrayNothing))
@@ -867,6 +1031,29 @@ enum CHAbstractType(val fuzzingValues: Seq[String], val chTypes: Seq[CHType]) {
       extends CHAbstractType(
         Seq(s"tuple(${Enum.fuzzingValues.head})::Tuple(Enum('hello' = 1, 'world' = 2))"),
         Seq(CHType.Tuple1Enum, CHType.Tuple1Enum8, CHType.Tuple1Enum16)
+      )
+  case Tuple1IntervalDate
+      extends CHAbstractType(
+        Seq(CHType.Tuple1IntervalDay.fuzzingValues.head),
+        Seq(
+          CHType.Tuple1IntervalDay,
+          CHType.Tuple1IntervalWeek,
+          CHType.Tuple1IntervalMonth,
+          CHType.Tuple1IntervalQuarter,
+          CHType.Tuple1IntervalYear
+        )
+      )
+  case Tuple1IntervalDateTime
+      extends CHAbstractType(
+        Seq(CHType.Tuple1IntervalNanosecond.fuzzingValues.head),
+        Seq(
+          CHType.Tuple1IntervalNanosecond,
+          CHType.Tuple1IntervalMicrosecond,
+          CHType.Tuple1IntervalMillisecond,
+          CHType.Tuple1IntervalSecond,
+          CHType.Tuple1IntervalMinute,
+          CHType.Tuple1IntervalHour
+        )
       )
   case Tuple1Json extends CHAbstractType(Seq(s"tuple(${Json.fuzzingValues.head})::Tuple(JSON)"), Seq(CHType.Tuple1Json))
   case Tuple1Nothing extends CHAbstractType(CHType.Tuple1Nothing.fuzzingValues, Seq(CHType.Tuple1Nothing))
