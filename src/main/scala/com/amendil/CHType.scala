@@ -348,6 +348,22 @@ enum CHType(val name: String, val fuzzingValues: Seq[String]) {
         Seq("INTERVAL 1 Year::IntervalYear", "INTERVAL 1 Year::Nullable(IntervalYear)", "null::Nullable(IntervalYear)")
       )
 
+  // Geo
+  case Point extends CHType("Point", Seq("(0, 0)::Point"))
+  case Ring extends CHType("Ring", Seq("[(0, 0), (10, 0), (10, 10), (0, 10)]::Ring"))
+  case Polygon
+      extends CHType(
+        "Polygon",
+        Seq("[[(20, 20), (50, 20), (50, 50), (20, 50)], [(30, 30), (50, 50), (50, 30)]]::Polygon")
+      )
+  case MultiPolygon
+      extends CHType(
+        "MultiPolygon",
+        Seq(
+          "[[[(0,0),(10,0),(10,10),(0,10)]],[[(20,20),(50,20),(50,50),(20,50)],[(30,30),(50,50),(50,30)]]]::MultiPolygon"
+        )
+      )
+
   // Misc
   case Enum
       extends CHType(
@@ -614,6 +630,20 @@ enum CHType(val name: String, val fuzzingValues: Seq[String]) {
   case ArrayIntervalQuarter
       extends CHType("Array(IntervalQuarter)", Seq("[INTERVAL 1 Quarter]::Array(Nullable(IntervalQuarter))"))
   case ArrayIntervalYear extends CHType("Array(IntervalYear)", Seq("[INTERVAL 1 Year]::Array(Nullable(IntervalYear))"))
+  case ArrayPoint extends CHType("Array(Point)", Seq("[(0, 0)]::Array(Point)"))
+  case ArrayRing extends CHType("Array(Ring)", Seq("[[(0, 0), (10, 0), (10, 10), (0, 10)]]::Array(Ring)"))
+  case ArrayPolygon
+      extends CHType(
+        "Array(Polygon)",
+        Seq("[[[(20, 20), (50, 20), (50, 50), (20, 50)], [(30, 30), (50, 50), (50, 30)]]]::Array(Polygon)")
+      )
+  case ArrayMultiPolygon
+      extends CHType(
+        "Array(MultiPolygon)",
+        Seq(
+          "[[[[(0,0),(10,0),(10,10),(0,10)]],[[(20,20),(50,20),(50,50),(20,50)],[(30,30),(50,50),(50,30)]]]]::Array(MultiPolygon)"
+        )
+      )
   case ArrayEnum
       extends CHType(
         "Array(Enum)",
@@ -840,6 +870,20 @@ enum CHType(val name: String, val fuzzingValues: Seq[String]) {
   case Tuple1IntervalQuarter
       extends CHType("Tuple(IntervalQuarter)", Seq("tuple(INTERVAL 1 Quarter)::Tuple(IntervalQuarter)"))
   case Tuple1IntervalYear extends CHType("Tuple(IntervalYear)", Seq("tuple(INTERVAL 1 Year)::Tuple(IntervalYear)"))
+  case Tuple1Point extends CHType("Tuple(Point)", Seq("tuple((0, 0))::Tuple(Point)"))
+  case Tuple1Ring extends CHType("Tuple(Ring)", Seq("tuple([(0, 0), (10, 0), (10, 10), (0, 10)])::Tuple(Ring)"))
+  case Tuple1Polygon
+      extends CHType(
+        "Tuple(Polygon)",
+        Seq("tuple([[(20, 20), (50, 20), (50, 50), (20, 50)], [(30, 30), (50, 50), (50, 30)]])::Tuple(Polygon)")
+      )
+  case Tuple1MultiPolygon
+      extends CHType(
+        "Tuple(MultiPolygon)",
+        Seq(
+          "tuple([[[(0,0),(10,0),(10,10),(0,10)]],[[(20,20),(50,20),(50,50),(20,50)],[(30,30),(50,50),(50,30)]]])::Tuple(MultiPolygon)"
+        )
+      )
   case Tuple1Enum
       extends CHType(
         "Tuple(Enum)",
@@ -911,30 +955,7 @@ enum CHType(val name: String, val fuzzingValues: Seq[String]) {
 }
 
 enum CHAbstractType(val fuzzingValues: Seq[String], val chTypes: Seq[CHType]) {
-  case Date extends CHAbstractType(Seq("'1970-01-02'::Date"), Seq(CHType.Date, CHType.Date32))
-  case DateTime extends CHAbstractType(Seq("'1970-01-02 00:00:00'::DateTime"), Seq(CHType.DateTime, CHType.DateTime64))
-  case Enum extends CHAbstractType(Seq(CHType.Enum.fuzzingValues.head), Seq(CHType.Enum, CHType.Enum8, CHType.Enum16))
-  case IntervalDate
-      extends CHAbstractType(
-        Seq(CHType.IntervalDay.fuzzingValues.head),
-        Seq(CHType.IntervalDay, CHType.IntervalWeek, CHType.IntervalMonth, CHType.IntervalQuarter, CHType.IntervalYear)
-      )
-  case IntervalDateTime
-      extends CHAbstractType(
-        Seq(CHType.IntervalNanosecond.fuzzingValues.head),
-        Seq(
-          CHType.IntervalNanosecond,
-          CHType.IntervalMicrosecond,
-          CHType.IntervalMillisecond,
-          CHType.IntervalSecond,
-          CHType.IntervalMinute,
-          CHType.IntervalHour
-        )
-      )
-  case IPv4 extends CHAbstractType(Seq(CHType.IPv4.fuzzingValues.head), Seq(CHType.IPv4))
-  case IPv6 extends CHAbstractType(Seq(CHType.IPv6.fuzzingValues.head), Seq(CHType.IPv6))
-  case Json extends CHAbstractType(Seq(CHType.Json.fuzzingValues.head), Seq(CHType.Json))
-  case Nothing extends CHAbstractType(CHType.Nothing.fuzzingValues, Seq(CHType.Nothing))
+  // Numbers
   case Numbers
       extends CHAbstractType(
         Seq("1"),
@@ -959,53 +980,45 @@ enum CHAbstractType(val fuzzingValues: Seq[String], val chTypes: Seq[CHType]) {
           CHType.Decimal256
         )
       )
+
+  // Date
+  case Date extends CHAbstractType(Seq("'1970-01-02'::Date"), Seq(CHType.Date, CHType.Date32))
+  case DateTime extends CHAbstractType(Seq("'1970-01-02 00:00:00'::DateTime"), Seq(CHType.DateTime, CHType.DateTime64))
+  case IntervalDate
+      extends CHAbstractType(
+        Seq(CHType.IntervalDay.fuzzingValues.head),
+        Seq(CHType.IntervalDay, CHType.IntervalWeek, CHType.IntervalMonth, CHType.IntervalQuarter, CHType.IntervalYear)
+      )
+  case IntervalDateTime
+      extends CHAbstractType(
+        Seq(CHType.IntervalNanosecond.fuzzingValues.head),
+        Seq(
+          CHType.IntervalNanosecond,
+          CHType.IntervalMicrosecond,
+          CHType.IntervalMillisecond,
+          CHType.IntervalSecond,
+          CHType.IntervalMinute,
+          CHType.IntervalHour
+        )
+      )
+
+  // Geo
+  case Point extends CHAbstractType(Seq(CHType.Point.fuzzingValues.head), Seq(CHType.Point))
+  case Ring extends CHAbstractType(Seq(CHType.Ring.fuzzingValues.head), Seq(CHType.Ring))
+  case Polygon extends CHAbstractType(Seq(CHType.Polygon.fuzzingValues.head), Seq(CHType.Polygon))
+  case MultiPolygon extends CHAbstractType(Seq(CHType.MultiPolygon.fuzzingValues.head), Seq(CHType.MultiPolygon))
+
+  // Misc
+  case Enum extends CHAbstractType(Seq(CHType.Enum.fuzzingValues.head), Seq(CHType.Enum, CHType.Enum8, CHType.Enum16))
+  case IPv4 extends CHAbstractType(Seq(CHType.IPv4.fuzzingValues.head), Seq(CHType.IPv4))
+  case IPv6 extends CHAbstractType(Seq(CHType.IPv6.fuzzingValues.head), Seq(CHType.IPv6))
+  case Json extends CHAbstractType(Seq(CHType.Json.fuzzingValues.head), Seq(CHType.Json))
+  case Nothing extends CHAbstractType(CHType.Nothing.fuzzingValues, Seq(CHType.Nothing))
   case String
       extends CHAbstractType(Seq(CHType.StringType.fuzzingValues.head), Seq(CHType.StringType, CHType.FixedString))
   case UUID extends CHAbstractType(Seq(CHType.UUID.fuzzingValues.head), Seq(CHType.UUID))
 
   // Array
-  case ArrayDate
-      extends CHAbstractType(
-        Seq(s"[${Date.fuzzingValues.head}]::Array(Date)"),
-        Seq(CHType.ArrayDate, CHType.ArrayDate32)
-      )
-  case ArrayDateTime
-      extends CHAbstractType(
-        Seq(s"[${DateTime.fuzzingValues.head}]::Array(DateTime)"),
-        Seq(CHType.ArrayDateTime, CHType.ArrayDateTime64)
-      )
-  case ArrayEnum
-      extends CHAbstractType(
-        Seq(s"[${Enum.fuzzingValues.head}]"),
-        Seq(CHType.ArrayEnum, CHType.ArrayEnum8, CHType.ArrayEnum16)
-      )
-  case ArrayIntervalDate
-      extends CHAbstractType(
-        Seq(CHType.ArrayIntervalDay.fuzzingValues.head),
-        Seq(
-          CHType.ArrayIntervalDay,
-          CHType.ArrayIntervalWeek,
-          CHType.ArrayIntervalMonth,
-          CHType.ArrayIntervalQuarter,
-          CHType.ArrayIntervalYear
-        )
-      )
-  case ArrayIntervalDateTime
-      extends CHAbstractType(
-        Seq(CHType.ArrayIntervalNanosecond.fuzzingValues.head),
-        Seq(
-          CHType.ArrayIntervalNanosecond,
-          CHType.ArrayIntervalMicrosecond,
-          CHType.ArrayIntervalMillisecond,
-          CHType.ArrayIntervalSecond,
-          CHType.ArrayIntervalMinute,
-          CHType.ArrayIntervalHour
-        )
-      )
-  case ArrayIPv4 extends CHAbstractType(Seq(s"[${IPv4.fuzzingValues.head}]::Array(IPv4)"), Seq(CHType.ArrayIPv4))
-  case ArrayIPv6 extends CHAbstractType(Seq(s"[${IPv6.fuzzingValues.head}]::Array(IPv6)"), Seq(CHType.ArrayIPv6))
-  case ArrayJson extends CHAbstractType(Seq(s"[${Json.fuzzingValues.head}]::Array(JSON)"), Seq(CHType.ArrayJson))
-  case ArrayNothing extends CHAbstractType(CHType.ArrayNothing.fuzzingValues, Seq(CHType.ArrayNothing))
   case ArrayNumbers
       extends CHAbstractType(
         Seq(s"array(${Numbers.fuzzingValues.head})"),
@@ -1030,6 +1043,54 @@ enum CHAbstractType(val fuzzingValues: Seq[String], val chTypes: Seq[CHType]) {
           CHType.ArrayDecimal256
         )
       )
+
+  case ArrayDate
+      extends CHAbstractType(
+        Seq(s"[${Date.fuzzingValues.head}]::Array(Date)"),
+        Seq(CHType.ArrayDate, CHType.ArrayDate32)
+      )
+  case ArrayDateTime
+      extends CHAbstractType(
+        Seq(s"[${DateTime.fuzzingValues.head}]::Array(DateTime)"),
+        Seq(CHType.ArrayDateTime, CHType.ArrayDateTime64)
+      )
+  case ArrayIntervalDate
+      extends CHAbstractType(
+        Seq(CHType.ArrayIntervalDay.fuzzingValues.head),
+        Seq(
+          CHType.ArrayIntervalDay,
+          CHType.ArrayIntervalWeek,
+          CHType.ArrayIntervalMonth,
+          CHType.ArrayIntervalQuarter,
+          CHType.ArrayIntervalYear
+        )
+      )
+  case ArrayIntervalDateTime
+      extends CHAbstractType(
+        Seq(CHType.ArrayIntervalNanosecond.fuzzingValues.head),
+        Seq(
+          CHType.ArrayIntervalNanosecond,
+          CHType.ArrayIntervalMicrosecond,
+          CHType.ArrayIntervalMillisecond,
+          CHType.ArrayIntervalSecond,
+          CHType.ArrayIntervalMinute,
+          CHType.ArrayIntervalHour
+        )
+      )
+  case ArrayPoint extends CHAbstractType(Seq(CHType.ArrayPoint.fuzzingValues.head), Seq(CHType.ArrayPoint))
+  case ArrayRing extends CHAbstractType(Seq(CHType.ArrayRing.fuzzingValues.head), Seq(CHType.ArrayRing))
+  case ArrayPolygon extends CHAbstractType(Seq(CHType.ArrayPolygon.fuzzingValues.head), Seq(CHType.ArrayPolygon))
+  case ArrayMultiPolygon
+      extends CHAbstractType(Seq(CHType.ArrayMultiPolygon.fuzzingValues.head), Seq(CHType.ArrayMultiPolygon))
+  case ArrayEnum
+      extends CHAbstractType(
+        Seq(s"[${Enum.fuzzingValues.head}]"),
+        Seq(CHType.ArrayEnum, CHType.ArrayEnum8, CHType.ArrayEnum16)
+      )
+  case ArrayIPv4 extends CHAbstractType(Seq(s"[${IPv4.fuzzingValues.head}]::Array(IPv4)"), Seq(CHType.ArrayIPv4))
+  case ArrayIPv6 extends CHAbstractType(Seq(s"[${IPv6.fuzzingValues.head}]::Array(IPv6)"), Seq(CHType.ArrayIPv6))
+  case ArrayJson extends CHAbstractType(Seq(s"[${Json.fuzzingValues.head}]::Array(JSON)"), Seq(CHType.ArrayJson))
+  case ArrayNothing extends CHAbstractType(CHType.ArrayNothing.fuzzingValues, Seq(CHType.ArrayNothing))
   case ArrayString
       extends CHAbstractType(
         Seq(s"[${String.fuzzingValues.head}]::Array(String)"),
@@ -1038,48 +1099,6 @@ enum CHAbstractType(val fuzzingValues: Seq[String], val chTypes: Seq[CHType]) {
   case ArrayUUID extends CHAbstractType(Seq(s"[${UUID.fuzzingValues.head}]::Array(UUID)"), Seq(CHType.ArrayUUID))
 
   // Tuple1
-  case Tuple1Date
-      extends CHAbstractType(
-        Seq(s"tuple(${Date.fuzzingValues.head})::Tuple(Date)"),
-        Seq(CHType.Tuple1Date, CHType.Tuple1Date32)
-      )
-  case Tuple1DateTime
-      extends CHAbstractType(
-        Seq(s"tuple(${DateTime.fuzzingValues.head})::Tuple(DateTime)"),
-        Seq(CHType.Tuple1DateTime, CHType.Tuple1DateTime64)
-      )
-  case Tuple1Enum
-      extends CHAbstractType(
-        Seq(s"tuple(${Enum.fuzzingValues.head})::Tuple(Enum('hello' = 1, 'world' = 2))"),
-        Seq(CHType.Tuple1Enum, CHType.Tuple1Enum8, CHType.Tuple1Enum16)
-      )
-  case Tuple1IntervalDate
-      extends CHAbstractType(
-        Seq(CHType.Tuple1IntervalDay.fuzzingValues.head),
-        Seq(
-          CHType.Tuple1IntervalDay,
-          CHType.Tuple1IntervalWeek,
-          CHType.Tuple1IntervalMonth,
-          CHType.Tuple1IntervalQuarter,
-          CHType.Tuple1IntervalYear
-        )
-      )
-  case Tuple1IntervalDateTime
-      extends CHAbstractType(
-        Seq(CHType.Tuple1IntervalNanosecond.fuzzingValues.head),
-        Seq(
-          CHType.Tuple1IntervalNanosecond,
-          CHType.Tuple1IntervalMicrosecond,
-          CHType.Tuple1IntervalMillisecond,
-          CHType.Tuple1IntervalSecond,
-          CHType.Tuple1IntervalMinute,
-          CHType.Tuple1IntervalHour
-        )
-      )
-  case Tuple1IPv4 extends CHAbstractType(Seq(s"tuple(${IPv4.fuzzingValues.head})::Tuple(IPv4)"), Seq(CHType.Tuple1IPv4))
-  case Tuple1IPv6 extends CHAbstractType(Seq(s"tuple(${IPv6.fuzzingValues.head})::Tuple(IPv6)"), Seq(CHType.Tuple1IPv6))
-  case Tuple1Json extends CHAbstractType(Seq(s"tuple(${Json.fuzzingValues.head})::Tuple(JSON)"), Seq(CHType.Tuple1Json))
-  case Tuple1Nothing extends CHAbstractType(CHType.Tuple1Nothing.fuzzingValues, Seq(CHType.Tuple1Nothing))
   case Tuple1Numbers
       extends CHAbstractType(
         Seq(s"tuple(${Numbers.fuzzingValues.head})::Tuple(UInt8)"),
@@ -1104,6 +1123,53 @@ enum CHAbstractType(val fuzzingValues: Seq[String], val chTypes: Seq[CHType]) {
           CHType.Tuple1Decimal256
         )
       )
+  case Tuple1Date
+      extends CHAbstractType(
+        Seq(s"tuple(${Date.fuzzingValues.head})::Tuple(Date)"),
+        Seq(CHType.Tuple1Date, CHType.Tuple1Date32)
+      )
+  case Tuple1DateTime
+      extends CHAbstractType(
+        Seq(s"tuple(${DateTime.fuzzingValues.head})::Tuple(DateTime)"),
+        Seq(CHType.Tuple1DateTime, CHType.Tuple1DateTime64)
+      )
+  case Tuple1IntervalDate
+      extends CHAbstractType(
+        Seq(CHType.Tuple1IntervalDay.fuzzingValues.head),
+        Seq(
+          CHType.Tuple1IntervalDay,
+          CHType.Tuple1IntervalWeek,
+          CHType.Tuple1IntervalMonth,
+          CHType.Tuple1IntervalQuarter,
+          CHType.Tuple1IntervalYear
+        )
+      )
+  case Tuple1IntervalDateTime
+      extends CHAbstractType(
+        Seq(CHType.Tuple1IntervalNanosecond.fuzzingValues.head),
+        Seq(
+          CHType.Tuple1IntervalNanosecond,
+          CHType.Tuple1IntervalMicrosecond,
+          CHType.Tuple1IntervalMillisecond,
+          CHType.Tuple1IntervalSecond,
+          CHType.Tuple1IntervalMinute,
+          CHType.Tuple1IntervalHour
+        )
+      )
+  case Tuple1Point extends CHAbstractType(Seq(CHType.Tuple1Point.fuzzingValues.head), Seq(CHType.Tuple1Point))
+  case Tuple1Ring extends CHAbstractType(Seq(CHType.Tuple1Ring.fuzzingValues.head), Seq(CHType.Tuple1Ring))
+  case Tuple1Polygon extends CHAbstractType(Seq(CHType.Tuple1Polygon.fuzzingValues.head), Seq(CHType.Tuple1Polygon))
+  case Tuple1MultiPolygon
+      extends CHAbstractType(Seq(CHType.Tuple1MultiPolygon.fuzzingValues.head), Seq(CHType.Tuple1MultiPolygon))
+  case Tuple1Enum
+      extends CHAbstractType(
+        Seq(s"tuple(${Enum.fuzzingValues.head})::Tuple(Enum('hello' = 1, 'world' = 2))"),
+        Seq(CHType.Tuple1Enum, CHType.Tuple1Enum8, CHType.Tuple1Enum16)
+      )
+  case Tuple1IPv4 extends CHAbstractType(Seq(s"tuple(${IPv4.fuzzingValues.head})::Tuple(IPv4)"), Seq(CHType.Tuple1IPv4))
+  case Tuple1IPv6 extends CHAbstractType(Seq(s"tuple(${IPv6.fuzzingValues.head})::Tuple(IPv6)"), Seq(CHType.Tuple1IPv6))
+  case Tuple1Json extends CHAbstractType(Seq(s"tuple(${Json.fuzzingValues.head})::Tuple(JSON)"), Seq(CHType.Tuple1Json))
+  case Tuple1Nothing extends CHAbstractType(CHType.Tuple1Nothing.fuzzingValues, Seq(CHType.Tuple1Nothing))
   case Tuple1String
       extends CHAbstractType(
         Seq(s"tuple(${String.fuzzingValues.head})::Tuple(String)"),
