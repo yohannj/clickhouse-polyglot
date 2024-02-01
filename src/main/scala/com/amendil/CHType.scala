@@ -392,6 +392,19 @@ enum CHType(val name: String, val fuzzingValues: Seq[String]) {
           "null::Nullable(FixedString(10))"
         )
       )
+  case IPv4
+      extends CHType("IPv4", Seq("'116.106.34.242'::IPv4", "'116.106.34.242'::Nullable(IPv4)", "null::Nullable(IPv4)"))
+  case IPv6
+      extends CHType(
+        "IPv6",
+        Seq(
+          "'2001:44c8:129:2632:33:0:252:2'::IPv6",
+          "'2a02:e980:1e::1'::IPv6",
+          "'116.106.34.242'::IPv6",
+          "'116.106.34.242'::Nullable(IPv6)",
+          "null::Nullable(IPv6)"
+        )
+      )
   case Json
       extends CHType(
         "JSON",
@@ -629,6 +642,8 @@ enum CHType(val name: String, val fuzzingValues: Seq[String]) {
           s"[${FixedString.fuzzingValues.mkString(", ")}]::Array(Nullable(FixedString(10)))"
         )
       )
+  case ArrayIPv4 extends CHType("Array(IPv4)", Seq(s"[${IPv4.fuzzingValues.mkString(", ")}]::Array(Nullable(IPv4))"))
+  case ArrayIPv6 extends CHType("Array(IPv6)", Seq(s"[${IPv6.fuzzingValues.mkString(", ")}]::Array(Nullable(IPv6))"))
   case ArrayJson
       extends CHType(
         "Array(JSON)",
@@ -853,6 +868,8 @@ enum CHType(val name: String, val fuzzingValues: Seq[String]) {
           s"tuple('azertyuiop'::FixedString(10))::Tuple(FixedString(10))"
         )
       )
+  case Tuple1IPv4 extends CHType("Tuple(IPv4)", Seq(s"tuple(${IPv4.fuzzingValues.head})::Tuple(IPv4)"))
+  case Tuple1IPv6 extends CHType("Tuple(IPv6)", Seq(s"tuple(${IPv6.fuzzingValues.head})::Tuple(IPv6)"))
   case Tuple1Json
       extends CHType(
         "Tuple(JSON)",
@@ -914,6 +931,8 @@ enum CHAbstractType(val fuzzingValues: Seq[String], val chTypes: Seq[CHType]) {
           CHType.IntervalHour
         )
       )
+  case IPv4 extends CHAbstractType(Seq(CHType.IPv4.fuzzingValues.head), Seq(CHType.IPv4))
+  case IPv6 extends CHAbstractType(Seq(CHType.IPv6.fuzzingValues.head), Seq(CHType.IPv6))
   case Json extends CHAbstractType(Seq(CHType.Json.fuzzingValues.head), Seq(CHType.Json))
   case Nothing extends CHAbstractType(CHType.Nothing.fuzzingValues, Seq(CHType.Nothing))
   case Numbers
@@ -983,6 +1002,8 @@ enum CHAbstractType(val fuzzingValues: Seq[String], val chTypes: Seq[CHType]) {
           CHType.ArrayIntervalHour
         )
       )
+  case ArrayIPv4 extends CHAbstractType(Seq(s"[${IPv4.fuzzingValues.head}]::Array(IPv4)"), Seq(CHType.ArrayIPv4))
+  case ArrayIPv6 extends CHAbstractType(Seq(s"[${IPv6.fuzzingValues.head}]::Array(IPv6)"), Seq(CHType.ArrayIPv6))
   case ArrayJson extends CHAbstractType(Seq(s"[${Json.fuzzingValues.head}]::Array(JSON)"), Seq(CHType.ArrayJson))
   case ArrayNothing extends CHAbstractType(CHType.ArrayNothing.fuzzingValues, Seq(CHType.ArrayNothing))
   case ArrayNumbers
@@ -1055,6 +1076,8 @@ enum CHAbstractType(val fuzzingValues: Seq[String], val chTypes: Seq[CHType]) {
           CHType.Tuple1IntervalHour
         )
       )
+  case Tuple1IPv4 extends CHAbstractType(Seq(s"tuple(${IPv4.fuzzingValues.head})::Tuple(IPv4)"), Seq(CHType.Tuple1IPv4))
+  case Tuple1IPv6 extends CHAbstractType(Seq(s"tuple(${IPv6.fuzzingValues.head})::Tuple(IPv6)"), Seq(CHType.Tuple1IPv6))
   case Tuple1Json extends CHAbstractType(Seq(s"tuple(${Json.fuzzingValues.head})::Tuple(JSON)"), Seq(CHType.Tuple1Json))
   case Tuple1Nothing extends CHAbstractType(CHType.Tuple1Nothing.fuzzingValues, Seq(CHType.Tuple1Nothing))
   case Tuple1Numbers
