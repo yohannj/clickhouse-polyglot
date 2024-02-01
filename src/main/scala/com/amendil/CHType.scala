@@ -316,6 +316,7 @@ enum CHType(val name: String, val fuzzingValues: Seq[String]) {
           """'{"a": 1, "b": { "c": "foo", "d": [1, 2, 3] }, "c": null}'::JSON"""
         )
       )
+  case Nothing extends CHType("Nothing", Seq("null::Nullable(Nothing)"))
   case StringType
       extends CHType(
         "String",
@@ -528,6 +529,8 @@ enum CHType(val name: String, val fuzzingValues: Seq[String]) {
           s"[${Json.fuzzingValues.mkString(", ")}]::Array(JSON)"
         )
       )
+  case ArrayNothing
+      extends CHType("Array(Nothing)", Seq("array()::Array(Nothing)", "array(null)::Array(Nullable(Nothing))"))
   case ArrayString
       extends CHType(
         "Array(String)",
@@ -733,6 +736,7 @@ enum CHType(val name: String, val fuzzingValues: Seq[String]) {
           s"tuple(${Json.fuzzingValues.head})::Tuple(JSON)"
         )
       )
+  case Tuple1Nothing extends CHType("Tuple(Nullable(Nothing))", Seq("tuple(null)::Tuple(Nullable(Nothing))"))
   case Tuple1String
       extends CHType(
         "Tuple(String)",
@@ -770,6 +774,7 @@ enum CHAbstractType(val fuzzingValues: Seq[String], val chTypes: Seq[CHType]) {
   case DateTime extends CHAbstractType(Seq("'1970-01-02 00:00:00'::DateTime"), Seq(CHType.DateTime, CHType.DateTime64))
   case Enum extends CHAbstractType(Seq(CHType.Enum.fuzzingValues.head), Seq(CHType.Enum, CHType.Enum8, CHType.Enum16))
   case Json extends CHAbstractType(Seq(CHType.Json.fuzzingValues.head), Seq(CHType.Json))
+  case Nothing extends CHAbstractType(CHType.Nothing.fuzzingValues, Seq(CHType.Nothing))
   case Numbers
       extends CHAbstractType(
         Seq("1"),
@@ -794,7 +799,6 @@ enum CHAbstractType(val fuzzingValues: Seq[String], val chTypes: Seq[CHType]) {
           CHType.Decimal256
         )
       )
-
   case String
       extends CHAbstractType(Seq(CHType.StringType.fuzzingValues.head), Seq(CHType.StringType, CHType.FixedString))
   case UUID extends CHAbstractType(Seq(CHType.UUID.fuzzingValues.head), Seq(CHType.UUID))
@@ -816,6 +820,7 @@ enum CHAbstractType(val fuzzingValues: Seq[String], val chTypes: Seq[CHType]) {
         Seq(CHType.ArrayEnum, CHType.ArrayEnum8, CHType.ArrayEnum16)
       )
   case ArrayJson extends CHAbstractType(Seq(s"[${Json.fuzzingValues.head}]::Array(JSON)"), Seq(CHType.ArrayJson))
+  case ArrayNothing extends CHAbstractType(CHType.ArrayNothing.fuzzingValues, Seq(CHType.ArrayNothing))
   case ArrayNumbers
       extends CHAbstractType(
         Seq(s"array(${Numbers.fuzzingValues.head})"),
@@ -864,6 +869,7 @@ enum CHAbstractType(val fuzzingValues: Seq[String], val chTypes: Seq[CHType]) {
         Seq(CHType.Tuple1Enum, CHType.Tuple1Enum8, CHType.Tuple1Enum16)
       )
   case Tuple1Json extends CHAbstractType(Seq(s"tuple(${Json.fuzzingValues.head})::Tuple(JSON)"), Seq(CHType.Tuple1Json))
+  case Tuple1Nothing extends CHAbstractType(CHType.Tuple1Nothing.fuzzingValues, Seq(CHType.Tuple1Nothing))
   case Tuple1Numbers
       extends CHAbstractType(
         Seq(s"tuple(${Numbers.fuzzingValues.head})::Tuple(UInt8)"),
