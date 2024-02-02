@@ -10,7 +10,8 @@ import scala.concurrent.duration.Duration
 @main def app: Unit =
   val logger = Logger("Main")
   implicit val ec: ExecutionContext = ExecutionContext.fromExecutorService(Executors.newFixedThreadPool(2))
-  implicit val client: CHClient = CHClient(8123)
+  val fuzzEc: ExecutionContext = ExecutionContext.fromExecutorService(Executors.newFixedThreadPool(1))
+  val client: CHClient = CHClient(8123)
 
   val checkFuzzingValues = Future.sequence(
     (CHType.values.flatMap(_.fuzzingValues) ++ CHAbstractType.values.flatMap(_.fuzzingValues))
@@ -22,7 +23,7 @@ import scala.concurrent.duration.Duration
   )
 
   val r = Await
-    .result(checkFuzzingValues.flatMap(_ => Fuzzer.fuzz()), Duration.Inf)
+    .result(checkFuzzingValues.flatMap(_ => Fuzzer.fuzz()(client, fuzzEc)), Duration.Inf)
     .filter(f =>
       !f.isFunction0
         && f.functionNTypes.isEmpty

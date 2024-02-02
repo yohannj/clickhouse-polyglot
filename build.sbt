@@ -27,6 +27,10 @@ lazy val root = project
       "com.softwaremill.retry" %% "retry" % "0.3.6",
 
       // Misc
-      "org.scala-lang.modules" %% "scala-java8-compat" % "1.0.2"
+      "org.scala-lang.modules" %% "scala-java8-compat" % "1.0.2",
+
+      // Test
+      "org.scalatest" %% "scalatest-freespec" % "3.2.17" % Test,
+      "org.scalatest" %% "scalatest-shouldmatchers" % "3.2.17" % Test
     )
   )

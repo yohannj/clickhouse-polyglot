@@ -71,6 +71,8 @@ class CHClient(port: Int)(implicit ec: ExecutionContext):
 object CHClient {
   private val settings: String = Seq(
     "allow_suspicious_low_cardinality_types=1",
-    "allow_experimental_object_type=1"
+    "allow_experimental_object_type=1",
+    "allow_experimental_nlp_functions=1",
+    "allow_experimental_funnel_functions=1"
   ).mkString(", ")
 }
