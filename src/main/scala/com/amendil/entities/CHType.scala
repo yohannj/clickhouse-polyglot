@@ -1,153 +1,145 @@
 package com.amendil.entities
 
-enum CHType(val name: String, val fuzzingValues: Seq[String]) {
+enum CHType(
+    val name: String,
+    val baseFuzzingValues: Seq[String],
+    lowCardinality: Boolean = false,
+    nullable: Boolean = false
+) {
+
+  def fuzzingValues = {
+    // Build a sample fuzzingValue and fetch its type
+    val firstFuzzingValue = baseFuzzingValues.head
+    val typeIndex = firstFuzzingValue.lastIndexOf("::")
+    val fuzzingValueWithoutType = firstFuzzingValue.substring(0, typeIndex)
+    val fuzzingType = firstFuzzingValue.substring(typeIndex + "::".size)
+
+    // Handle lowCardinality
+    val lowCardinalityValues: Seq[String] =
+      if (lowCardinality) {
+        Seq(s"$fuzzingValueWithoutType::LowCardinality($fuzzingType)")
+      } else Nil
+
+    // Handle nullable
+    val nullableFuzzingValues: Seq[String] =
+      if (nullable) {
+        Seq(
+          s"$fuzzingValueWithoutType::Nullable($fuzzingType)",
+          s"null::Nullable($fuzzingType)"
+        )
+      } else Nil
+
+    baseFuzzingValues ++ lowCardinalityValues ++ nullableFuzzingValues
+  }
 
   // Numbers
   case Int8
       extends CHType(
         "Int8",
-        Seq("-128::Int8", "127::Int8", "-128::LowCardinality(Int8)", "-128::Nullable(Int8)", "null::Nullable(Int8)")
+        Seq("-128::Int8", "127::Int8"),
+        lowCardinality = true,
+        nullable = true
       )
   case Int16
       extends CHType(
         "Int16",
-        Seq(
-          "-32768::Int16",
-          "32767::Int16",
-          "-32768::LowCardinality(Int16)",
-          "-32768::Nullable(Int16)",
-          "null::Nullable(Int16)"
-        )
+        Seq("-32768::Int16", "32767::Int16"),
+        lowCardinality = true,
+        nullable = true
       )
   case Int32
       extends CHType(
         "Int32",
-        Seq(
-          "-2147483648::Int32",
-          "2147483647::Int32",
-          "-2147483648::LowCardinality(Int32)",
-          "-2147483648::Nullable(Int32)",
-          "null::Nullable(Int32)"
-        )
+        Seq("-2147483648::Int32", "2147483647::Int32"),
+        lowCardinality = true,
+        nullable = true
       )
   case Int64
       extends CHType(
         "Int64",
-        Seq(
-          "-9223372036854775808::Int64",
-          "9223372036854775807::Int64",
-          "-9223372036854775808::LowCardinality(Int64)",
-          "-9223372036854775808::Nullable(Int64)",
-          "null::Nullable(Int64)"
-        )
+        Seq("-9223372036854775808::Int64", "9223372036854775807::Int64"),
+        lowCardinality = true,
+        nullable = true
       )
   case Int128
       extends CHType(
         "Int128",
         Seq(
           "-170141183460469231731687303715884105728::Int128",
-          "170141183460469231731687303715884105727::Int128",
-          "-170141183460469231731687303715884105728::LowCardinality(Int128)",
-          "-170141183460469231731687303715884105728::Nullable(Int128)",
-          "null::Nullable(Int128)"
-        )
+          "170141183460469231731687303715884105727::Int128"
+        ),
+        lowCardinality = true,
+        nullable = true
       )
   case Int256
       extends CHType(
         "Int256",
         Seq(
           "-57896044618658097711785492504343953926634992332820282019728792003956564819968::Int256",
-          "57896044618658097711785492504343953926634992332820282019728792003956564819967::Int256",
-          "-57896044618658097711785492504343953926634992332820282019728792003956564819968::LowCardinality(Int256)",
-          "-57896044618658097711785492504343953926634992332820282019728792003956564819968::Nullable(Int256)",
-          "null::Nullable(Int256)"
-        )
+          "57896044618658097711785492504343953926634992332820282019728792003956564819967::Int256"
+        ),
+        lowCardinality = true,
+        nullable = true
       )
   case UInt8
       extends CHType(
         "UInt8",
-        Seq(
-          "0::UInt8",
-          "1::UInt8",
-          "255::UInt8",
-          "0::LowCardinality(UInt8)",
-          "0::Nullable(UInt8)",
-          "null::Nullable(UInt8)"
-        )
+        Seq("0::UInt8", "1::UInt8", "255::UInt8"),
+        lowCardinality = true,
+        nullable = true
       )
   case UInt16
       extends CHType(
         "UInt16",
-        Seq("0::UInt16", "65535::UInt16", "0::LowCardinality(UInt16)", "0::Nullable(UInt16)", "null::Nullable(UInt16)")
+        Seq("0::UInt16", "65535::UInt16"),
+        lowCardinality = true,
+        nullable = true
       )
   case UInt32
       extends CHType(
         "UInt32",
-        Seq(
-          "0::UInt32",
-          "4294967295::UInt32",
-          "0::LowCardinality(UInt32)",
-          "0::Nullable(UInt32)",
-          "null::Nullable(UInt32)"
-        )
+        Seq("0::UInt32", "4294967295::UInt32"),
+        lowCardinality = true,
+        nullable = true
       )
   case UInt64
       extends CHType(
         "UInt64",
-        Seq(
-          "0::UInt64",
-          "18446744073709551615::UInt64",
-          "0::LowCardinality(UInt64)",
-          "0::Nullable(UInt64)",
-          "null::Nullable(UInt64)"
-        )
+        Seq("0::UInt64", "18446744073709551615::UInt64"),
+        lowCardinality = true,
+        nullable = true
       )
   case UInt128
       extends CHType(
         "UInt128",
-        Seq(
-          "0::UInt128",
-          "340282366920938463463374607431768211455::UInt128",
-          "0::LowCardinality(UInt128)",
-          "0::Nullable(UInt128)",
-          "null::Nullable(UInt128)"
-        )
+        Seq("0::UInt128", "340282366920938463463374607431768211455::UInt128"),
+        lowCardinality = true,
+        nullable = true
       )
   case UInt256
       extends CHType(
         "UInt256",
         Seq(
           "0::UInt256",
-          "115792089237316195423570985008687907853269984665640564039457584007913129639935::UInt256",
-          "0::LowCardinality(UInt256)",
-          "0::Nullable(UInt256)",
-          "null::Nullable(UInt256)"
-        )
+          "115792089237316195423570985008687907853269984665640564039457584007913129639935::UInt256"
+        ),
+        lowCardinality = true,
+        nullable = true
       )
 
   case Float32
       extends CHType(
         "Float32",
-        Seq(
-          "-inf::Float32",
-          "nan::Float32",
-          "0.5::Float32",
-          "-inf::LowCardinality(Float32)",
-          "0.5::Nullable(Float32)",
-          "null::Nullable(Float32)"
-        )
+        Seq("-inf::Float32", "nan::Float32", "0.5::Float32"),
+        lowCardinality = true,
+        nullable = true
       )
   case Float64
       extends CHType(
         "Float64",
-        Seq(
-          "-inf::Float64",
-          "nan::Float64",
-          "0.5::Float64",
-          "-inf::LowCardinality(Float64)",
-          "0.5::Nullable(Float64)",
-          "null::Nullable(Float64)"
-        )
+        Seq("-inf::Float64", "nan::Float64", "0.5::Float64"),
+        lowCardinality = true,
+        nullable = true
       )
   case Decimal32
       extends CHType(
@@ -156,10 +148,9 @@ enum CHType(val name: String, val fuzzingValues: Seq[String]) {
           "-999999999::Decimal32(0)",
           "999999999::Decimal32(0)",
           "-0.999999999::Decimal32(9)",
-          "0.999999999::Decimal32(9)",
-          "-999999999::Nullable(Decimal32(0))",
-          "null::Nullable(Decimal32(0))"
-        )
+          "0.999999999::Decimal32(9)"
+        ),
+        nullable = true
       )
   case Decimal64
       extends CHType(
@@ -172,10 +163,9 @@ enum CHType(val name: String, val fuzzingValues: Seq[String]) {
           "-999999999999999999::Decimal",
           "-9999999999::Decimal",
           "9999999999::Decimal",
-          "999999999999999999::Decimal",
-          "-999999999999999999::Nullable(Decimal64(0))",
-          "null::Nullable(Decimal64(0))"
-        )
+          "999999999999999999::Decimal"
+        ),
+        nullable = true
       )
   case Decimal128
       extends CHType(
@@ -184,10 +174,9 @@ enum CHType(val name: String, val fuzzingValues: Seq[String]) {
           "-999999999999999999999999999999999999::Decimal128(0)",
           "999999999999999999999999999999999999::Decimal128(0)",
           "-0.99999999999999999999999999999999999999::Decimal128(38)",
-          "0.99999999999999999999999999999999999999::Decimal128(38)",
-          "-999999999999999999999999999999999999::Nullable(Decimal128(0))",
-          "null::Nullable(Decimal128(0))"
-        )
+          "0.99999999999999999999999999999999999999::Decimal128(38)"
+        ),
+        nullable = true
       )
   case Decimal256
       extends CHType(
@@ -204,34 +193,25 @@ enum CHType(val name: String, val fuzzingValues: Seq[String]) {
           "-9999999999999999999999999999999999999999999999999999999999999999999999999999::Decimal(40)",
           "-9999999999999999999999999999999999999999::Decimal(40)",
           "9999999999999999999999999999999999999999::Decimal(40)",
-          "9999999999999999999999999999999999999999999999999999999999999999999999999999::Decimal(40)",
-          "-999999999999999999999999999999999999999999999999999999999999999999999999::Nullable(Decimal256(0))",
-          "null::Nullable(Decimal256(0))"
-        )
+          "9999999999999999999999999999999999999999999999999999999999999999999999999999::Decimal(40)"
+        ),
+        nullable = true
       )
 
   // Date
   case Date
       extends CHType(
         "Date",
-        Seq(
-          "'1970-01-01'::Date",
-          "'2149-06-06'::Date",
-          "'1970-01-01'::LowCardinality(Date)",
-          "'1970-01-01'::Nullable(Date)",
-          "null::Nullable(Date)"
-        )
+        Seq("'1970-01-01'::Date", "'2149-06-06'::Date"),
+        lowCardinality = true,
+        nullable = true
       )
   case Date32
       extends CHType(
         "Date32",
-        Seq(
-          "'1900-01-01'::Date32",
-          "'2299-12-31'::Date32",
-          "'1900-01-01'::LowCardinality(Date32)",
-          "'1900-01-01'::Nullable(Date32)",
-          "null::Nullable(Date32)"
-        )
+        Seq("'1900-01-01'::Date32", "'2299-12-31'::Date32"),
+        lowCardinality = true,
+        nullable = true
       )
   case DateTime
       extends CHType(
@@ -240,11 +220,10 @@ enum CHType(val name: String, val fuzzingValues: Seq[String]) {
           "'1970-01-01 00:00:00'::DateTime('Asia/Istanbul')",
           "'2106-02-07 06:28:15'::DateTime('Asia/Istanbul')",
           "'1970-01-01 00:00:00'::DateTime",
-          "'2106-02-07 06:28:15'::DateTime",
-          "'1970-01-01 00:00:00'::LowCardinality(DateTime)",
-          "'1970-01-01 00:00:00'::Nullable(DateTime('Asia/Istanbul'))",
-          "null::Nullable(DateTime('Asia/Istanbul'))"
-        )
+          "'2106-02-07 06:28:15'::DateTime"
+        ),
+        lowCardinality = true,
+        nullable = true
       )
   case DateTime64
       extends CHType(
@@ -259,93 +238,75 @@ enum CHType(val name: String, val fuzzingValues: Seq[String]) {
           "'1900-01-01 00:00:00'::DateTime64(9)",
           "'2299-12-31 23:59:59.99999999'::DateTime64(0)",
           "'2299-12-31 23:59:59.99999999'::DateTime64(8)",
-          "'2262-04-11 23:47:16.854775807'::DateTime64(9)",
-          "'1900-01-01 00:00:00'::Nullable(DateTime64(0, 'Asia/Istanbul'))",
-          "null::Nullable(DateTime64(0, 'Asia/Istanbul'))"
-        )
+          "'2262-04-11 23:47:16.854775807'::DateTime64(9)"
+        ),
+        nullable = true
       )
   case IntervalNanosecond
       extends CHType(
         "IntervalNanosecond",
-        Seq(
-          "INTERVAL 1 Nanosecond::IntervalNanosecond",
-          "INTERVAL 1 Nanosecond::Nullable(IntervalNanosecond)",
-          "null::Nullable(IntervalNanosecond)"
-        )
+        Seq("INTERVAL 1 Nanosecond::IntervalNanosecond"),
+        nullable = true
       )
   case IntervalMicrosecond
       extends CHType(
         "IntervalMicrosecond",
-        Seq(
-          "INTERVAL 1 Microsecond::IntervalMicrosecond",
-          "INTERVAL 1 Microsecond::Nullable(IntervalMicrosecond)",
-          "null::Nullable(IntervalMicrosecond)"
-        )
+        Seq("INTERVAL 1 Microsecond::IntervalMicrosecond"),
+        nullable = true
       )
   case IntervalMillisecond
       extends CHType(
         "IntervalMillisecond",
-        Seq(
-          "INTERVAL 1 Millisecond::IntervalMillisecond",
-          "INTERVAL 1 Millisecond::Nullable(IntervalMillisecond)",
-          "null::Nullable(IntervalMillisecond)"
-        )
+        Seq("INTERVAL 1 Millisecond::IntervalMillisecond"),
+        nullable = true
       )
   case IntervalSecond
       extends CHType(
         "IntervalSecond",
-        Seq(
-          "INTERVAL 1 Second::IntervalSecond",
-          "INTERVAL 1 Second::Nullable(IntervalSecond)",
-          "null::Nullable(IntervalSecond)"
-        )
+        Seq("INTERVAL 1 Second::IntervalSecond"),
+        nullable = true
       )
   case IntervalMinute
       extends CHType(
         "IntervalMinute",
-        Seq(
-          "INTERVAL 1 Minute::IntervalMinute",
-          "INTERVAL 1 Minute::Nullable(IntervalMinute)",
-          "null::Nullable(IntervalMinute)"
-        )
+        Seq("INTERVAL 1 Minute::IntervalMinute"),
+        nullable = true
       )
   case IntervalHour
       extends CHType(
         "IntervalHour",
-        Seq("INTERVAL 1 Hour::IntervalHour", "INTERVAL 1 Hour::Nullable(IntervalHour)", "null::Nullable(IntervalHour)")
+        Seq("INTERVAL 1 Hour::IntervalHour"),
+        nullable = true
       )
   case IntervalDay
       extends CHType(
         "IntervalDay",
-        Seq("INTERVAL 1 Day::IntervalDay", "INTERVAL 1 Day::Nullable(IntervalDay)", "null::Nullable(IntervalDay)")
+        Seq("INTERVAL 1 Day::IntervalDay"),
+        nullable = true
       )
   case IntervalWeek
       extends CHType(
         "IntervalWeek",
-        Seq("INTERVAL 1 Week::IntervalWeek", "INTERVAL 1 Week::Nullable(IntervalWeek)", "null::Nullable(IntervalWeek)")
+        Seq("INTERVAL 1 Week::IntervalWeek"),
+        nullable = true
       )
   case IntervalMonth
       extends CHType(
         "IntervalMonth",
-        Seq(
-          "INTERVAL 1 Month::IntervalMonth",
-          "INTERVAL 1 Month::Nullable(IntervalMonth)",
-          "null::Nullable(IntervalMonth)"
-        )
+        Seq("INTERVAL 1 Month::IntervalMonth"),
+        nullable = true
       )
   case IntervalQuarter
       extends CHType(
         "IntervalQuarter",
-        Seq(
-          "INTERVAL 1 Quarter::IntervalQuarter",
-          "INTERVAL 1 Quarter::Nullable(IntervalQuarter)",
-          "null::Nullable(IntervalQuarter)"
-        )
+        Seq("INTERVAL 1 Quarter::IntervalQuarter"),
+        nullable = true
       )
   case IntervalYear
       extends CHType(
         "IntervalYear",
-        Seq("INTERVAL 1 Year::IntervalYear", "INTERVAL 1 Year::Nullable(IntervalYear)", "null::Nullable(IntervalYear)")
+        Seq("INTERVAL 1 Year::IntervalYear"),
+        nullable = true
       )
 
   // Geo
@@ -370,10 +331,9 @@ enum CHType(val name: String, val fuzzingValues: Seq[String]) {
         "Enum",
         Seq(
           "'hello'::Enum('hello' = 1, 'world' = 2)",
-          "'hello'::Enum('hello', 'world')",
-          "'hello'::Nullable(Enum('hello' = 1, 'world' = 2))",
-          "null::Nullable(Enum('hello' = 1, 'world' = 2))"
-        )
+          "'hello'::Enum('hello', 'world')"
+        ),
+        nullable = true
       )
   case Enum8
       extends CHType(
@@ -381,10 +341,9 @@ enum CHType(val name: String, val fuzzingValues: Seq[String]) {
         Seq(
           "'hello'::Enum8('hello' = -128, 'world' = 2)",
           "'hello'::Enum8('hello' = 127, 'world' = 2)",
-          "'hello'::Enum8('hello', 'world')",
-          "'hello'::Nullable(Enum8('hello' = -128, 'world' = 2))",
-          "null::Nullable(Enum8('hello' = -128, 'world' = 2))"
-        )
+          "'hello'::Enum8('hello', 'world')"
+        ),
+        nullable = true
       )
   case Enum16
       extends CHType(
@@ -392,63 +351,46 @@ enum CHType(val name: String, val fuzzingValues: Seq[String]) {
         Seq(
           "'hello'::Enum16('hello' = -32768, 'world' = 2)",
           "'hello'::Enum16('hello' = 32767, 'world' = 2)",
-          "'hello'::Enum16('hello', 'world')",
-          "'hello'::Nullable(Enum16('hello' = -32768, 'world' = 2))",
-          "null::Nullable(Enum16('hello' = -32768, 'world' = 2))"
-        )
+          "'hello'::Enum16('hello', 'world')"
+        ),
+        nullable = true
       )
   case FixedString
       extends CHType(
         "FixedString",
-        Seq(
-          "'azertyuiop'::FixedString(10)",
-          "''::FixedString(1)",
-          "'foo'::LowCardinality(FixedString(3))",
-          "'azertyuiop'::Nullable(FixedString(10))",
-          "null::Nullable(FixedString(10))"
-        )
+        Seq("'azertyuiop'::FixedString(10)", "''::FixedString(1)"),
+        lowCardinality = true,
+        nullable = true
       )
-  case IPv4
-      extends CHType("IPv4", Seq("'116.106.34.242'::IPv4", "'116.106.34.242'::Nullable(IPv4)", "null::Nullable(IPv4)"))
+  case IPv4 extends CHType("IPv4", Seq("'116.106.34.242'::IPv4"), nullable = true)
   case IPv6
       extends CHType(
         "IPv6",
         Seq(
           "'2001:44c8:129:2632:33:0:252:2'::IPv6",
           "'2a02:e980:1e::1'::IPv6",
-          "'116.106.34.242'::IPv6",
-          "'116.106.34.242'::Nullable(IPv6)",
-          "null::Nullable(IPv6)"
-        )
+          "'116.106.34.242'::IPv6"
+        ),
+        nullable = true
       )
   case Json
       extends CHType(
         "JSON",
-        Seq(
-          """'{"a": 1, "b": { "c": "foo", "d": [1, 2, 3] }, "c": null}'::JSON"""
-        )
+        Seq("""'{"a": 1, "b": { "c": "foo", "d": [1, 2, 3] }, "c": null}'::JSON""")
       )
   // case Nothing extends CHType("Nothing", Seq("null::Nullable(Nothing)"))
   case StringType
       extends CHType(
         "String",
-        Seq(
-          "'foo'::String",
-          "''::String",
-          "'foo'::LowCardinality(String)",
-          "'foo'::Nullable(String)",
-          "null::Nullable(String)"
-        )
+        Seq("'foo'::String", "''::String"),
+        lowCardinality = true,
+        nullable = true
       )
   case UUID
       extends CHType(
         "UUID",
-        Seq(
-          "'00000000-0000-0000-0000-000000000000'::UUID",
-          "'61f0c404-5cb3-11e7-907b-a6006ad3dba0'::UUID",
-          "'00000000-0000-0000-0000-000000000000'::Nullable(UUID)",
-          "null::Nullable(UUID)"
-        )
+        Seq("'00000000-0000-0000-0000-000000000000'::UUID", "'61f0c404-5cb3-11e7-907b-a6006ad3dba0'::UUID"),
+        nullable = true
       )
 
   // Array
@@ -693,223 +635,141 @@ enum CHType(val name: String, val fuzzingValues: Seq[String]) {
   case ArrayUUID
       extends CHType(
         "Array(UUID)",
-        Seq(
-          s"[${UUID.fuzzingValues.mkString(", ")}]::Array(Nullable(UUID))"
-        )
+        Seq(s"[${UUID.fuzzingValues.mkString(", ")}]::Array(Nullable(UUID))")
       )
 
   // Map
   case MapInt8Int8
       extends CHType(
         "Map(Int8, Int8)",
-        Int8.fuzzingValues.filterNot(_.contains("::LowCardinality")).filterNot(_.contains("::Nullable")).map {
-          fuzzingValue =>
-            s"map($fuzzingValue, 1)::Map(Int8, Int8)"
-        }
+        Int8.baseFuzzingValues.map { fuzzingValue => s"map($fuzzingValue, 1)::Map(Int8, Int8)" }
       )
   case MapInt16Int8
       extends CHType(
         "Map(Int16, Int8)",
-        Int16.fuzzingValues.filterNot(_.contains("::LowCardinality")).filterNot(_.contains("::Nullable")).map {
-          fuzzingValue =>
-            s"map($fuzzingValue, 1)::Map(Int16, Int8)"
-        }
+        Int16.baseFuzzingValues.map { fuzzingValue => s"map($fuzzingValue, 1)::Map(Int16, Int8)" }
       )
   case MapInt32Int8
       extends CHType(
         "Map(Int32, Int8)",
-        Int32.fuzzingValues.filterNot(_.contains("::LowCardinality")).filterNot(_.contains("::Nullable")).map {
-          fuzzingValue =>
-            s"map($fuzzingValue, 1)::Map(Int32, Int8)"
-        }
+        Int32.baseFuzzingValues.map { fuzzingValue => s"map($fuzzingValue, 1)::Map(Int32, Int8)" }
       )
   case MapInt64Int8
       extends CHType(
         "Map(Int64, Int8)",
-        Int64.fuzzingValues.filterNot(_.contains("::LowCardinality")).filterNot(_.contains("::Nullable")).map {
-          fuzzingValue =>
-            s"map($fuzzingValue, 1)::Map(Int64, Int8)"
-        }
+        Int64.baseFuzzingValues.map { fuzzingValue => s"map($fuzzingValue, 1)::Map(Int64, Int8)" }
       )
   case MapInt128Int8
       extends CHType(
         "Map(Int128, Int8)",
-        Int128.fuzzingValues.filterNot(_.contains("::LowCardinality")).filterNot(_.contains("::Nullable")).map {
-          fuzzingValue =>
-            s"map($fuzzingValue, 1)::Map(Int128, Int8)"
-        }
+        Int128.baseFuzzingValues.map { fuzzingValue => s"map($fuzzingValue, 1)::Map(Int128, Int8)" }
       )
   case MapInt256Int8
       extends CHType(
         "Map(Int256, Int8)",
-        Int256.fuzzingValues.filterNot(_.contains("::LowCardinality")).filterNot(_.contains("::Nullable")).map {
-          fuzzingValue =>
-            s"map($fuzzingValue, 1)::Map(Int256, Int8)"
-        }
+        Int256.baseFuzzingValues.map { fuzzingValue => s"map($fuzzingValue, 1)::Map(Int256, Int8)" }
       )
   case MapUInt8Int8
       extends CHType(
         "Map(UInt8, Int8)",
-        UInt8.fuzzingValues.filterNot(_.contains("::LowCardinality")).filterNot(_.contains("::Nullable")).map {
-          fuzzingValue =>
-            s"map($fuzzingValue, 1)::Map(UInt8, Int8)"
-        }
+        UInt8.baseFuzzingValues.map { fuzzingValue => s"map($fuzzingValue, 1)::Map(UInt8, Int8)" }
       )
   case MapUInt16Int8
       extends CHType(
         "Map(UInt16, Int8)",
-        UInt16.fuzzingValues.filterNot(_.contains("::LowCardinality")).filterNot(_.contains("::Nullable")).map {
-          fuzzingValue =>
-            s"map($fuzzingValue, 1)::Map(UInt16, Int8)"
-        }
+        UInt16.baseFuzzingValues.map { fuzzingValue => s"map($fuzzingValue, 1)::Map(UInt16, Int8)" }
       )
   case MapUInt32Int8
       extends CHType(
         "Map(UInt32, Int8)",
-        UInt32.fuzzingValues.filterNot(_.contains("::LowCardinality")).filterNot(_.contains("::Nullable")).map {
-          fuzzingValue =>
-            s"map($fuzzingValue, 1)::Map(UInt32, Int8)"
-        }
+        UInt32.baseFuzzingValues.map { fuzzingValue => s"map($fuzzingValue, 1)::Map(UInt32, Int8)" }
       )
   case MapUInt64Int8
       extends CHType(
         "Map(UInt64, Int8)",
-        UInt64.fuzzingValues.filterNot(_.contains("::LowCardinality")).filterNot(_.contains("::Nullable")).map {
-          fuzzingValue =>
-            s"map($fuzzingValue, 1)::Map(UInt64, Int8)"
-        }
+        UInt64.baseFuzzingValues.map { fuzzingValue => s"map($fuzzingValue, 1)::Map(UInt64, Int8)" }
       )
   case MapUInt128Int8
       extends CHType(
         "Map(UInt128, Int8)",
-        UInt128.fuzzingValues.filterNot(_.contains("::LowCardinality")).filterNot(_.contains("::Nullable")).map {
-          fuzzingValue =>
-            s"map($fuzzingValue, 1)::Map(UInt128, Int8)"
-        }
+        UInt128.baseFuzzingValues.map { fuzzingValue => s"map($fuzzingValue, 1)::Map(UInt128, Int8)" }
       )
   case MapUInt256Int8
       extends CHType(
         "Map(UInt256, Int8)",
-        UInt256.fuzzingValues.filterNot(_.contains("::LowCardinality")).filterNot(_.contains("::Nullable")).map {
-          fuzzingValue =>
-            s"map($fuzzingValue, 1)::Map(UInt256, Int8)"
-        }
+        UInt256.baseFuzzingValues.map { fuzzingValue => s"map($fuzzingValue, 1)::Map(UInt256, Int8)" }
       )
   case MapDateInt8
       extends CHType(
         "Map(Date, Int8)",
-        Date.fuzzingValues.filterNot(_.contains("::LowCardinality")).filterNot(_.contains("::Nullable")).map {
-          fuzzingValue =>
-            s"map($fuzzingValue, 1)::Map(Date, Int8)"
-        }
+        Date.baseFuzzingValues.map { fuzzingValue => s"map($fuzzingValue, 1)::Map(Date, Int8)" }
       )
   case MapDate32Int8
       extends CHType(
         "Map(Date32, Int8)",
-        Date32.fuzzingValues.filterNot(_.contains("::LowCardinality")).filterNot(_.contains("::Nullable")).map {
-          fuzzingValue =>
-            s"map($fuzzingValue, 1)::Map(Date32, Int8)"
-        }
+        Date32.baseFuzzingValues.map { fuzzingValue => s"map($fuzzingValue, 1)::Map(Date32, Int8)" }
       )
   case MapDateTimeInt8
       extends CHType(
         "Map(DateTime, Int8)",
-        DateTime.fuzzingValues.filterNot(_.contains("::LowCardinality")).filterNot(_.contains("::Nullable")).map {
-          fuzzingValue =>
-            s"map($fuzzingValue, 1)::Map(DateTime, Int8)"
-        }
+        DateTime.baseFuzzingValues.map { fuzzingValue => s"map($fuzzingValue, 1)::Map(DateTime, Int8)" }
       )
   case MapIntervalNanosecondInt8
       extends CHType(
         "Map(IntervalNanosecond, Int8)",
-        DateTime.fuzzingValues.filterNot(_.contains("::LowCardinality")).filterNot(_.contains("::Nullable")).map {
-          fuzzingValue =>
-            s"map($fuzzingValue, 1)::Map(DateTime, Int8)"
-        }
+        DateTime.baseFuzzingValues.map { fuzzingValue => s"map($fuzzingValue, 1)::Map(DateTime, Int8)" }
       )
   case MapIntervalMicrosecondInt8
       extends CHType(
         "Map(IntervalMicrosecond, Int8)",
-        DateTime.fuzzingValues.filterNot(_.contains("::LowCardinality")).filterNot(_.contains("::Nullable")).map {
-          fuzzingValue =>
-            s"map($fuzzingValue, 1)::Map(DateTime, Int8)"
-        }
+        DateTime.baseFuzzingValues.map { fuzzingValue => s"map($fuzzingValue, 1)::Map(DateTime, Int8)" }
       )
   case MapIntervalMillisecondInt8
       extends CHType(
         "Map(IntervalMillisecond, Int8)",
-        IntervalMillisecond.fuzzingValues
-          .filterNot(_.contains("::LowCardinality"))
-          .filterNot(_.contains("::Nullable"))
-          .map { fuzzingValue =>
-            s"map($fuzzingValue, 1)::Map(IntervalMillisecond, Int8)"
-          }
+        IntervalMillisecond.baseFuzzingValues.map { fuzzingValue =>
+          s"map($fuzzingValue, 1)::Map(IntervalMillisecond, Int8)"
+        }
       )
   case MapIntervalSecondInt8
       extends CHType(
         "Map(IntervalSecond, Int8)",
-        IntervalSecond.fuzzingValues.filterNot(_.contains("::LowCardinality")).filterNot(_.contains("::Nullable")).map {
-          fuzzingValue =>
-            s"map($fuzzingValue, 1)::Map(IntervalSecond, Int8)"
-        }
+        IntervalSecond.baseFuzzingValues.map { fuzzingValue => s"map($fuzzingValue, 1)::Map(IntervalSecond, Int8)" }
       )
   case MapIntervalMinuteInt8
       extends CHType(
         "Map(IntervalMinute, Int8)",
-        IntervalMinute.fuzzingValues.filterNot(_.contains("::LowCardinality")).filterNot(_.contains("::Nullable")).map {
-          fuzzingValue =>
-            s"map($fuzzingValue, 1)::Map(IntervalMinute, Int8)"
-        }
+        IntervalMinute.baseFuzzingValues.map { fuzzingValue => s"map($fuzzingValue, 1)::Map(IntervalMinute, Int8)" }
       )
   case MapIntervalHourInt8
       extends CHType(
         "Map(IntervalHour, Int8)",
-        IntervalHour.fuzzingValues.filterNot(_.contains("::LowCardinality")).filterNot(_.contains("::Nullable")).map {
-          fuzzingValue =>
-            s"map($fuzzingValue, 1)::Map(IntervalHour, Int8)"
-        }
+        IntervalHour.baseFuzzingValues.map { fuzzingValue => s"map($fuzzingValue, 1)::Map(IntervalHour, Int8)" }
       )
   case MapIntervalDayInt8
       extends CHType(
         "Map(IntervalDay, Int8)",
-        IntervalDay.fuzzingValues.filterNot(_.contains("::LowCardinality")).filterNot(_.contains("::Nullable")).map {
-          fuzzingValue =>
-            s"map($fuzzingValue, 1)::Map(IntervalDay, Int8)"
-        }
+        IntervalDay.baseFuzzingValues.map { fuzzingValue => s"map($fuzzingValue, 1)::Map(IntervalDay, Int8)" }
       )
   case MapIntervalWeekInt8
       extends CHType(
         "Map(IntervalWeek, Int8)",
-        IntervalWeek.fuzzingValues.filterNot(_.contains("::LowCardinality")).filterNot(_.contains("::Nullable")).map {
-          fuzzingValue =>
-            s"map($fuzzingValue, 1)::Map(IntervalWeek, Int8)"
-        }
+        IntervalWeek.baseFuzzingValues.map { fuzzingValue => s"map($fuzzingValue, 1)::Map(IntervalWeek, Int8)" }
       )
   case MapIntervalMonthInt8
       extends CHType(
         "Map(IntervalMonth, Int8)",
-        IntervalMonth.fuzzingValues.filterNot(_.contains("::LowCardinality")).filterNot(_.contains("::Nullable")).map {
-          fuzzingValue =>
-            s"map($fuzzingValue, 1)::Map(IntervalMonth, Int8)"
-        }
+        IntervalMonth.baseFuzzingValues.map { fuzzingValue => s"map($fuzzingValue, 1)::Map(IntervalMonth, Int8)" }
       )
   case MapIntervalQuarterInt8
       extends CHType(
         "Map(IntervalQuarter, Int8)",
-        IntervalQuarter.fuzzingValues
-          .filterNot(_.contains("::LowCardinality"))
-          .filterNot(_.contains("::Nullable"))
-          .map { fuzzingValue =>
-            s"map($fuzzingValue, 1)::Map(IntervalQuarter, Int8)"
-          }
+        IntervalQuarter.baseFuzzingValues.map { fuzzingValue => s"map($fuzzingValue, 1)::Map(IntervalQuarter, Int8)" }
       )
   case MapIntervalYearInt8
       extends CHType(
         "Map(IntervalYear, Int8)",
-        IntervalYear.fuzzingValues.filterNot(_.contains("::LowCardinality")).filterNot(_.contains("::Nullable")).map {
-          fuzzingValue =>
-            s"map($fuzzingValue, 1)::Map(IntervalYear, Int8)"
-        }
+        IntervalYear.baseFuzzingValues.map { fuzzingValue => s"map($fuzzingValue, 1)::Map(IntervalYear, Int8)" }
       )
   case MapEnumInt8
       extends CHType(
@@ -935,198 +795,143 @@ enum CHType(val name: String, val fuzzingValues: Seq[String]) {
   case MapFixedStringInt8
       extends CHType(
         "Map(FixedString, Int8)",
-        FixedString.fuzzingValues.filterNot(_.contains("::LowCardinality")).filterNot(_.contains("::Nullable")).map {
-          fuzzingValue =>
-            s"map($fuzzingValue, 1)::Map(FixedString(10), Int8)"
+        FixedString.baseFuzzingValues.map { fuzzingValue =>
+          s"map($fuzzingValue, 1)::Map(FixedString(10), Int8)"
         } :+ "map('azertyuiop'::LowCardinality(FixedString(10)), 1)::Map(LowCardinality(FixedString(10)), Int8)"
       )
   case MapIPv4Int8
       extends CHType(
         "Map(IPv4, Int8)",
-        IPv4.fuzzingValues.filterNot(_.contains("::LowCardinality")).filterNot(_.contains("::Nullable")).map {
-          fuzzingValue =>
-            s"map($fuzzingValue, 1)::Map(IPv4, Int8)"
-        }
+        IPv4.baseFuzzingValues.map { fuzzingValue => s"map($fuzzingValue, 1)::Map(IPv4, Int8)" }
       )
   case MapIPv6Int8
       extends CHType(
         "Map(IPv6, Int8)",
-        IPv6.fuzzingValues.filterNot(_.contains("::LowCardinality")).filterNot(_.contains("::Nullable")).map {
-          fuzzingValue =>
-            s"map($fuzzingValue, 1)::Map(IPv6, Int8)"
-        }
+        IPv6.baseFuzzingValues.map { fuzzingValue => s"map($fuzzingValue, 1)::Map(IPv6, Int8)" }
       )
   case MapStringInt8
       extends CHType(
         "Map(String, Int8)",
-        StringType.fuzzingValues.filterNot(_.contains("::LowCardinality")).filterNot(_.contains("::Nullable")).map {
-          fuzzingValue =>
-            s"map($fuzzingValue, 1)::Map(String, Int8)"
+        StringType.baseFuzzingValues.map { fuzzingValue =>
+          s"map($fuzzingValue, 1)::Map(String, Int8)"
         } :+ "map('foo'::LowCardinality(String), 1)::Map(LowCardinality(String), Int8)"
       )
   case MapUUIDInt8
       extends CHType(
         "Map(UUID, Int8)",
-        UUID.fuzzingValues.filterNot(_.contains("::LowCardinality")).filterNot(_.contains("::Nullable")).map {
-          fuzzingValue =>
-            s"map($fuzzingValue, 1)::Map(UUID, Int8)"
-        }
+        UUID.baseFuzzingValues.map { fuzzingValue => s"map($fuzzingValue, 1)::Map(UUID, Int8)" }
       )
 
   // Tuple1
   case Tuple1Int8
       extends CHType(
         "Tuple(Int8)",
-        Seq(
-          s"tuple(${Int8.fuzzingValues.head})::Tuple(Int8)"
-        )
+        Seq(s"tuple(${Int8.fuzzingValues.head})::Tuple(Int8)")
       )
   case Tuple1Int16
       extends CHType(
         "Tuple(Int16)",
-        Seq(
-          s"tuple(${Int16.fuzzingValues.head})::Tuple(Int16)"
-        )
+        Seq(s"tuple(${Int16.fuzzingValues.head})::Tuple(Int16)")
       )
   case Tuple1Int32
       extends CHType(
         "Tuple(Int32)",
-        Seq(
-          s"tuple(${Int32.fuzzingValues.head})::Tuple(Int32)"
-        )
+        Seq(s"tuple(${Int32.fuzzingValues.head})::Tuple(Int32)")
       )
   case Tuple1Int64
       extends CHType(
         "Tuple(Int64)",
-        Seq(
-          s"tuple(${Int64.fuzzingValues.head})::Tuple(Int64)"
-        )
+        Seq(s"tuple(${Int64.fuzzingValues.head})::Tuple(Int64)")
       )
   case Tuple1Int128
       extends CHType(
         "Tuple(Int128)",
-        Seq(
-          s"tuple(${Int128.fuzzingValues.head})::Tuple(Int128)"
-        )
+        Seq(s"tuple(${Int128.fuzzingValues.head})::Tuple(Int128)")
       )
   case Tuple1Int256
       extends CHType(
         "Tuple(Int256)",
-        Seq(
-          s"tuple(${Int256.fuzzingValues.head})::Tuple(Int256)"
-        )
+        Seq(s"tuple(${Int256.fuzzingValues.head})::Tuple(Int256)")
       )
   case Tuple1UInt8
       extends CHType(
         "Tuple(UInt8)",
-        Seq(
-          s"tuple(${UInt8.fuzzingValues.head})::Tuple(UInt8)"
-        )
+        Seq(s"tuple(${UInt8.fuzzingValues.head})::Tuple(UInt8)")
       )
   case Tuple1UInt16
       extends CHType(
         "Tuple(UInt16)",
-        Seq(
-          s"tuple(${UInt16.fuzzingValues.head})::Tuple(UInt16)"
-        )
+        Seq(s"tuple(${UInt16.fuzzingValues.head})::Tuple(UInt16)")
       )
   case Tuple1UInt32
       extends CHType(
         "Tuple(UInt32)",
-        Seq(
-          s"tuple(${UInt32.fuzzingValues.head})::Tuple(UInt32)"
-        )
+        Seq(s"tuple(${UInt32.fuzzingValues.head})::Tuple(UInt32)")
       )
   case Tuple1UInt64
       extends CHType(
         "Tuple(UInt64)",
-        Seq(
-          s"tuple(${UInt64.fuzzingValues.head})::Tuple(UInt64)"
-        )
+        Seq(s"tuple(${UInt64.fuzzingValues.head})::Tuple(UInt64)")
       )
   case Tuple1UInt128
       extends CHType(
         "Tuple(UInt128)",
-        Seq(
-          s"tuple(${UInt128.fuzzingValues.head})::Tuple(UInt128)"
-        )
+        Seq(s"tuple(${UInt128.fuzzingValues.head})::Tuple(UInt128)")
       )
   case Tuple1UInt256
       extends CHType(
         "Tuple(UInt256)",
-        Seq(
-          s"tuple(${UInt256.fuzzingValues.head})::Tuple(UInt256)"
-        )
+        Seq(s"tuple(${UInt256.fuzzingValues.head})::Tuple(UInt256)")
       )
   case Tuple1Float32
       extends CHType(
         "Tuple(Float32)",
-        Seq(
-          s"tuple(${Float32.fuzzingValues.head})::Tuple(Float32)"
-        )
+        Seq(s"tuple(${Float32.fuzzingValues.head})::Tuple(Float32)")
       )
   case Tuple1Float64
       extends CHType(
         "Tuple(Float64)",
-        Seq(
-          s"tuple(${Float64.fuzzingValues.head})::Tuple(Float64)"
-        )
+        Seq(s"tuple(${Float64.fuzzingValues.head})::Tuple(Float64)")
       )
   case Tuple1Decimal32
       extends CHType(
         "Tuple(Decimal32)",
-        Seq(
-          s"tuple(${Decimal32.fuzzingValues.head})::Tuple(Decimal32(0))"
-        )
+        Seq(s"tuple(${Decimal32.fuzzingValues.head})::Tuple(Decimal32(0))")
       )
   case Tuple1Decimal64
       extends CHType(
         "Tuple(Decimal64)",
-        Seq(
-          s"tuple(${Decimal64.fuzzingValues.head})::Tuple(Decimal64(0))"
-        )
+        Seq(s"tuple(${Decimal64.fuzzingValues.head})::Tuple(Decimal64(0))")
       )
   case Tuple1Decimal128
       extends CHType(
         "Tuple(Decimal128)",
-        Seq(
-          s"tuple(${Decimal128.fuzzingValues.head})::Tuple(Decimal128(0))"
-        )
+        Seq(s"tuple(${Decimal128.fuzzingValues.head})::Tuple(Decimal128(0))")
       )
   case Tuple1Decimal256
       extends CHType(
         "Tuple(Decimal256)",
-        Seq(
-          s"tuple(${Decimal256.fuzzingValues.head})::Tuple(Decimal256(0))"
-        )
+        Seq(s"tuple(${Decimal256.fuzzingValues.head})::Tuple(Decimal256(0))")
       )
   case Tuple1Date
       extends CHType(
         "Tuple(Date)",
-        Seq(
-          s"tuple(${Date.fuzzingValues.head})::Tuple(Date)"
-        )
+        Seq(s"tuple(${Date.fuzzingValues.head})::Tuple(Date)")
       )
   case Tuple1Date32
       extends CHType(
         "Tuple(Date32)",
-        Seq(
-          s"tuple(${Date32.fuzzingValues.head})::Tuple(Date32)"
-        )
+        Seq(s"tuple(${Date32.fuzzingValues.head})::Tuple(Date32)")
       )
   case Tuple1DateTime
       extends CHType(
         "Tuple(DateTime)",
-        Seq(
-          s"tuple(${DateTime.fuzzingValues.head})::Tuple(DateTime)"
-        )
+        Seq(s"tuple(${DateTime.fuzzingValues.head})::Tuple(DateTime)")
       )
   case Tuple1DateTime64
       extends CHType(
         "Tuple(DateTime64)",
-        Seq(
-          s"tuple(${DateTime64.fuzzingValues.head})::Tuple(DateTime64)"
-        )
+        Seq(s"tuple(${DateTime64.fuzzingValues.head})::Tuple(DateTime64)")
       )
   case Tuple1IntervalNanosecond
       extends CHType("Tuple(IntervalNanosecond)", Seq("tuple(INTERVAL 1 Nanosecond)::Tuple(IntervalNanosecond)"))
@@ -1162,84 +967,62 @@ enum CHType(val name: String, val fuzzingValues: Seq[String]) {
   case Tuple1Enum
       extends CHType(
         "Tuple(Enum)",
-        Seq(
-          s"tuple('hello'::Enum('hello' = 1, 'world' = 2))::Tuple(Enum('hello' = 1, 'world' = 2))"
-        )
+        Seq(s"tuple('hello'::Enum('hello' = 1, 'world' = 2))::Tuple(Enum('hello' = 1, 'world' = 2))")
       )
   case Tuple1Enum8
       extends CHType(
         "Tuple(Enum8)",
-        Seq(
-          s"tuple('hello'::Enum8('hello' = -128, 'world' = 2))::Tuple(Enum8('hello' = -128, 'world' = 2))"
-        )
+        Seq(s"tuple('hello'::Enum8('hello' = -128, 'world' = 2))::Tuple(Enum8('hello' = -128, 'world' = 2))")
       )
   case Tuple1Enum16
       extends CHType(
         "Tuple(Enum16)",
-        Seq(
-          s"tuple('hello'::Enum16('hello' = -32768, 'world' = 2))::Tuple(Enum16('hello' = -32768, 'world' = 2))"
-        )
+        Seq(s"tuple('hello'::Enum16('hello' = -32768, 'world' = 2))::Tuple(Enum16('hello' = -32768, 'world' = 2))")
       )
   case Tuple1FixedString
       extends CHType(
         "Tuple(FixedString)",
-        Seq(
-          s"tuple('azertyuiop'::FixedString(10))::Tuple(FixedString(10))"
-        )
+        Seq(s"tuple('azertyuiop'::FixedString(10))::Tuple(FixedString(10))")
       )
   case Tuple1IPv4 extends CHType("Tuple(IPv4)", Seq(s"tuple(${IPv4.fuzzingValues.head})::Tuple(IPv4)"))
   case Tuple1IPv6 extends CHType("Tuple(IPv6)", Seq(s"tuple(${IPv6.fuzzingValues.head})::Tuple(IPv6)"))
   case Tuple1Json
       extends CHType(
         "Tuple(JSON)",
-        Seq(
-          s"tuple(${Json.fuzzingValues.head})::Tuple(JSON)"
-        )
+        Seq(s"tuple(${Json.fuzzingValues.head})::Tuple(JSON)")
       )
   // case Tuple1Nothing extends CHType("Tuple(Nullable(Nothing))", Seq("tuple(null)::Tuple(Nullable(Nothing))"))
   case Tuple1String
       extends CHType(
         "Tuple(String)",
-        Seq(
-          s"tuple(${StringType.fuzzingValues.head})::Tuple(String)"
-        )
+        Seq(s"tuple(${StringType.fuzzingValues.head})::Tuple(String)")
       )
   case Tuple1UUID
       extends CHType(
         "Tuple(UUID)",
-        Seq(
-          s"tuple(${UUID.fuzzingValues.head})::Tuple(UUID)"
-        )
+        Seq(s"tuple(${UUID.fuzzingValues.head})::Tuple(UUID)")
       )
 
   // Special
   case ArrayMapStringInt8
       extends CHType(
         "Array(Map(String, Int8))",
-        Seq(
-          s"[${MapStringInt8.fuzzingValues.head}]::Array(Map(String, Int8))"
-        )
+        Seq(s"[${MapStringInt8.fuzzingValues.head}]::Array(Map(String, Int8))")
       )
   case ArrayTuple1UInt8
       extends CHType(
         "Array(Tuple(UInt8))",
-        Seq(
-          s"[${Tuple1UInt8.fuzzingValues.head}]::Array(Tuple(UInt8))"
-        )
+        Seq(s"[${Tuple1UInt8.fuzzingValues.head}]::Array(Tuple(UInt8))")
       )
   case Tuple1ArrayUInt8
       extends CHType(
         "Tuple(Array(UInt8))",
-        Seq(
-          s"tuple(${ArrayUInt8.fuzzingValues.head})::Tuple(Array(Nullable(UInt8)))"
-        )
+        Seq(s"tuple(${ArrayUInt8.fuzzingValues.head})::Tuple(Array(Nullable(UInt8)))")
       )
   case Tuple1MapStringInt8
       extends CHType(
         "Tuple(Map(String, Int8))",
-        Seq(
-          s"tuple(${MapStringInt8.fuzzingValues.head})::Tuple(Map(String, Int8))"
-        )
+        Seq(s"tuple(${MapStringInt8.fuzzingValues.head})::Tuple(Map(String, Int8))")
       )
 }
 

@@ -36,6 +36,6 @@ object CHFunction {
       name = fuzzResult.name,
       supportedPlatforms = Seq(platform),
       signatures = fuzzResult.functions,
-      isExperimental = false // TODO
+      isExperimental = false // FIXME
     )
 }
