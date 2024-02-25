@@ -1,37 +1,85 @@
 package com.amendil
 
+import com.amendil.entities.{CHAbstractType, CHFunction, CHType}
 import com.amendil.http.CHClient
 import com.typesafe.scalalogging.Logger
 
+import java.io.{File, PrintWriter}
 import java.util.concurrent.Executors
 import scala.concurrent.{Await, ExecutionContext, Future}
 import scala.concurrent.duration.Duration
+import scala.util.Try
 
 @main def app: Unit =
   val logger = Logger("Main")
-  implicit val ec: ExecutionContext = ExecutionContext.fromExecutorService(Executors.newFixedThreadPool(2))
-  val fuzzEc: ExecutionContext = ExecutionContext.fromExecutorService(Executors.newFixedThreadPool(1))
-  val client: CHClient = CHClient(8123)
 
-  val checkFuzzingValues = Future.sequence(
-    (CHType.values.flatMap(_.fuzzingValues) ++ CHAbstractType.values.flatMap(_.fuzzingValues))
-      .map(v =>
-        client
-          .execute(s"SELECT $v")
-          .recover(err => logger.error(s"Invalid fuzzing value $v: ${err.getMessage}"))
-      )
-  )
+  implicit val ec: ExecutionContext = ExecutionContext.fromExecutorService(Executors.newFixedThreadPool(1))
+  implicit val client: CHClient = CHClient(8123)
 
-  val r = Await
-    .result(checkFuzzingValues.flatMap(_ => Fuzzer.fuzz()(client, fuzzEc)), Duration.Inf)
-    .filter(f =>
-      !f.isFunction0
-        && f.functionNTypes.isEmpty
-        && f.function1Types.isEmpty
-        && f.function2Types.isEmpty
-        && f.function3Types.isEmpty
-        && f.function4Types.isEmpty
+  val runF =
+    (for {
+      _ <- ensuringFuzzingValuesAreValid()
+
+      chVersion <- getCHVersion()
+      // functionNames <- getCHFunctions()
+      functionNames <- Future.successful(unknownFunctions)
+    } yield {
+      assume(Try { chVersion.toDouble }.isSuccess)
+
+      val pw = new PrintWriter(new File(s"res/functions_v${chVersion}.txt.part"))
+      val functionCount = functionNames.size
+
+      val functionsFuzzResultsF = ConcurrencyUtils
+        .executeInSequence(
+          functionNames.zipWithIndex,
+          (functionName: String, idx: Int) =>
+            if (idx % Math.max(functionCount / 20, 1) == 0)
+              logger.info(s"${100 * idx / functionCount}%")
+
+            Fuzzer.fuzz(functionName).map { fuzzResult =>
+              pw.write(s"${CHFunction.fromCHFunctionFuzzResult(fuzzResult, "x64").asString()}\n")
+              fuzzResult
+            }
+        )
+        .recover(_ => Seq.empty)
+
+      functionsFuzzResultsF.map { functionsFuzzResults =>
+        pw.close()
+        val functionsWithoutASignature = functionsFuzzResults.filterNot(_.atLeastOneSignatureFound()).map(_.name)
+
+        println(
+          s"""|Rate of functions with a signature found: ${functionCount - functionsWithoutASignature.size}/$functionCount
+              |Functions we were unable to determine any signature:
+              |${functionsWithoutASignature.sorted.mkString("\"", "\", \"", "\"")}""".stripMargin
+        )
+      }
+    }).flatten
+
+  Await.result(runF, Duration.Inf)
+
+def ensuringFuzzingValuesAreValid()(implicit client: CHClient, ec: ExecutionContext): Future[Unit] =
+  Future
+    .sequence(
+      (CHType.values.flatMap(_.fuzzingValues) ++ CHAbstractType.values.flatMap(_.fuzzingValues))
+        .map(v =>
+          client
+            .execute(s"SELECT $v")
+            .map(_ => None)
+            .recover(err => Some(s"$v: ${err.getMessage}"))
+        )
     )
+    .map { results =>
+      val errors = results.flatten
+      if (errors.nonEmpty)
+        throw Exception(s"Invalid fuzzing value founds.\n${errors.mkString("\n")}")
+    }
 
-  println(r.size)
-  println(r.map(_.name).sorted.mkString("\"", "\", \"", "\""))
+def getCHFunctions()(implicit client: CHClient, ec: ExecutionContext): Future[Seq[String]] =
+  client
+    .execute("SELECT name, is_aggregate FROM system.functions")
+    .map(_.data.map(_.head.asInstanceOf[String]).sorted)
+
+def getCHVersion()(implicit client: CHClient, ec: ExecutionContext): Future[String] =
+  client
+    .execute("SELECT extract(version(), '^\\d+\\.\\d+') as version")
+    .map(_.data.head.head.asInstanceOf[String])

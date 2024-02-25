@@ -1,7 +1,7 @@
 package com.amendil
 
 import com.amendil.ConcurrencyUtils.executeUntilSuccess
-import com.amendil.bo.CHFunctionFuzzResult
+import com.amendil.entities.{CHAbstractType, CHFunctionFuzzResult, CHFunctionIO, CHType}
 import com.amendil.http.CHClient
 import com.typesafe.scalalogging.StrictLogging
 
@@ -9,33 +9,13 @@ import scala.concurrent.{ExecutionContext, Future}
 import scala.util.{Failure, Success}
 
 object Fuzzer extends StrictLogging {
-  def fuzz()(implicit client: CHClient, ec: ExecutionContext): Future[Seq[CHFunctionFuzzResult]] =
-    // val functionNamesF =
-    //   client
-    //     .execute("SELECT name, is_aggregate FROM system.functions")
-    //     .map(_.data.map(_.head.asInstanceOf[String]).sorted)
-
-    for {
-      // functionNames <- functionNamesF
-      functionNames <- Future.successful(unknownFunctions)
-
-      functionCount = functionNames.size
-      res <- ConcurrencyUtils.executeInSequence(
-        functionNames.zipWithIndex,
-        (functionName: String, idx: Int) =>
-          if (idx % Math.max(functionCount / 20, 1) == 0)
-            logger.info(s"${100 * idx / functionCount}%")
-
-          Fuzzer
-            .fuzzFunctionN(CHFunctionFuzzResult(name = functionName))
-            .flatMap(Fuzzer.fuzzFunction0)
-            .flatMap(Fuzzer.fuzzFunction1)
-            .flatMap(Fuzzer.fuzzFunction2)
-            .flatMap(Fuzzer.fuzzFunction3)
-      )
-    } yield {
-      res
-    }
+  def fuzz(functionName: String)(implicit client: CHClient, ec: ExecutionContext): Future[CHFunctionFuzzResult] =
+    Fuzzer
+      .fuzzFunctionN(CHFunctionFuzzResult(name = functionName))
+      .flatMap(Fuzzer.fuzzFunction0)
+      .flatMap(Fuzzer.fuzzFunction1)
+    // .flatMap(Fuzzer.fuzzFunction2)
+    // .flatMap(Fuzzer.fuzzFunction3)
 
   private def fuzzFunctionN(
       fn: CHFunctionFuzzResult
@@ -69,8 +49,15 @@ object Fuzzer extends StrictLogging {
         }
       )
       .map { results =>
-        val validTypes = results.flatten.collect { case Success(value) => value }.toSeq
-        fn.copy(functionNTypes = validTypes)
+        val validTypes: Seq[CHFunctionIO.FunctionN] =
+          results.flatten.collect { case Success(value) =>
+            CHFunctionIO.FunctionN(
+              value,
+              CHType.UInt8 // FIXME should put the correct output type
+            )
+          }.toSeq
+
+        fn.copy(functionNs = validTypes)
       }
 
   private def fuzzFunction0(
@@ -78,80 +65,89 @@ object Fuzzer extends StrictLogging {
   )(implicit client: CHClient, ec: ExecutionContext): Future[CHFunctionFuzzResult] =
     client
       .execute(s"SELECT ${fn.name}()")
-      .map(_ => fn.copy(isFunction0 = true))
+      .map(_ =>
+        fn.copy(function0Opt = Some(CHFunctionIO.Function0(CHType.UInt8)))
+      ) // FIXME should put the correct output type
       .recover(_ => fn)
 
   private def fuzzFunction1(
       fn: CHFunctionFuzzResult
   )(implicit client: CHClient, ec: ExecutionContext): Future[CHFunctionFuzzResult] =
-    if (fn.functionNTypes.nonEmpty) {
+    if (fn.functionNs.nonEmpty) {
       Future.successful(fn)
     } else {
       fuzzFunctionNType(fn.name, 1)
         .map { list =>
           val validTypes = list.map { types =>
             types match
-              case Seq(type1) => type1
+              case Seq(type1) => CHFunctionIO.Function1(type1, CHType.UInt8) // FIXME should put the correct output type
               case _          => throw new Exception(s"Expected 1 type, found ${list.size} types")
           }
 
-          fn.copy(function1Types = validTypes)
+          fn.copy(function1s = validTypes)
         }
     }
 
   private def fuzzFunction2(
       fn: CHFunctionFuzzResult
   )(implicit client: CHClient, ec: ExecutionContext): Future[CHFunctionFuzzResult] =
-    if (fn.functionNTypes.nonEmpty) {
+    if (fn.functionNs.nonEmpty) {
       Future.successful(fn)
     } else {
       fuzzFunctionNType(fn.name, 2)
         .map { list =>
           val validTypes = list.map { types =>
             types match
-              case Seq(type1, type2) => (type1, type2)
-              case _                 => throw new Exception(s"Expected 2 types, found ${list.size} types")
+              case Seq(type1, type2) =>
+                CHFunctionIO.Function2(type1, type2, CHType.UInt8) // FIXME should put the correct output type
+              case _ => throw new Exception(s"Expected 2 types, found ${list.size} types")
           }
 
-          fn.copy(function2Types = validTypes)
+          fn.copy(function2s = validTypes)
         }
     }
 
   private def fuzzFunction3(
       fn: CHFunctionFuzzResult
   )(implicit client: CHClient, ec: ExecutionContext): Future[CHFunctionFuzzResult] =
-    if (fn.functionNTypes.nonEmpty || (fn.function1Types.nonEmpty && fn.function2Types.isEmpty)) {
+    if (fn.functionNs.nonEmpty || (fn.function1s.nonEmpty && fn.function2s.isEmpty)) {
       Future.successful(fn)
     } else {
       fuzzFunctionNType(fn.name, 3)
         .map { list =>
           val validTypes = list.map { types =>
             types match
-              case Seq(type1, type2, type3) => (type1, type2, type3)
-              case _                        => throw new Exception(s"Expected 3 types, found ${list.size} types")
+              case Seq(type1, type2, type3) =>
+                CHFunctionIO.Function3(type1, type2, type3, CHType.UInt8) // FIXME should put the correct output type
+              case _ => throw new Exception(s"Expected 3 types, found ${list.size} types")
           }
 
-          fn.copy(function3Types = validTypes)
+          fn.copy(function3s = validTypes)
         }
     }
 
   private def fuzzFunction4(
       fn: CHFunctionFuzzResult
   )(implicit client: CHClient, ec: ExecutionContext): Future[CHFunctionFuzzResult] =
-    if (
-      fn.functionNTypes.nonEmpty || ((fn.function1Types.nonEmpty || fn.function2Types.nonEmpty) && fn.function3Types.isEmpty)
-    ) {
+    if (fn.functionNs.nonEmpty || ((fn.function1s.nonEmpty || fn.function2s.nonEmpty) && fn.function3s.isEmpty)) {
       Future.successful(fn)
     } else {
       fuzzFunctionNType(fn.name, 4)
         .map { list =>
           val validTypes = list.map { types =>
             types match
-              case Seq(type1, type2, type3, type4) => (type1, type2, type3, type4)
-              case _                               => throw new Exception(s"Expected 4 types, found ${list.size} types")
+              case Seq(type1, type2, type3, type4) =>
+                CHFunctionIO.Function4(
+                  type1,
+                  type2,
+                  type3,
+                  type4,
+                  CHType.UInt8
+                ) // FIXME should put the correct output type
+              case _ => throw new Exception(s"Expected 4 types, found ${list.size} types")
           }
 
-          fn.copy(function4Types = validTypes)
+          fn.copy(function4s = validTypes)
         }
     }
 
