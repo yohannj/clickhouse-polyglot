@@ -1,6 +1,6 @@
 package com.amendil
 
-import com.amendil.ConcurrencyUtils.executeUntilSuccess
+import com.amendil.ConcurrencyUtils._
 import com.amendil.entities.{CHAbstractType, CHFunctionFuzzResult, CHFunctionIO, CHType}
 import com.amendil.http.CHClient
 import com.typesafe.scalalogging.StrictLogging
@@ -31,16 +31,23 @@ object Fuzzer extends StrictLogging {
               s"SELECT ${fn.name}($arg1, $arg1, $arg1, $arg1, $arg1, $arg1, $arg1, $arg1, $arg1, $arg1, $arg1, $arg1, $arg1, $arg1, $arg1)"
             )
             .flatMap { _ =>
-              val calls = for {
-                subType1 <- type1.chTypes
-                subArg1 = subType1.fuzzingValues.head
-              } yield {
-                client
-                  .execute(
-                    s"SELECT ${fn.name}($subArg1, $subArg1, $subArg1, $subArg1, $subArg1, $subArg1, $subArg1, $subArg1, $subArg1, $subArg1, $subArg1, $subArg1, $subArg1, $subArg1, $subArg1)"
-                  )
-                  .map(_ => Success(subType1))
-                  .recover(Failure(_))
+
+              val calls = type1.chTypes.map { subType1 =>
+                val queries = subType1.baseFuzzingValues.map { subArg1 =>
+                  s"SELECT ${fn.name}($subArg1, $subArg1, $subArg1, $subArg1, $subArg1, $subArg1, $subArg1, $subArg1, $subArg1, $subArg1, $subArg1, $subArg1, $subArg1, $subArg1, $subArg1)"
+                }
+
+                getOutputType(queries).map(outputTypeOpt =>
+                  outputTypeOpt
+                    .map(outputType => Success((subType1, outputType)))
+                    .getOrElse(
+                      Failure(
+                        new IllegalArgumentException(
+                          s"${subType1.name} is not a valid functionN argument of ${fn.name}"
+                        )
+                      )
+                    )
+                )
               }
 
               Future.sequence(calls)
@@ -50,10 +57,10 @@ object Fuzzer extends StrictLogging {
       )
       .map { results =>
         val validTypes: Seq[CHFunctionIO.FunctionN] =
-          results.flatten.collect { case Success(value) =>
+          results.flatten.collect { case Success((inputType, outputType)) =>
             CHFunctionIO.FunctionN(
-              value,
-              CHType.UInt8 // FIXME should put the correct output type
+              inputType,
+              outputType
             )
           }.toSeq
 
@@ -65,9 +72,10 @@ object Fuzzer extends StrictLogging {
   )(implicit client: CHClient, ec: ExecutionContext): Future[CHFunctionFuzzResult] =
     client
       .execute(s"SELECT ${fn.name}()")
-      .map(_ =>
-        fn.copy(function0Opt = Some(CHFunctionIO.Function0(CHType.UInt8)))
-      ) // FIXME should put the correct output type
+      .map(resp =>
+        val outputType = CHType.getByName(resp.meta.head.`type`)
+        fn.copy(function0Opt = Some(CHFunctionIO.Function0(outputType)))
+      )
       .recover(_ => fn)
 
   private def fuzzFunction1(
@@ -78,9 +86,9 @@ object Fuzzer extends StrictLogging {
     } else {
       fuzzFunctionNType(fn.name, 1)
         .map { list =>
-          val validTypes = list.map { types =>
-            types match
-              case Seq(type1) => CHFunctionIO.Function1(type1, CHType.UInt8) // FIXME should put the correct output type
+          val validTypes = list.map { (inputTypes, outputType) =>
+            inputTypes match
+              case Seq(type1) => CHFunctionIO.Function1(type1, outputType)
               case _          => throw new Exception(s"Expected 1 type, found ${list.size} types")
           }
 
@@ -96,10 +104,10 @@ object Fuzzer extends StrictLogging {
     } else {
       fuzzFunctionNType(fn.name, 2)
         .map { list =>
-          val validTypes = list.map { types =>
-            types match
+          val validTypes = list.map { (inputTypes, outputType) =>
+            inputTypes match
               case Seq(type1, type2) =>
-                CHFunctionIO.Function2(type1, type2, CHType.UInt8) // FIXME should put the correct output type
+                CHFunctionIO.Function2(type1, type2, outputType)
               case _ => throw new Exception(s"Expected 2 types, found ${list.size} types")
           }
 
@@ -115,10 +123,10 @@ object Fuzzer extends StrictLogging {
     } else {
       fuzzFunctionNType(fn.name, 3)
         .map { list =>
-          val validTypes = list.map { types =>
-            types match
+          val validTypes = list.map { (inputTypes, outputType) =>
+            inputTypes match
               case Seq(type1, type2, type3) =>
-                CHFunctionIO.Function3(type1, type2, type3, CHType.UInt8) // FIXME should put the correct output type
+                CHFunctionIO.Function3(type1, type2, type3, outputType)
               case _ => throw new Exception(s"Expected 3 types, found ${list.size} types")
           }
 
@@ -134,16 +142,16 @@ object Fuzzer extends StrictLogging {
     } else {
       fuzzFunctionNType(fn.name, 4)
         .map { list =>
-          val validTypes = list.map { types =>
-            types match
+          val validTypes = list.map { (inputTypes, outputType) =>
+            inputTypes match
               case Seq(type1, type2, type3, type4) =>
                 CHFunctionIO.Function4(
                   type1,
                   type2,
                   type3,
                   type4,
-                  CHType.UInt8
-                ) // FIXME should put the correct output type
+                  outputType
+                )
               case _ => throw new Exception(s"Expected 4 types, found ${list.size} types")
           }
 
@@ -155,13 +163,13 @@ object Fuzzer extends StrictLogging {
       fnName: String,
       argCount: Int,
       currentArgs: Seq[CHAbstractType] = Seq.empty
-  )(implicit client: CHClient, ec: ExecutionContext): Future[Seq[Seq[CHType]]] =
+  )(implicit client: CHClient, ec: ExecutionContext): Future[Seq[(Seq[CHType], CHType)]] =
     if (argCount > 0) {
       val checkF = CHAbstractType.values.toSeq.map { abstractType =>
         fuzzFunctionNType(fnName, argCount - 1, currentArgs :+ abstractType)
       }
 
-      Future.sequence(checkF).map(_.flatten.filter(_.nonEmpty))
+      Future.sequence(checkF).map(_.flatten.filter(_._1.nonEmpty))
     } else {
       val queries =
         buildFuzzingValuesArgs(currentArgs.map(_.fuzzingValues))
@@ -180,19 +188,22 @@ object Fuzzer extends StrictLogging {
       fnName: String,
       abstractTypes: Seq[CHAbstractType],
       currentArgs: Seq[CHType]
-  )(implicit client: CHClient, ec: ExecutionContext): Future[Seq[Seq[CHType]]] =
+  )(implicit client: CHClient, ec: ExecutionContext): Future[Seq[(Seq[CHType], CHType)]] =
     abstractTypes match {
       case head :: tail =>
         val checkF = head.chTypes.map { chType =>
           fuzzFunctionNType(fnName, tail, currentArgs :+ chType)
         }
 
-        Future.sequence(checkF).map(_.flatten.filter(_.nonEmpty))
-      case _ =>
-        client
-          .execute(s"SELECT $fnName(${currentArgs.map(_.fuzzingValues.head).mkString(", ")})")
-          .map { _ => Seq(currentArgs) }
-          .recover(_ => Seq.empty)
+        Future.sequence(checkF).map(_.flatten)
+      case Seq() =>
+        val queries =
+          buildFuzzingValuesArgs(currentArgs.map(_.baseFuzzingValues))
+            .map(args => s"SELECT $fnName($args)")
+
+        getOutputType(queries).map(outputTypeOpt =>
+          outputTypeOpt.map(outputType => Seq((currentArgs, outputType))).getOrElse(Nil)
+        )
     }
 
   private def buildFuzzingValuesArgs(argumentsValues: Seq[Seq[String]]): Seq[String] =
@@ -202,4 +213,23 @@ object Fuzzer extends StrictLogging {
       case head :: tail =>
         val subChoices = buildFuzzingValuesArgs(tail)
         head.flatMap(el => subChoices.map(subChoice => s"$el, $subChoice"))
+
+  private def getOutputType(
+      queries: Seq[String]
+  )(implicit client: CHClient, ec: ExecutionContext): Future[Option[CHType]] =
+    executeInParallelOnlySuccess(
+      queries,
+      query => client.execute(query)
+    ).map { responses =>
+      if (responses.isEmpty) {
+        None
+      } else {
+        val outputType =
+          responses
+            .map(resp => CHType.getByName(resp.meta.head.`type`))
+            .reduce(CHType.merge)
+
+        Some(outputType)
+      }
+    }
 }

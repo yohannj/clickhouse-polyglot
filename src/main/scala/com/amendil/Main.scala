@@ -41,10 +41,16 @@ import scala.util.Try
               fuzzResult
             }
         )
-        .recover(_ => Seq.empty)
+        .recover(err =>
+          pw.close()
+          throw err
+        )
+        .map(res =>
+          pw.close()
+          res
+        )
 
       functionsFuzzResultsF.map { functionsFuzzResults =>
-        pw.close()
         val functionsWithoutASignature = functionsFuzzResults.filterNot(_.atLeastOneSignatureFound()).map(_.name)
 
         println(

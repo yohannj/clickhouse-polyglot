@@ -1,5 +1,7 @@
 package com.amendil.entities
 
+import com.typesafe.scalalogging.StrictLogging
+
 enum CHType(
     val name: String,
     val baseFuzzingValues: Seq[String],
@@ -36,28 +38,28 @@ enum CHType(
   case Int8
       extends CHType(
         "Int8",
-        Seq("-128::Int8", "127::Int8"),
+        Seq("-128::Int8", "127::Int8", "0::Int8", "1::Int8"),
         lowCardinality = true,
         nullable = true
       )
   case Int16
       extends CHType(
         "Int16",
-        Seq("-32768::Int16", "32767::Int16"),
+        Seq("-32768::Int16", "32767::Int16", "0::Int16", "1::Int16"),
         lowCardinality = true,
         nullable = true
       )
   case Int32
       extends CHType(
         "Int32",
-        Seq("-2147483648::Int32", "2147483647::Int32"),
+        Seq("-2147483648::Int32", "2147483647::Int32", "0::Int32", "1::Int32"),
         lowCardinality = true,
         nullable = true
       )
   case Int64
       extends CHType(
         "Int64",
-        Seq("-9223372036854775808::Int64", "9223372036854775807::Int64"),
+        Seq("-9223372036854775808::Int64", "9223372036854775807::Int64", "0::Int64", "1::Int64"),
         lowCardinality = true,
         nullable = true
       )
@@ -66,7 +68,9 @@ enum CHType(
         "Int128",
         Seq(
           "-170141183460469231731687303715884105728::Int128",
-          "170141183460469231731687303715884105727::Int128"
+          "170141183460469231731687303715884105727::Int128",
+          "0::Int128",
+          "1::Int128"
         ),
         lowCardinality = true,
         nullable = true
@@ -76,7 +80,9 @@ enum CHType(
         "Int256",
         Seq(
           "-57896044618658097711785492504343953926634992332820282019728792003956564819968::Int256",
-          "57896044618658097711785492504343953926634992332820282019728792003956564819967::Int256"
+          "57896044618658097711785492504343953926634992332820282019728792003956564819967::Int256",
+          "0::Int256",
+          "1::Int256"
         ),
         lowCardinality = true,
         nullable = true
@@ -91,28 +97,28 @@ enum CHType(
   case UInt16
       extends CHType(
         "UInt16",
-        Seq("0::UInt16", "65535::UInt16"),
+        Seq("0::UInt16", "1::UInt16", "65535::UInt16"),
         lowCardinality = true,
         nullable = true
       )
   case UInt32
       extends CHType(
         "UInt32",
-        Seq("0::UInt32", "4294967295::UInt32"),
+        Seq("0::UInt32", "1::UInt32", "4294967295::UInt32"),
         lowCardinality = true,
         nullable = true
       )
   case UInt64
       extends CHType(
         "UInt64",
-        Seq("0::UInt64", "18446744073709551615::UInt64"),
+        Seq("0::UInt64", "1::UInt64", "18446744073709551615::UInt64"),
         lowCardinality = true,
         nullable = true
       )
   case UInt128
       extends CHType(
         "UInt128",
-        Seq("0::UInt128", "340282366920938463463374607431768211455::UInt128"),
+        Seq("0::UInt128", "1::UInt128", "340282366920938463463374607431768211455::UInt128"),
         lowCardinality = true,
         nullable = true
       )
@@ -121,6 +127,7 @@ enum CHType(
         "UInt256",
         Seq(
           "0::UInt256",
+          "1::UInt256",
           "115792089237316195423570985008687907853269984665640564039457584007913129639935::UInt256"
         ),
         lowCardinality = true,
@@ -130,14 +137,14 @@ enum CHType(
   case Float32
       extends CHType(
         "Float32",
-        Seq("-inf::Float32", "nan::Float32", "0.5::Float32"),
+        Seq("-inf::Float32", "nan::Float32", "0.5::Float32", "0::Float32"),
         lowCardinality = true,
         nullable = true
       )
   case Float64
       extends CHType(
         "Float64",
-        Seq("-inf::Float64", "nan::Float64", "0.5::Float64"),
+        Seq("-inf::Float64", "nan::Float64", "0.5::Float64", "0::Float64"),
         lowCardinality = true,
         nullable = true
       )
@@ -1340,4 +1347,155 @@ enum CHAbstractType(val fuzzingValues: Seq[String], val chTypes: Seq[CHType]) {
         Seq(s"tuple(${MapStringInt8.fuzzingValues.head})::Tuple(Map(String, Int8))"),
         Seq(CHType.Tuple1MapStringInt8)
       )
+}
+
+object CHType extends StrictLogging {
+
+  def getByName(name: String): CHType =
+    findByName(name).getOrElse {
+      val errMsg = s"Unable to determine CHType for $name"
+      logger.error(errMsg)
+      throw new IllegalArgumentException(errMsg)
+    }
+
+  def findByName(name: String): Option[CHType] =
+    CHType.values.find(_.name.equals(name))
+
+  def merge(type1: CHType, type2: CHType): CHType =
+    val exceptionIfUnknown = new IllegalArgumentException(s"Unable to determine higher type for $type1 and $type2")
+    if (type1 == type2) type1 // Expects both type to be identical, should be the most obvious use case
+    else if (type1 == Int8) {
+      type2 match
+        case UInt8                                   => Int16
+        case UInt16                                  => Int32
+        case UInt32                                  => Int64
+        case UInt64                                  => Int128
+        case UInt128 | UInt256                       => Int256
+        case Int16 | Int32 | Int64 | Int128 | Int256 => type2
+        case _                                       => throw exceptionIfUnknown
+    } else if (type2 == Int8) {
+      type1 match
+        case UInt8                                   => Int16
+        case UInt16                                  => Int32
+        case UInt32                                  => Int64
+        case UInt64                                  => Int128
+        case UInt128 | UInt256                       => Int256
+        case Int16 | Int32 | Int64 | Int128 | Int256 => type1
+        case _                                       => throw exceptionIfUnknown
+    } else if (type1 == Int16) {
+      type2 match
+        case UInt8                           => Int16
+        case UInt16                          => Int32
+        case UInt32                          => Int64
+        case UInt64                          => Int128
+        case UInt128 | UInt256               => Int256
+        case Int32 | Int64 | Int128 | Int256 => type2
+        case _                               => throw exceptionIfUnknown
+    } else if (type2 == Int16) {
+      type1 match
+        case UInt8                           => Int16
+        case UInt16                          => Int32
+        case UInt32                          => Int64
+        case UInt64                          => Int128
+        case UInt128 | UInt256               => Int256
+        case Int32 | Int64 | Int128 | Int256 => type1
+        case _                               => throw exceptionIfUnknown
+    } else if (type1 == Int32) {
+      type2 match
+        case UInt8 | UInt16          => Int32
+        case UInt32                  => Int64
+        case UInt64                  => Int128
+        case UInt128 | UInt256       => Int256
+        case Int64 | Int128 | Int256 => type2
+        case _                       => throw exceptionIfUnknown
+    } else if (type2 == Int32) {
+      type1 match
+        case UInt8 | UInt16          => Int32
+        case UInt32                  => Int64
+        case UInt64                  => Int128
+        case UInt128 | UInt256       => Int256
+        case Int64 | Int128 | Int256 => type1
+        case _                       => throw exceptionIfUnknown
+    } else if (type1 == Int64) {
+      type2 match
+        case UInt8 | UInt16 | UInt32 => Int64
+        case UInt64                  => Int128
+        case UInt128 | UInt256       => Int256
+        case Int128 | Int256         => type2
+        case _                       => throw exceptionIfUnknown
+    } else if (type2 == Int64) {
+      type1 match
+        case UInt8 | UInt16 | UInt32 => Int64
+        case UInt64                  => Int128
+        case UInt128 | UInt256       => Int256
+        case Int128 | Int256         => type1
+        case _                       => throw exceptionIfUnknown
+    } else if (type1 == Int128) {
+      type2 match
+        case UInt8 | UInt16 | UInt32 | UInt64 => Int128
+        case UInt128 | UInt256                => Int256
+        case Int256                           => Int256
+        case _                                => throw exceptionIfUnknown
+    } else if (type2 == Int128) {
+      type1 match
+        case UInt8 | UInt16 | UInt32 | UInt64 => Int128
+        case UInt128 | UInt256                => Int256
+        case Int256                           => Int256
+        case _                                => throw exceptionIfUnknown
+    } else if (type1 == Int256) Int256
+    else if (type2 == Int256) Int256
+    // From now on, neither type1 nor type2 can be a signed integer
+    else if (type1 == UInt8) {
+      type2 match
+        case UInt16 | UInt32 | UInt64 | UInt128 | UInt256 => type2
+        case _                                            => throw exceptionIfUnknown
+    } else if (type2 == UInt8) {
+      type1 match
+        case UInt16 | UInt32 | UInt64 | UInt128 | UInt256 => type1
+        case _                                            => throw exceptionIfUnknown
+    } else if (type1 == UInt16) {
+      type2 match
+        case UInt32 | UInt64 | UInt128 | UInt256 => type2
+        case _                                   => throw exceptionIfUnknown
+    } else if (type2 == UInt16) {
+      type1 match
+        case UInt32 | UInt64 | UInt128 | UInt256 => type1
+        case _                                   => throw exceptionIfUnknown
+    } else if (type1 == UInt32) {
+      type2 match
+        case UInt64 | UInt128 | UInt256 => type2
+        case _                          => throw exceptionIfUnknown
+    } else if (type2 == UInt32) {
+      type1 match
+        case UInt64 | UInt128 | UInt256 => type1
+        case _                          => throw exceptionIfUnknown
+    } else if (type1 == UInt64) {
+      type2 match
+        case UInt128 | UInt256 => type2
+        case _                 => throw exceptionIfUnknown
+    } else if (type2 == UInt64) {
+      type1 match
+        case UInt128 | UInt256 => type1
+        case _                 => throw exceptionIfUnknown
+    } else if (type1 == UInt128) {
+      type2 match
+        case UInt256 => type2
+        case _       => throw exceptionIfUnknown
+    } else if (type2 == UInt128) {
+      type1 match
+        case UInt256 => type1
+        case _       => throw exceptionIfUnknown
+    }
+    // From now on, neither type1 nor type2 can be an unsigned integer
+    else if (type1 == Float32) {
+      type2 match
+        case Float64 => Float64
+        case _       => throw exceptionIfUnknown
+    } else if (type2 == Float32) {
+      type1 match
+        case Float64 => Float64
+        case _       => throw exceptionIfUnknown
+    }
+    // From now on, neither type1 nor type2 can be a float number
+    else throw new IllegalArgumentException(s"Unable to determine higher type for $type1 and $type2")
 }
