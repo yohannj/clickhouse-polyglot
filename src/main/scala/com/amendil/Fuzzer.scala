@@ -11,13 +11,13 @@ import scala.util.{Failure, Success}
 object Fuzzer extends StrictLogging {
   def fuzz(functionName: String)(implicit client: CHClient, ec: ExecutionContext): Future[CHFunctionFuzzResult] =
     Fuzzer
-      .fuzzFunctionN(CHFunctionFuzzResult(name = functionName))
+      .fuzzFunction0N(CHFunctionFuzzResult(name = functionName))
       // .flatMap(Fuzzer.fuzzFunction0)
       // .flatMap(Fuzzer.fuzzFunction1)
-      // .flatMap(Fuzzer.fuzzFunction2)
-      .flatMap(Fuzzer.fuzzFunction3)
+      .flatMap(Fuzzer.fuzzFunction2)
+    // .flatMap(Fuzzer.fuzzFunction3)
 
-  private def fuzzFunctionN(
+  private def fuzzFunction0N(
       fn: CHFunctionFuzzResult
   )(implicit client: CHClient, ec: ExecutionContext): Future[CHFunctionFuzzResult] =
     Future
@@ -49,15 +49,15 @@ object Fuzzer extends StrictLogging {
         }
       )
       .map { results =>
-        val validTypes: Seq[CHFunctionIO.FunctionN] =
+        val validTypes: Seq[CHFunctionIO.Function0N] =
           results.flatten.collect { case Success((inputType, outputType)) =>
-            CHFunctionIO.FunctionN(
+            CHFunctionIO.Function0N(
               inputType,
               outputType
             )
           }.toSeq
 
-        fn.copy(functionNs = validTypes)
+        fn.copy(function0Ns = validTypes)
       }
 
   private def fuzzFunction0(
@@ -74,10 +74,10 @@ object Fuzzer extends StrictLogging {
   private def fuzzFunction1(
       fn: CHFunctionFuzzResult
   )(implicit client: CHClient, ec: ExecutionContext): Future[CHFunctionFuzzResult] =
-    if (fn.functionNs.nonEmpty) {
+    if (fn.function0Ns.nonEmpty) {
       Future.successful(fn)
     } else {
-      fuzzFunctionNType(fn.name, 1)
+      fuzzFunctionType(fn.name, argCount = 1)
         .map { list =>
           val validTypes = list.map { (inputTypes, outputType) =>
             inputTypes match
@@ -92,10 +92,10 @@ object Fuzzer extends StrictLogging {
   private def fuzzFunction2(
       fn: CHFunctionFuzzResult
   )(implicit client: CHClient, ec: ExecutionContext): Future[CHFunctionFuzzResult] =
-    if (fn.functionNs.nonEmpty) {
+    if (fn.function0Ns.nonEmpty) {
       Future.successful(fn)
     } else {
-      fuzzFunctionNType(fn.name, 2)
+      fuzzFunctionType(fn.name, argCount = 2)
         .map { list =>
           val validTypes = list.map { (inputTypes, outputType) =>
             inputTypes match
@@ -112,13 +112,13 @@ object Fuzzer extends StrictLogging {
       fn: CHFunctionFuzzResult
   )(implicit client: CHClient, ec: ExecutionContext): Future[CHFunctionFuzzResult] =
     if (
-      fn.functionNs.nonEmpty || (fn.function1s
+      fn.function0Ns.nonEmpty || (fn.function1s
         .filterNot(_.arg1.name.startsWith("Tuple"))
         .nonEmpty && fn.function2s.isEmpty)
     ) {
       Future.successful(fn)
     } else {
-      fuzzFunctionNType(fn.name, 3)
+      fuzzFunctionType(fn.name, argCount = 3)
         .map { list =>
           val validTypes = list.map { (inputTypes, outputType) =>
             inputTypes match
@@ -135,13 +135,13 @@ object Fuzzer extends StrictLogging {
       fn: CHFunctionFuzzResult
   )(implicit client: CHClient, ec: ExecutionContext): Future[CHFunctionFuzzResult] =
     if (
-      fn.functionNs.nonEmpty || ((fn.function1s.filterNot(_.arg1.name.startsWith("Tuple")).nonEmpty || fn.function2s
+      fn.function0Ns.nonEmpty || ((fn.function1s.filterNot(_.arg1.name.startsWith("Tuple")).nonEmpty || fn.function2s
         .filterNot(f => f.arg1.name.startsWith("Tuple") || f.arg2.name.startsWith("Tuple"))
         .nonEmpty) && fn.function3s.isEmpty)
     ) {
       Future.successful(fn)
     } else {
-      fuzzFunctionNType(fn.name, 4)
+      fuzzFunctionType(fn.name, argCount = 4)
         .map { list =>
           val validTypes = list.map { (inputTypes, outputType) =>
             inputTypes match
@@ -160,7 +160,7 @@ object Fuzzer extends StrictLogging {
         }
     }
 
-  private def fuzzFunctionNType(
+  private def fuzzFunctionType(
       fnName: String,
       argCount: Int
   )(implicit client: CHClient, ec: ExecutionContext): Future[Seq[(Seq[CHType], String)]] =

@@ -12,8 +12,8 @@ sealed trait CHFunctionIO {
 }
 
 object CHFunctionIO {
-  case class FunctionN(argN: CHType, output: String) extends CHFunctionIO {
-    val kind = "functionN"
+  case class Function0N(argN: CHType, output: String) extends CHFunctionIO {
+    val kind = "function0N"
     val input = Seq(argN)
   }
   case class Function0(output: String) extends CHFunctionIO {
