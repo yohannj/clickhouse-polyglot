@@ -12,10 +12,10 @@ object Fuzzer extends StrictLogging {
   def fuzz(functionName: String)(implicit client: CHClient, ec: ExecutionContext): Future[CHFunctionFuzzResult] =
     Fuzzer
       .fuzzFunctionN(CHFunctionFuzzResult(name = functionName))
-      .flatMap(Fuzzer.fuzzFunction0)
-      .flatMap(Fuzzer.fuzzFunction1)
-    // .flatMap(Fuzzer.fuzzFunction2)
-    // .flatMap(Fuzzer.fuzzFunction3)
+      // .flatMap(Fuzzer.fuzzFunction0)
+      // .flatMap(Fuzzer.fuzzFunction1)
+      // .flatMap(Fuzzer.fuzzFunction2)
+      .flatMap(Fuzzer.fuzzFunction3)
 
   private def fuzzFunctionN(
       fn: CHFunctionFuzzResult
@@ -33,21 +33,14 @@ object Fuzzer extends StrictLogging {
             .flatMap { _ =>
 
               val calls = type1.chTypes.map { subType1 =>
-                val queries = subType1.baseFuzzingValues.map { subArg1 =>
+                val queries = subType1.fuzzingValues.map { subArg1 =>
                   s"SELECT ${fn.name}($subArg1, $subArg1, $subArg1, $subArg1, $subArg1, $subArg1, $subArg1, $subArg1, $subArg1, $subArg1, $subArg1, $subArg1, $subArg1, $subArg1, $subArg1)"
                 }
 
-                getOutputType(queries).map(outputTypeOpt =>
-                  outputTypeOpt
-                    .map(outputType => Success((subType1, outputType)))
-                    .getOrElse(
-                      Failure(
-                        new IllegalArgumentException(
-                          s"${subType1.name} is not a valid functionN argument of ${fn.name}"
-                        )
-                      )
-                    )
-                )
+                executeInParallelOnlySuccess(
+                  queries,
+                  query => client.execute(query).map(_.meta.head.`type`)
+                ).map(_.reduce(CHType.merge)).map(outputType => Success((subType1, outputType)))
               }
 
               Future.sequence(calls)
@@ -73,7 +66,7 @@ object Fuzzer extends StrictLogging {
     client
       .execute(s"SELECT ${fn.name}()")
       .map(resp =>
-        val outputType = CHType.getByName(resp.meta.head.`type`)
+        val outputType = resp.meta.head.`type`
         fn.copy(function0Opt = Some(CHFunctionIO.Function0(outputType)))
       )
       .recover(_ => fn)
@@ -118,7 +111,11 @@ object Fuzzer extends StrictLogging {
   private def fuzzFunction3(
       fn: CHFunctionFuzzResult
   )(implicit client: CHClient, ec: ExecutionContext): Future[CHFunctionFuzzResult] =
-    if (fn.functionNs.nonEmpty || (fn.function1s.nonEmpty && fn.function2s.isEmpty)) {
+    if (
+      fn.functionNs.nonEmpty || (fn.function1s
+        .filterNot(_.arg1.name.startsWith("Tuple"))
+        .nonEmpty && fn.function2s.isEmpty)
+    ) {
       Future.successful(fn)
     } else {
       fuzzFunctionNType(fn.name, 3)
@@ -137,7 +134,11 @@ object Fuzzer extends StrictLogging {
   private def fuzzFunction4(
       fn: CHFunctionFuzzResult
   )(implicit client: CHClient, ec: ExecutionContext): Future[CHFunctionFuzzResult] =
-    if (fn.functionNs.nonEmpty || ((fn.function1s.nonEmpty || fn.function2s.nonEmpty) && fn.function3s.isEmpty)) {
+    if (
+      fn.functionNs.nonEmpty || ((fn.function1s.filterNot(_.arg1.name.startsWith("Tuple")).nonEmpty || fn.function2s
+        .filterNot(f => f.arg1.name.startsWith("Tuple") || f.arg2.name.startsWith("Tuple"))
+        .nonEmpty) && fn.function3s.isEmpty)
+    ) {
       Future.successful(fn)
     } else {
       fuzzFunctionNType(fn.name, 4)
@@ -161,75 +162,74 @@ object Fuzzer extends StrictLogging {
 
   private def fuzzFunctionNType(
       fnName: String,
+      argCount: Int
+  )(implicit client: CHClient, ec: ExecutionContext): Future[Seq[(Seq[CHType], String)]] =
+    val validCHAbstractTypeCombinationsF =
+      executeInParallelOnlySuccess(
+        generateCHAbstractTypeCombinations(argCount),
+        abstractTypes => {
+          executeInSequenceUntilSuccess(
+            buildFuzzingValuesArgs(abstractTypes.map(_.fuzzingValues)).map(args => s"SELECT $fnName($args)"),
+            client.execute
+          ).map(if (_) Some(abstractTypes) else None)
+        },
+        maxConcurrency = 40
+      ).map(_.flatten)
+
+    validCHAbstractTypeCombinationsF.flatMap { validCHAbstractTypeCombinations =>
+      val checksToDo =
+        validCHAbstractTypeCombinations
+          .flatMap(generateCHTypeCombinations(_))
+          .flatMap { chTypesArgs =>
+            generateAllQueries(fnName, chTypesArgs).map(query => (chTypesArgs, query))
+          }
+
+      executeInParallelOnlySuccess(
+        checksToDo,
+        (chTypesArgs, query) => client.execute(query).map(resp => (chTypesArgs, resp.meta.head.`type`)),
+        maxConcurrency = 40
+      ).map { results =>
+        results.groupBy(_._1).view.mapValues(_.map(_._2).reduce(CHType.merge)).toSeq
+      }
+    }
+
+  private def generateCHAbstractTypeCombinations(
       argCount: Int,
       currentArgs: Seq[CHAbstractType] = Seq.empty
-  )(implicit client: CHClient, ec: ExecutionContext): Future[Seq[(Seq[CHType], CHType)]] =
+  ): Seq[Seq[CHAbstractType]] =
     if (argCount > 0) {
-      val checkF = CHAbstractType.values.toSeq.map { abstractType =>
-        fuzzFunctionNType(fnName, argCount - 1, currentArgs :+ abstractType)
-      }
-
-      Future.sequence(checkF).map(_.flatten.filter(_._1.nonEmpty))
+      CHAbstractType.values.toSeq.map { abstractType =>
+        generateCHAbstractTypeCombinations(argCount - 1, currentArgs :+ abstractType)
+      }.flatten
     } else {
-      val queries =
-        buildFuzzingValuesArgs(currentArgs.map(_.fuzzingValues))
-          .map(args => s"SELECT $fnName($args)")
-
-      executeUntilSuccess(queries, client.execute).flatMap { foundAValidQuery =>
-        if (foundAValidQuery) {
-          fuzzFunctionNType(fnName, currentArgs, Seq.empty)
-        } else {
-          Future.successful(Seq.empty)
-        }
-      }
+      Seq(currentArgs)
     }
 
-  private def fuzzFunctionNType(
-      fnName: String,
+  private def generateCHTypeCombinations(
       abstractTypes: Seq[CHAbstractType],
-      currentArgs: Seq[CHType]
-  )(implicit client: CHClient, ec: ExecutionContext): Future[Seq[(Seq[CHType], CHType)]] =
+      currentArgs: Seq[CHType] = Seq.empty
+  ): Seq[Seq[CHType]] =
     abstractTypes match {
-      case head :: tail =>
-        val checkF = head.chTypes.map { chType =>
-          fuzzFunctionNType(fnName, tail, currentArgs :+ chType)
-        }
-
-        Future.sequence(checkF).map(_.flatten)
-      case Seq() =>
-        val queries =
-          buildFuzzingValuesArgs(currentArgs.map(_.baseFuzzingValues))
-            .map(args => s"SELECT $fnName($args)")
-
-        getOutputType(queries).map(outputTypeOpt =>
-          outputTypeOpt.map(outputType => Seq((currentArgs, outputType))).getOrElse(Nil)
-        )
+      case Seq(head, tail @ _*) =>
+        head.chTypes
+          .map(chType => generateCHTypeCombinations(tail, currentArgs :+ chType))
+          .flatten
+      case Seq() => Seq(currentArgs)
     }
+
+  private def generateAllQueries(
+      fnName: String,
+      args: Seq[CHType]
+  ): Seq[String] =
+    buildFuzzingValuesArgs(args.map(_.fuzzingValues))
+      .map(args => s"SELECT $fnName($args)")
 
   private def buildFuzzingValuesArgs(argumentsValues: Seq[Seq[String]]): Seq[String] =
     argumentsValues match
       case Seq()   => throw IllegalArgumentException("Tried to fuzz an argument without any value")
       case Seq(el) => el
-      case head :: tail =>
+      case Seq(head, tail @ _*) =>
         val subChoices = buildFuzzingValuesArgs(tail)
         head.flatMap(el => subChoices.map(subChoice => s"$el, $subChoice"))
 
-  private def getOutputType(
-      queries: Seq[String]
-  )(implicit client: CHClient, ec: ExecutionContext): Future[Option[CHType]] =
-    executeInParallelOnlySuccess(
-      queries,
-      query => client.execute(query)
-    ).map { responses =>
-      if (responses.isEmpty) {
-        None
-      } else {
-        val outputType =
-          responses
-            .map(resp => CHType.getByName(resp.meta.head.`type`))
-            .reduce(CHType.merge)
-
-        Some(outputType)
-      }
-    }
 }

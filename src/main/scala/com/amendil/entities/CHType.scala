@@ -4,64 +4,30 @@ import com.typesafe.scalalogging.StrictLogging
 
 enum CHType(
     val name: String,
-    val baseFuzzingValues: Seq[String],
-    lowCardinality: Boolean = false,
-    nullable: Boolean = false
+    val fuzzingValues: Seq[String],
+    val aliases: Seq[String] = Nil
 ) {
-
-  def fuzzingValues = {
-    // Build a sample fuzzingValue and fetch its type
-    val firstFuzzingValue = baseFuzzingValues.head
-    val typeIndex = firstFuzzingValue.lastIndexOf("::")
-    val fuzzingValueWithoutType = firstFuzzingValue.substring(0, typeIndex)
-    val fuzzingType = firstFuzzingValue.substring(typeIndex + "::".size)
-
-    // Handle lowCardinality
-    val lowCardinalityValues: Seq[String] =
-      if (lowCardinality) {
-        Seq(s"$fuzzingValueWithoutType::LowCardinality($fuzzingType)")
-      } else Nil
-
-    // Handle nullable
-    val nullableFuzzingValues: Seq[String] =
-      if (nullable) {
-        Seq(
-          s"$fuzzingValueWithoutType::Nullable($fuzzingType)",
-          s"null::Nullable($fuzzingType)"
-        )
-      } else Nil
-
-    baseFuzzingValues ++ lowCardinalityValues ++ nullableFuzzingValues
-  }
 
   // Numbers
   case Int8
       extends CHType(
         "Int8",
-        Seq("-128::Int8", "127::Int8", "0::Int8", "1::Int8"),
-        lowCardinality = true,
-        nullable = true
+        Seq("-128::Int8", "127::Int8", "0::Int8", "1::Int8")
       )
   case Int16
       extends CHType(
         "Int16",
-        Seq("-32768::Int16", "32767::Int16", "0::Int16", "1::Int16"),
-        lowCardinality = true,
-        nullable = true
+        Seq("-32768::Int16", "32767::Int16", "0::Int16", "1::Int16")
       )
   case Int32
       extends CHType(
         "Int32",
-        Seq("-2147483648::Int32", "2147483647::Int32", "0::Int32", "1::Int32"),
-        lowCardinality = true,
-        nullable = true
+        Seq("-2147483648::Int32", "2147483647::Int32", "0::Int32", "1::Int32")
       )
   case Int64
       extends CHType(
         "Int64",
-        Seq("-9223372036854775808::Int64", "9223372036854775807::Int64", "0::Int64", "1::Int64"),
-        lowCardinality = true,
-        nullable = true
+        Seq("-9223372036854775808::Int64", "9223372036854775807::Int64", "0::Int64", "1::Int64")
       )
   case Int128
       extends CHType(
@@ -71,9 +37,7 @@ enum CHType(
           "170141183460469231731687303715884105727::Int128",
           "0::Int128",
           "1::Int128"
-        ),
-        lowCardinality = true,
-        nullable = true
+        )
       )
   case Int256
       extends CHType(
@@ -83,44 +47,32 @@ enum CHType(
           "57896044618658097711785492504343953926634992332820282019728792003956564819967::Int256",
           "0::Int256",
           "1::Int256"
-        ),
-        lowCardinality = true,
-        nullable = true
+        )
       )
   case UInt8
       extends CHType(
         "UInt8",
-        Seq("0::UInt8", "1::UInt8", "255::UInt8"),
-        lowCardinality = true,
-        nullable = true
+        Seq("0::UInt8", "1::UInt8", "255::UInt8")
       )
   case UInt16
       extends CHType(
         "UInt16",
-        Seq("0::UInt16", "1::UInt16", "65535::UInt16"),
-        lowCardinality = true,
-        nullable = true
+        Seq("0::UInt16", "1::UInt16", "65535::UInt16")
       )
   case UInt32
       extends CHType(
         "UInt32",
-        Seq("0::UInt32", "1::UInt32", "4294967295::UInt32"),
-        lowCardinality = true,
-        nullable = true
+        Seq("0::UInt32", "1::UInt32", "4294967295::UInt32")
       )
   case UInt64
       extends CHType(
         "UInt64",
-        Seq("0::UInt64", "1::UInt64", "18446744073709551615::UInt64"),
-        lowCardinality = true,
-        nullable = true
+        Seq("0::UInt64", "1::UInt64", "18446744073709551615::UInt64")
       )
   case UInt128
       extends CHType(
         "UInt128",
-        Seq("0::UInt128", "1::UInt128", "340282366920938463463374607431768211455::UInt128"),
-        lowCardinality = true,
-        nullable = true
+        Seq("0::UInt128", "1::UInt128", "340282366920938463463374607431768211455::UInt128")
       )
   case UInt256
       extends CHType(
@@ -129,24 +81,18 @@ enum CHType(
           "0::UInt256",
           "1::UInt256",
           "115792089237316195423570985008687907853269984665640564039457584007913129639935::UInt256"
-        ),
-        lowCardinality = true,
-        nullable = true
+        )
       )
 
   case Float32
       extends CHType(
         "Float32",
-        Seq("-inf::Float32", "nan::Float32", "0.5::Float32", "0::Float32"),
-        lowCardinality = true,
-        nullable = true
+        Seq("-inf::Float32", "nan::Float32", "0.5::Float32", "0::Float32")
       )
   case Float64
       extends CHType(
         "Float64",
-        Seq("-inf::Float64", "nan::Float64", "0.5::Float64", "0::Float64"),
-        lowCardinality = true,
-        nullable = true
+        Seq("-inf::Float64", "nan::Float64", "0.5::Float64", "0::Float64")
       )
   case Decimal32
       extends CHType(
@@ -157,7 +103,7 @@ enum CHType(
           "-0.999999999::Decimal32(9)",
           "0.999999999::Decimal32(9)"
         ),
-        nullable = true
+        aliases = Seq("Decimal(9, 0)", "Decimal(9, 9)")
       )
   case Decimal64
       extends CHType(
@@ -172,7 +118,7 @@ enum CHType(
           "9999999999::Decimal",
           "999999999999999999::Decimal"
         ),
-        nullable = true
+        aliases = Seq("Decimal(18, 0)", "Decimal(18, 18)", "Decimal(10, 0)")
       )
   case Decimal128
       extends CHType(
@@ -183,7 +129,7 @@ enum CHType(
           "-0.99999999999999999999999999999999999999::Decimal128(38)",
           "0.99999999999999999999999999999999999999::Decimal128(38)"
         ),
-        nullable = true
+        aliases = Seq("Decimal(38, 0)", "Decimal(38, 9)", "Decimal(38, 18)", "Decimal(38, 38)")
       )
   case Decimal256
       extends CHType(
@@ -202,23 +148,19 @@ enum CHType(
           "9999999999999999999999999999999999999999::Decimal(40)",
           "9999999999999999999999999999999999999999999999999999999999999999999999999999::Decimal(40)"
         ),
-        nullable = true
+        aliases = Seq("Decimal(39, 38)", "Decimal(40, 0)", "Decimal(76, 0)", "Decimal(76, 38)", "Decimal(76, 76)")
       )
 
   // Date
   case Date
       extends CHType(
         "Date",
-        Seq("'1970-01-01'::Date", "'2149-06-06'::Date"),
-        lowCardinality = true,
-        nullable = true
+        Seq("'1970-01-01'::Date", "'2149-06-06'::Date")
       )
   case Date32
       extends CHType(
         "Date32",
-        Seq("'1900-01-01'::Date32", "'2299-12-31'::Date32"),
-        lowCardinality = true,
-        nullable = true
+        Seq("'1900-01-01'::Date32", "'2299-12-31'::Date32")
       )
   case DateTime
       extends CHType(
@@ -229,8 +171,7 @@ enum CHType(
           "'1970-01-01 00:00:00'::DateTime",
           "'2106-02-07 06:28:15'::DateTime"
         ),
-        lowCardinality = true,
-        nullable = true
+        aliases = Seq("DateTime('Asia/Istanbul')")
       )
   case DateTime64
       extends CHType(
@@ -247,73 +188,70 @@ enum CHType(
           "'2299-12-31 23:59:59.99999999'::DateTime64(8)",
           "'2262-04-11 23:47:16.854775807'::DateTime64(9)"
         ),
-        nullable = true
+        aliases = Seq(
+          "DateTime64(0, 'Asia/Istanbul')",
+          "DateTime64(9, 'Asia/Istanbul')",
+          "DateTime64(8, 'Asia/Istanbul')",
+          "DateTime64(0)",
+          "DateTime64(1)",
+          "DateTime64(8)",
+          "DateTime64(9)"
+        )
       )
   case IntervalNanosecond
       extends CHType(
         "IntervalNanosecond",
-        Seq("INTERVAL 1 Nanosecond::IntervalNanosecond"),
-        nullable = true
+        Seq("INTERVAL 1 Nanosecond::IntervalNanosecond")
       )
   case IntervalMicrosecond
       extends CHType(
         "IntervalMicrosecond",
-        Seq("INTERVAL 1 Microsecond::IntervalMicrosecond"),
-        nullable = true
+        Seq("INTERVAL 1 Microsecond::IntervalMicrosecond")
       )
   case IntervalMillisecond
       extends CHType(
         "IntervalMillisecond",
-        Seq("INTERVAL 1 Millisecond::IntervalMillisecond"),
-        nullable = true
+        Seq("INTERVAL 1 Millisecond::IntervalMillisecond")
       )
   case IntervalSecond
       extends CHType(
         "IntervalSecond",
-        Seq("INTERVAL 1 Second::IntervalSecond"),
-        nullable = true
+        Seq("INTERVAL 1 Second::IntervalSecond")
       )
   case IntervalMinute
       extends CHType(
         "IntervalMinute",
-        Seq("INTERVAL 1 Minute::IntervalMinute"),
-        nullable = true
+        Seq("INTERVAL 1 Minute::IntervalMinute")
       )
   case IntervalHour
       extends CHType(
         "IntervalHour",
-        Seq("INTERVAL 1 Hour::IntervalHour"),
-        nullable = true
+        Seq("INTERVAL 1 Hour::IntervalHour")
       )
   case IntervalDay
       extends CHType(
         "IntervalDay",
-        Seq("INTERVAL 1 Day::IntervalDay"),
-        nullable = true
+        Seq("INTERVAL 1 Day::IntervalDay")
       )
   case IntervalWeek
       extends CHType(
         "IntervalWeek",
-        Seq("INTERVAL 1 Week::IntervalWeek"),
-        nullable = true
+        Seq("INTERVAL 1 Week::IntervalWeek")
       )
   case IntervalMonth
       extends CHType(
         "IntervalMonth",
-        Seq("INTERVAL 1 Month::IntervalMonth"),
-        nullable = true
+        Seq("INTERVAL 1 Month::IntervalMonth")
       )
   case IntervalQuarter
       extends CHType(
         "IntervalQuarter",
-        Seq("INTERVAL 1 Quarter::IntervalQuarter"),
-        nullable = true
+        Seq("INTERVAL 1 Quarter::IntervalQuarter")
       )
   case IntervalYear
       extends CHType(
         "IntervalYear",
-        Seq("INTERVAL 1 Year::IntervalYear"),
-        nullable = true
+        Seq("INTERVAL 1 Year::IntervalYear")
       )
 
   // Geo
@@ -339,8 +277,7 @@ enum CHType(
         Seq(
           "'hello'::Enum('hello' = 1, 'world' = 2)",
           "'hello'::Enum('hello', 'world')"
-        ),
-        nullable = true
+        )
       )
   case Enum8
       extends CHType(
@@ -350,7 +287,11 @@ enum CHType(
           "'hello'::Enum8('hello' = 127, 'world' = 2)",
           "'hello'::Enum8('hello', 'world')"
         ),
-        nullable = true
+        aliases = Seq(
+          "Enum8('hello' = -128, 'world' = 2)",
+          "Enum8('world' = 2, 'hello' = 127)",
+          "Enum8('hello' = 1, 'world' = 2)"
+        )
       )
   case Enum16
       extends CHType(
@@ -360,16 +301,19 @@ enum CHType(
           "'hello'::Enum16('hello' = 32767, 'world' = 2)",
           "'hello'::Enum16('hello', 'world')"
         ),
-        nullable = true
+        aliases = Seq(
+          "Enum16('hello' = -32768, 'world' = 2)",
+          "Enum16('world' = 2, 'hello' = 32767)",
+          "Enum16('hello' = 1, 'world' = 2)"
+        )
       )
   case FixedString
       extends CHType(
         "FixedString",
         Seq("'azertyuiop'::FixedString(10)", "''::FixedString(1)"),
-        lowCardinality = true,
-        nullable = true
+        aliases = Seq("FixedString(1)", "FixedString(10)", "FixedString(255)", "FixedString(65535)")
       )
-  case IPv4 extends CHType("IPv4", Seq("'116.106.34.242'::IPv4"), nullable = true)
+  case IPv4 extends CHType("IPv4", Seq("'116.106.34.242'::IPv4"))
   case IPv6
       extends CHType(
         "IPv6",
@@ -377,27 +321,479 @@ enum CHType(
           "'2001:44c8:129:2632:33:0:252:2'::IPv6",
           "'2a02:e980:1e::1'::IPv6",
           "'116.106.34.242'::IPv6"
-        ),
-        nullable = true
+        )
       )
   case Json
       extends CHType(
         "JSON",
         Seq("""'{"a": 1, "b": { "c": "foo", "d": [1, 2, 3] }, "c": null}'::JSON""")
       )
-  // case Nothing extends CHType("Nothing", Seq("null::Nullable(Nothing)"))
   case StringType
       extends CHType(
         "String",
-        Seq("'foo'::String", "''::String"),
-        lowCardinality = true,
-        nullable = true
+        Seq("'foo'::String", "''::String")
       )
   case UUID
       extends CHType(
         "UUID",
-        Seq("'00000000-0000-0000-0000-000000000000'::UUID", "'61f0c404-5cb3-11e7-907b-a6006ad3dba0'::UUID"),
-        nullable = true
+        Seq("'00000000-0000-0000-0000-000000000000'::UUID", "'61f0c404-5cb3-11e7-907b-a6006ad3dba0'::UUID")
+      )
+
+  // LowCardinality
+  case LowCardinalityInt8
+      extends CHType(
+        "LowCardinality(Int8)",
+        CHType.lowCardinalityFuzzingValues(Int8.fuzzingValues)
+      )
+  case LowCardinalityInt16
+      extends CHType(
+        "LowCardinality(Int16)",
+        CHType.lowCardinalityFuzzingValues(Int16.fuzzingValues)
+      )
+  case LowCardinalityInt32
+      extends CHType(
+        "LowCardinality(Int32)",
+        CHType.lowCardinalityFuzzingValues(Int32.fuzzingValues)
+      )
+  case LowCardinalityInt64
+      extends CHType(
+        "LowCardinality(Int64)",
+        CHType.lowCardinalityFuzzingValues(Int64.fuzzingValues)
+      )
+  case LowCardinalityInt128
+      extends CHType(
+        "LowCardinality(Int128)",
+        CHType.lowCardinalityFuzzingValues(Int128.fuzzingValues)
+      )
+  case LowCardinalityInt256
+      extends CHType(
+        "LowCardinality(Int256)",
+        CHType.lowCardinalityFuzzingValues(Int256.fuzzingValues)
+      )
+  case LowCardinalityUInt8
+      extends CHType(
+        "LowCardinality(UInt8)",
+        CHType.lowCardinalityFuzzingValues(UInt8.fuzzingValues)
+      )
+  case LowCardinalityUInt16
+      extends CHType(
+        "LowCardinality(UInt16)",
+        CHType.lowCardinalityFuzzingValues(UInt16.fuzzingValues)
+      )
+  case LowCardinalityUInt32
+      extends CHType(
+        "LowCardinality(UInt32)",
+        CHType.lowCardinalityFuzzingValues(UInt32.fuzzingValues)
+      )
+  case LowCardinalityUInt64
+      extends CHType(
+        "LowCardinality(UInt64)",
+        CHType.lowCardinalityFuzzingValues(UInt64.fuzzingValues)
+      )
+  case LowCardinalityUInt128
+      extends CHType(
+        "LowCardinality(UInt128)",
+        CHType.lowCardinalityFuzzingValues(UInt128.fuzzingValues)
+      )
+  case LowCardinalityUInt256
+      extends CHType(
+        "LowCardinality(UInt256)",
+        CHType.lowCardinalityFuzzingValues(UInt256.fuzzingValues)
+      )
+
+  case LowCardinalityFloat32
+      extends CHType(
+        "LowCardinality(Float32)",
+        CHType.lowCardinalityFuzzingValues(Float32.fuzzingValues)
+      )
+  case LowCardinalityFloat64
+      extends CHType(
+        "LowCardinality(Float64)",
+        CHType.lowCardinalityFuzzingValues(Float64.fuzzingValues)
+      )
+
+  case LowCardinalityDate
+      extends CHType(
+        "LowCardinality(Date)",
+        CHType.lowCardinalityFuzzingValues(Date.fuzzingValues)
+      )
+  case LowCardinalityDate32
+      extends CHType(
+        "LowCardinality(Date32)",
+        CHType.lowCardinalityFuzzingValues(Date32.fuzzingValues)
+      )
+  case LowCardinalityDateTime
+      extends CHType(
+        "LowCardinality(DateTime)",
+        CHType.lowCardinalityFuzzingValues(DateTime.fuzzingValues),
+        aliases = Seq("LowCardinality(DateTime('Asia/Istanbul'))")
+      )
+  case LowCardinalityFixedString
+      extends CHType(
+        "LowCardinality(FixedString)",
+        CHType.lowCardinalityFuzzingValues(FixedString.fuzzingValues),
+        aliases = Seq(
+          "LowCardinality(FixedString(1))",
+          "LowCardinality(FixedString(10))",
+          "LowCardinality(FixedString(255))",
+          "LowCardinality(FixedString(65535))"
+        )
+      )
+  case LowCardinalityString
+      extends CHType(
+        "LowCardinality(String)",
+        CHType.lowCardinalityFuzzingValues(StringType.fuzzingValues)
+      )
+
+  // LowCardinality(Nullable)
+  case LowCardinalityNullableInt8
+      extends CHType(
+        "LowCardinality(Nullable(Int8))",
+        CHType.lowCardinalityFuzzingValues(CHType.nullableFuzzingValues(Int8.fuzzingValues))
+      )
+  case LowCardinalityNullableInt16
+      extends CHType(
+        "LowCardinality(Nullable(Int16))",
+        CHType.lowCardinalityFuzzingValues(CHType.nullableFuzzingValues(Int16.fuzzingValues))
+      )
+  case LowCardinalityNullableInt32
+      extends CHType(
+        "LowCardinality(Nullable(Int32))",
+        CHType.lowCardinalityFuzzingValues(CHType.nullableFuzzingValues(Int32.fuzzingValues))
+      )
+  case LowCardinalityNullableInt64
+      extends CHType(
+        "LowCardinality(Nullable(Int64))",
+        CHType.lowCardinalityFuzzingValues(CHType.nullableFuzzingValues(Int64.fuzzingValues))
+      )
+  case LowCardinalityNullableInt128
+      extends CHType(
+        "LowCardinality(Nullable(Int128))",
+        CHType.lowCardinalityFuzzingValues(CHType.nullableFuzzingValues(Int128.fuzzingValues))
+      )
+  case LowCardinalityNullableInt256
+      extends CHType(
+        "LowCardinality(Nullable(Int256))",
+        CHType.lowCardinalityFuzzingValues(CHType.nullableFuzzingValues(Int256.fuzzingValues))
+      )
+  case LowCardinalityNullableUInt8
+      extends CHType(
+        "LowCardinality(Nullable(UInt8))",
+        CHType.lowCardinalityFuzzingValues(CHType.nullableFuzzingValues(UInt8.fuzzingValues))
+      )
+  case LowCardinalityNullableUInt16
+      extends CHType(
+        "LowCardinality(Nullable(UInt16))",
+        CHType.lowCardinalityFuzzingValues(CHType.nullableFuzzingValues(UInt16.fuzzingValues))
+      )
+  case LowCardinalityNullableUInt32
+      extends CHType(
+        "LowCardinality(Nullable(UInt32))",
+        CHType.lowCardinalityFuzzingValues(CHType.nullableFuzzingValues(UInt32.fuzzingValues))
+      )
+  case LowCardinalityNullableUInt64
+      extends CHType(
+        "LowCardinality(Nullable(UInt64))",
+        CHType.lowCardinalityFuzzingValues(CHType.nullableFuzzingValues(UInt64.fuzzingValues))
+      )
+  case LowCardinalityNullableUInt128
+      extends CHType(
+        "LowCardinality(Nullable(UInt128))",
+        CHType.lowCardinalityFuzzingValues(CHType.nullableFuzzingValues(UInt128.fuzzingValues))
+      )
+  case LowCardinalityNullableUInt256
+      extends CHType(
+        "LowCardinality(Nullable(UInt256))",
+        CHType.lowCardinalityFuzzingValues(CHType.nullableFuzzingValues(UInt256.fuzzingValues))
+      )
+
+  case LowCardinalityNullableFloat32
+      extends CHType(
+        "LowCardinality(Nullable(Float32))",
+        CHType.lowCardinalityFuzzingValues(CHType.nullableFuzzingValues(Float32.fuzzingValues))
+      )
+  case LowCardinalityNullableFloat64
+      extends CHType(
+        "LowCardinality(Nullable(Float64))",
+        CHType.lowCardinalityFuzzingValues(CHType.nullableFuzzingValues(Float64.fuzzingValues))
+      )
+
+  case LowCardinalityNullableDate
+      extends CHType(
+        "LowCardinality(Nullable(Date))",
+        CHType.lowCardinalityFuzzingValues(CHType.nullableFuzzingValues(Date.fuzzingValues))
+      )
+  case LowCardinalityNullableDate32
+      extends CHType(
+        "LowCardinality(Nullable(Date32))",
+        CHType.lowCardinalityFuzzingValues(CHType.nullableFuzzingValues(Date32.fuzzingValues))
+      )
+  case LowCardinalityNullableDateTime
+      extends CHType(
+        "LowCardinality(Nullable(DateTime))",
+        CHType.lowCardinalityFuzzingValues(CHType.nullableFuzzingValues(DateTime.fuzzingValues))
+      )
+  case LowCardinalityNullableFixedString
+      extends CHType(
+        "LowCardinality(Nullable(FixedString))",
+        CHType.lowCardinalityFuzzingValues(CHType.nullableFuzzingValues(FixedString.fuzzingValues))
+      )
+  case LowCardinalityNullableString
+      extends CHType(
+        "LowCardinality(Nullable(String))",
+        CHType.lowCardinalityFuzzingValues(CHType.nullableFuzzingValues(StringType.fuzzingValues))
+      )
+
+  // Nullable
+  case NullableInt8
+      extends CHType(
+        "Nullable(Int8)",
+        CHType.nullableFuzzingValues(Int8.fuzzingValues)
+      )
+  case NullableInt16
+      extends CHType(
+        "Nullable(Int16)",
+        CHType.nullableFuzzingValues(Int16.fuzzingValues)
+      )
+  case NullableInt32
+      extends CHType(
+        "Nullable(Int32)",
+        CHType.nullableFuzzingValues(Int32.fuzzingValues)
+      )
+  case NullableInt64
+      extends CHType(
+        "Nullable(Int64)",
+        CHType.nullableFuzzingValues(Int64.fuzzingValues)
+      )
+  case NullableInt128
+      extends CHType(
+        "Nullable(Int128)",
+        CHType.nullableFuzzingValues(Int128.fuzzingValues)
+      )
+  case NullableInt256
+      extends CHType(
+        "Nullable(Int256)",
+        CHType.nullableFuzzingValues(Int256.fuzzingValues)
+      )
+  case NullableUInt8
+      extends CHType(
+        "Nullable(UInt8)",
+        CHType.nullableFuzzingValues(UInt8.fuzzingValues)
+      )
+  case NullableUInt16
+      extends CHType(
+        "Nullable(UInt16)",
+        CHType.nullableFuzzingValues(UInt16.fuzzingValues)
+      )
+  case NullableUInt32
+      extends CHType(
+        "Nullable(UInt32)",
+        CHType.nullableFuzzingValues(UInt32.fuzzingValues)
+      )
+  case NullableUInt64
+      extends CHType(
+        "Nullable(UInt64)",
+        CHType.nullableFuzzingValues(UInt64.fuzzingValues)
+      )
+  case NullableUInt128
+      extends CHType(
+        "Nullable(UInt128)",
+        CHType.nullableFuzzingValues(UInt128.fuzzingValues)
+      )
+  case NullableUInt256
+      extends CHType(
+        "Nullable(UInt256)",
+        CHType.nullableFuzzingValues(UInt256.fuzzingValues)
+      )
+
+  case NullableFloat32
+      extends CHType(
+        "Nullable(Float32)",
+        CHType.nullableFuzzingValues(Float32.fuzzingValues)
+      )
+  case NullableFloat64
+      extends CHType(
+        "Nullable(Float64)",
+        CHType.nullableFuzzingValues(Float64.fuzzingValues)
+      )
+  case NullableDecimal32
+      extends CHType(
+        "Nullable(Decimal32)",
+        CHType.nullableFuzzingValues(Decimal32.fuzzingValues),
+        aliases = Seq("Nullable(Decimal(9, 0))", "Nullable(Decimal(9, 9))")
+      )
+  case NullableDecimal64
+      extends CHType(
+        "Nullable(Decimal64)",
+        CHType.nullableFuzzingValues(Decimal64.fuzzingValues),
+        aliases = Seq("Nullable(Decimal(18, 0))", "Nullable(Decimal(18, 18))", "Nullable(Decimal(10, 0))")
+      )
+  case NullableDecimal128
+      extends CHType(
+        "Nullable(Decimal128)",
+        CHType.nullableFuzzingValues(Decimal128.fuzzingValues),
+        aliases = Seq(
+          "Nullable(Decimal(38, 0))",
+          "Nullable(Decimal(38, 9))",
+          "Nullable(Decimal(38, 18))",
+          "Nullable(Decimal(38, 38))"
+        )
+      )
+  case NullableDecimal256
+      extends CHType(
+        "Nullable(Decimal256)",
+        CHType.nullableFuzzingValues(Decimal256.fuzzingValues),
+        aliases = Seq(
+          "Nullable(Decimal(39, 38))",
+          "Nullable(Decimal(40, 0))",
+          "Nullable(Decimal(76, 0))",
+          "Nullable(Decimal(76, 38))",
+          "Nullable(Decimal(76, 76))"
+        )
+      )
+
+  // Date
+  case NullableDate
+      extends CHType(
+        "Nullable(Date)",
+        CHType.nullableFuzzingValues(Date.fuzzingValues)
+      )
+  case NullableDate32
+      extends CHType(
+        "Nullable(Date32)",
+        CHType.nullableFuzzingValues(Date32.fuzzingValues)
+      )
+  case NullableDateTime
+      extends CHType(
+        "Nullable(DateTime)",
+        CHType.nullableFuzzingValues(DateTime.fuzzingValues),
+        aliases = Seq("Nullable(DateTime('Asia/Istanbul'))")
+      )
+  case NullableDateTime64
+      extends CHType(
+        "Nullable(DateTime64)",
+        CHType.nullableFuzzingValues(DateTime64.fuzzingValues),
+        aliases = Seq(
+          "Nullable(DateTime64(0, 'Asia/Istanbul'))",
+          "Nullable(DateTime64(9, 'Asia/Istanbul'))",
+          "Nullable(DateTime64(8, 'Asia/Istanbul'))",
+          "Nullable(DateTime64(0))",
+          "Nullable(DateTime64(1))",
+          "Nullable(DateTime64(8))",
+          "Nullable(DateTime64(9))"
+        )
+      )
+  case NullableIntervalNanosecond
+      extends CHType(
+        "Nullable(IntervalNanosecond)",
+        CHType.nullableFuzzingValues(IntervalNanosecond.fuzzingValues)
+      )
+  case NullableIntervalMicrosecond
+      extends CHType(
+        "Nullable(IntervalMicrosecond)",
+        CHType.nullableFuzzingValues(IntervalMicrosecond.fuzzingValues)
+      )
+  case NullableIntervalMillisecond
+      extends CHType(
+        "Nullable(IntervalMillisecond)",
+        CHType.nullableFuzzingValues(IntervalMillisecond.fuzzingValues)
+      )
+  case NullableIntervalSecond
+      extends CHType(
+        "Nullable(IntervalSecond)",
+        CHType.nullableFuzzingValues(IntervalSecond.fuzzingValues)
+      )
+  case NullableIntervalMinute
+      extends CHType(
+        "Nullable(IntervalMinute)",
+        CHType.nullableFuzzingValues(IntervalMinute.fuzzingValues)
+      )
+  case NullableIntervalHour
+      extends CHType(
+        "Nullable(IntervalHour)",
+        CHType.nullableFuzzingValues(IntervalHour.fuzzingValues)
+      )
+  case NullableIntervalDay
+      extends CHType(
+        "Nullable(IntervalDay)",
+        CHType.nullableFuzzingValues(IntervalDay.fuzzingValues)
+      )
+  case NullableIntervalWeek
+      extends CHType(
+        "Nullable(IntervalWeek)",
+        CHType.nullableFuzzingValues(IntervalWeek.fuzzingValues)
+      )
+  case NullableIntervalMonth
+      extends CHType(
+        "Nullable(IntervalMonth)",
+        CHType.nullableFuzzingValues(IntervalMonth.fuzzingValues)
+      )
+  case NullableIntervalQuarter
+      extends CHType(
+        "Nullable(IntervalQuarter)",
+        CHType.nullableFuzzingValues(IntervalQuarter.fuzzingValues)
+      )
+  case NullableIntervalYear
+      extends CHType(
+        "Nullable(IntervalYear)",
+        CHType.nullableFuzzingValues(IntervalYear.fuzzingValues)
+      )
+  case NullableEnum
+      extends CHType(
+        "Nullable(Enum)",
+        CHType.nullableFuzzingValues(Enum.fuzzingValues)
+      )
+  case NullableEnum8
+      extends CHType(
+        "Nullable(Enum8)",
+        CHType.nullableFuzzingValues(Enum8.fuzzingValues),
+        aliases = Seq(
+          "Nullable(Enum8('hello' = -128, 'world' = 2))",
+          "Nullable(Enum8('world' = 2, 'hello' = 127))",
+          "Nullable(Enum8('hello' = 1, 'world' = 2))"
+        )
+      )
+  case NullableEnum16
+      extends CHType(
+        "Nullable(Enum16)",
+        CHType.nullableFuzzingValues(Enum16.fuzzingValues),
+        aliases = Seq(
+          "Nullable(Enum16('hello' = -32768, 'world' = 2))",
+          "Nullable(Enum16('world' = 2, 'hello' = 32767))",
+          "Nullable(Enum16('hello' = 1, 'world' = 2))"
+        )
+      )
+  case NullableFixedString
+      extends CHType(
+        "Nullable(FixedString)",
+        CHType.nullableFuzzingValues(FixedString.fuzzingValues),
+        aliases = Seq(
+          "Nullable(FixedString(1))",
+          "Nullable(FixedString(10))",
+          "Nullable(FixedString(255))",
+          "Nullable(FixedString(65535))"
+        )
+      )
+  case NullableIPv4
+      extends CHType(
+        "Nullable(IPv4)",
+        CHType.nullableFuzzingValues(IPv4.fuzzingValues)
+      )
+  case NullableIPv6
+      extends CHType(
+        "Nullable(IPv6)",
+        CHType.nullableFuzzingValues(IPv6.fuzzingValues)
+      )
+  // case NullableNothing extends CHType("Nullable(Nothing)", Seq("null::Nullable(Nothing)"))
+  case NullableString
+      extends CHType(
+        "Nullable(String)",
+        CHType.nullableFuzzingValues(StringType.fuzzingValues)
+      )
+  case NullableUUID
+      extends CHType(
+        "Nullable(UUID)",
+        CHType.nullableFuzzingValues(UUID.fuzzingValues)
       )
 
   // Array
@@ -405,98 +801,98 @@ enum CHType(
       extends CHType(
         "Array(Int8)",
         Seq(
-          s"[${Int8.fuzzingValues.mkString(", ")}]::Array(Nullable(Int8))"
+          s"[${Int8.fuzzingValues.mkString(", ")}]::Array(Int8)"
         )
       )
   case ArrayInt16
       extends CHType(
         "Array(Int16)",
         Seq(
-          s"[${Int16.fuzzingValues.mkString(", ")}]::Array(Nullable(Int16))"
+          s"[${Int16.fuzzingValues.mkString(", ")}]::Array(Int16)"
         )
       )
   case ArrayInt32
       extends CHType(
         "Array(Int32)",
         Seq(
-          s"[${Int32.fuzzingValues.mkString(", ")}]::Array(Nullable(Int32))"
+          s"[${Int32.fuzzingValues.mkString(", ")}]::Array(Int32)"
         )
       )
   case ArrayInt64
       extends CHType(
         "Array(Int64)",
         Seq(
-          s"[${Int64.fuzzingValues.mkString(", ")}]::Array(Nullable(Int64))"
+          s"[${Int64.fuzzingValues.mkString(", ")}]::Array(Int64)"
         )
       )
   case ArrayInt128
       extends CHType(
         "Array(Int128)",
         Seq(
-          s"[${Int128.fuzzingValues.mkString(", ")}]::Array(Nullable(Int128))"
+          s"[${Int128.fuzzingValues.mkString(", ")}]::Array(Int128)"
         )
       )
   case ArrayInt256
       extends CHType(
         "Array(Int256)",
         Seq(
-          s"[${Int256.fuzzingValues.mkString(", ")}]::Array(Nullable(Int256))"
+          s"[${Int256.fuzzingValues.mkString(", ")}]::Array(Int256)"
         )
       )
   case ArrayUInt8
       extends CHType(
         "Array(UInt8)",
         Seq(
-          s"[${UInt8.fuzzingValues.mkString(", ")}]::Array(Nullable(UInt8))"
+          s"[${UInt8.fuzzingValues.mkString(", ")}]::Array(UInt8)"
         )
       )
   case ArrayUInt16
       extends CHType(
         "Array(UInt16)",
         Seq(
-          s"[${UInt16.fuzzingValues.mkString(", ")}]::Array(Nullable(UInt16))"
+          s"[${UInt16.fuzzingValues.mkString(", ")}]::Array(UInt16)"
         )
       )
   case ArrayUInt32
       extends CHType(
         "Array(UInt32)",
         Seq(
-          s"[${UInt32.fuzzingValues.mkString(", ")}]::Array(Nullable(UInt32))"
+          s"[${UInt32.fuzzingValues.mkString(", ")}]::Array(UInt32)"
         )
       )
   case ArrayUInt64
       extends CHType(
         "Array(UInt64)",
         Seq(
-          s"[${UInt64.fuzzingValues.mkString(", ")}]::Array(Nullable(UInt64))"
+          s"[${UInt64.fuzzingValues.mkString(", ")}]::Array(UInt64)"
         )
       )
   case ArrayUInt128
       extends CHType(
         "Array(UInt128)",
         Seq(
-          s"[${UInt128.fuzzingValues.mkString(", ")}]::Array(Nullable(UInt128))"
+          s"[${UInt128.fuzzingValues.mkString(", ")}]::Array(UInt128)"
         )
       )
   case ArrayUInt256
       extends CHType(
         "Array(UInt256)",
         Seq(
-          s"[${UInt256.fuzzingValues.mkString(", ")}]::Array(Nullable(UInt256))"
+          s"[${UInt256.fuzzingValues.mkString(", ")}]::Array(UInt256)"
         )
       )
   case ArrayFloat32
       extends CHType(
         "Array(Float32)",
         Seq(
-          s"[${Float32.fuzzingValues.mkString(", ")}]::Array(Nullable(Float32))"
+          s"[${Float32.fuzzingValues.mkString(", ")}]::Array(Float32)"
         )
       )
   case ArrayFloat64
       extends CHType(
         "Array(Float64)",
         Seq(
-          s"[${Float64.fuzzingValues.mkString(", ")}]::Array(Nullable(Float64))"
+          s"[${Float64.fuzzingValues.mkString(", ")}]::Array(Float64)"
         )
       )
   case ArrayDecimal32
@@ -504,41 +900,52 @@ enum CHType(
         "Array(Decimal32)",
         Seq(
           s"[-999999999::Decimal32(0)]::Array(Decimal32(0))"
-        )
+        ),
+        aliases = Seq("Array(Decimal(9, 0))", "Array(Decimal(9, 9))")
       )
   case ArrayDecimal64
       extends CHType(
         "Array(Decimal64)",
         Seq(
           s"[-999999999999999999::Decimal64(0)]::Array(Decimal64(0))"
-        )
+        ),
+        aliases = Seq("Array(Decimal(18, 0))", "Array(Decimal(18, 18))", "Array(Decimal(10, 0))")
       )
   case ArrayDecimal128
       extends CHType(
         "Array(Decimal128)",
         Seq(
           s"[-999999999999999999999999999999999999::Decimal128(0)]::Array(Decimal128(0))"
-        )
+        ),
+        aliases =
+          Seq("Array(Decimal(38, 0))", "Array(Decimal(38, 38))", "Array(Decimal(38, 18))", "Array(Decimal(38, 9))")
       )
   case ArrayDecimal256
       extends CHType(
         "Array(Decimal256)",
         Seq(
           s"[-999999999999999999999999999999999999999999999999999999999999999999999999::Decimal256(0)]::Array(Decimal256(0))"
+        ),
+        aliases = Seq(
+          "Array(Decimal(76, 0))",
+          "Array(Decimal(76, 76))",
+          "Array(Decimal(39, 38))",
+          "Array(Decimal(40, 0))",
+          "Array(Decimal(76, 38))"
         )
       )
   case ArrayDate
       extends CHType(
         "Array(Date)",
         Seq(
-          s"[${Date.fuzzingValues.mkString(", ")}]::Array(Nullable(Date))"
+          s"[${Date.fuzzingValues.mkString(", ")}]::Array(Date)"
         )
       )
   case ArrayDate32
       extends CHType(
         "Array(Date32)",
         Seq(
-          s"[${Date32.fuzzingValues.mkString(", ")}]::Array(Nullable(Date32))"
+          s"[${Date32.fuzzingValues.mkString(", ")}]::Array(Date32)"
         )
       )
   case ArrayDateTime
@@ -546,39 +953,45 @@ enum CHType(
         "Array(DateTime)",
         Seq(
           s"['1970-01-01 00:00:00'::DateTime('Asia/Istanbul')]::Array(DateTime('Asia/Istanbul'))"
-        )
+        ),
+        aliases = Seq("Array(DateTime('Asia/Istanbul'))")
       )
   case ArrayDateTime64
       extends CHType(
         "Array(DateTime64)",
         Seq(
           s"['1900-01-01 00:00:00'::DateTime64(0, 'Asia/Istanbul')]::Array(DateTime64(0, 'Asia/Istanbul'))"
+        ),
+        aliases = Seq(
+          "Array(DateTime64(0, 'Asia/Istanbul'))",
+          "Array(DateTime64(9, 'Asia/Istanbul'))",
+          "Array(DateTime64(8, 'Asia/Istanbul'))",
+          "Array(DateTime64(0))",
+          "Array(DateTime64(9))",
+          "Array(DateTime64(8))"
         )
       )
   case ArrayIntervalNanosecond
-      extends CHType("Array(IntervalNanosecond)", Seq("[INTERVAL 1 Nanosecond]::Array(Nullable(IntervalNanosecond))"))
+      extends CHType("Array(IntervalNanosecond)", Seq("[INTERVAL 1 Nanosecond]::Array(IntervalNanosecond)"))
   case ArrayIntervalMicrosecond
       extends CHType(
         "Array(IntervalMicrosecond)",
-        Seq("[INTERVAL 1 Microsecond]::Array(Nullable(IntervalMicrosecond))")
+        Seq("[INTERVAL 1 Microsecond]::Array(IntervalMicrosecond)")
       )
   case ArrayIntervalMillisecond
       extends CHType(
         "Array(IntervalMillisecond)",
-        Seq("[INTERVAL 1 Millisecond]::Array(Nullable(IntervalMillisecond))")
+        Seq("[INTERVAL 1 Millisecond]::Array(IntervalMillisecond)")
       )
-  case ArrayIntervalSecond
-      extends CHType("Array(IntervalSecond)", Seq("[INTERVAL 1 Second]::Array(Nullable(IntervalSecond))"))
-  case ArrayIntervalMinute
-      extends CHType("Array(IntervalMinute)", Seq("[INTERVAL 1 Minute]::Array(Nullable(IntervalMinute))"))
-  case ArrayIntervalHour extends CHType("Array(IntervalHour)", Seq("[INTERVAL 1 Hour]::Array(Nullable(IntervalHour))"))
-  case ArrayIntervalDay extends CHType("Array(IntervalDay)", Seq("[INTERVAL 1 Day]::Array(Nullable(IntervalDay))"))
-  case ArrayIntervalWeek extends CHType("Array(IntervalWeek)", Seq("[INTERVAL 1 Week]::Array(Nullable(IntervalWeek))"))
-  case ArrayIntervalMonth
-      extends CHType("Array(IntervalMonth)", Seq("[INTERVAL 1 Month]::Array(Nullable(IntervalMonth))"))
+  case ArrayIntervalSecond extends CHType("Array(IntervalSecond)", Seq("[INTERVAL 1 Second]::Array(IntervalSecond)"))
+  case ArrayIntervalMinute extends CHType("Array(IntervalMinute)", Seq("[INTERVAL 1 Minute]::Array(IntervalMinute)"))
+  case ArrayIntervalHour extends CHType("Array(IntervalHour)", Seq("[INTERVAL 1 Hour]::Array(IntervalHour)"))
+  case ArrayIntervalDay extends CHType("Array(IntervalDay)", Seq("[INTERVAL 1 Day]::Array(IntervalDay)"))
+  case ArrayIntervalWeek extends CHType("Array(IntervalWeek)", Seq("[INTERVAL 1 Week]::Array(IntervalWeek)"))
+  case ArrayIntervalMonth extends CHType("Array(IntervalMonth)", Seq("[INTERVAL 1 Month]::Array(IntervalMonth)"))
   case ArrayIntervalQuarter
-      extends CHType("Array(IntervalQuarter)", Seq("[INTERVAL 1 Quarter]::Array(Nullable(IntervalQuarter))"))
-  case ArrayIntervalYear extends CHType("Array(IntervalYear)", Seq("[INTERVAL 1 Year]::Array(Nullable(IntervalYear))"))
+      extends CHType("Array(IntervalQuarter)", Seq("[INTERVAL 1 Quarter]::Array(IntervalQuarter)"))
+  case ArrayIntervalYear extends CHType("Array(IntervalYear)", Seq("[INTERVAL 1 Year]::Array(IntervalYear)"))
   case ArrayPoint extends CHType("Array(Point)", Seq("[(0, 0)]::Array(Point)"))
   case ArrayRing extends CHType("Array(Ring)", Seq("[[(0, 0), (10, 0), (10, 10), (0, 10)]]::Array(Ring)"))
   case ArrayPolygon
@@ -605,6 +1018,11 @@ enum CHType(
         "Array(Enum8)",
         Seq(
           s"['hello'::Enum8('hello' = -128, 'world' = 2)]::Array(Enum8('hello' = -128, 'world' = 2))"
+        ),
+        aliases = Seq(
+          "Array(Enum8('hello' = -128, 'world' = 2))",
+          "Array(Enum8('world' = 2, 'hello' = 127))",
+          "Array(Enum8('hello' = 1, 'world' = 2))"
         )
       )
   case ArrayEnum16
@@ -612,17 +1030,23 @@ enum CHType(
         "Array(Enum16)",
         Seq(
           s"['hello'::Enum16('hello' = -32768, 'world' = 2)]::Array(Enum16('hello' = -32768, 'world' = 2))"
+        ),
+        aliases = Seq(
+          "Array(Enum16('hello' = -32768, 'world' = 2))",
+          "Array(Enum16('world' = 2, 'hello' = 32767))",
+          "Array(Enum16('hello' = 1, 'world' = 2))"
         )
       )
   case ArrayFixedString
       extends CHType(
         "Array(FixedString)",
         Seq(
-          s"[${FixedString.fuzzingValues.mkString(", ")}]::Array(Nullable(FixedString(10)))"
-        )
+          s"[${FixedString.fuzzingValues.mkString(", ")}]::Array(FixedString(10))"
+        ),
+        aliases = Seq("Array(FixedString(1))", "Array(FixedString(10))")
       )
-  case ArrayIPv4 extends CHType("Array(IPv4)", Seq(s"[${IPv4.fuzzingValues.mkString(", ")}]::Array(Nullable(IPv4))"))
-  case ArrayIPv6 extends CHType("Array(IPv6)", Seq(s"[${IPv6.fuzzingValues.mkString(", ")}]::Array(Nullable(IPv6))"))
+  case ArrayIPv4 extends CHType("Array(IPv4)", Seq(s"[${IPv4.fuzzingValues.mkString(", ")}]::Array(IPv4)"))
+  case ArrayIPv6 extends CHType("Array(IPv6)", Seq(s"[${IPv6.fuzzingValues.mkString(", ")}]::Array(IPv6)"))
   case ArrayJson
       extends CHType(
         "Array(JSON)",
@@ -630,153 +1054,151 @@ enum CHType(
           s"[${Json.fuzzingValues.mkString(", ")}]::Array(JSON)"
         )
       )
-  // case ArrayNothing
-  //     extends CHType("Array(Nothing)", Seq("array()::Array(Nothing)", "array(null)::Array(Nullable(Nothing))"))
   case ArrayString
       extends CHType(
         "Array(String)",
         Seq(
-          s"[${StringType.fuzzingValues.mkString(", ")}]::Array(Nullable(String))"
+          s"[${StringType.fuzzingValues.mkString(", ")}]::Array(String)"
         )
       )
   case ArrayUUID
       extends CHType(
         "Array(UUID)",
-        Seq(s"[${UUID.fuzzingValues.mkString(", ")}]::Array(Nullable(UUID))")
+        Seq(s"[${UUID.fuzzingValues.mkString(", ")}]::Array(UUID)")
       )
 
   // Map
   case MapInt8Int8
       extends CHType(
         "Map(Int8, Int8)",
-        Int8.baseFuzzingValues.map { fuzzingValue => s"map($fuzzingValue, 1)::Map(Int8, Int8)" }
+        Int8.fuzzingValues.map { fuzzingValue => s"map($fuzzingValue, 1)::Map(Int8, Int8)" }
       )
   case MapInt16Int8
       extends CHType(
         "Map(Int16, Int8)",
-        Int16.baseFuzzingValues.map { fuzzingValue => s"map($fuzzingValue, 1)::Map(Int16, Int8)" }
+        Int16.fuzzingValues.map { fuzzingValue => s"map($fuzzingValue, 1)::Map(Int16, Int8)" }
       )
   case MapInt32Int8
       extends CHType(
         "Map(Int32, Int8)",
-        Int32.baseFuzzingValues.map { fuzzingValue => s"map($fuzzingValue, 1)::Map(Int32, Int8)" }
+        Int32.fuzzingValues.map { fuzzingValue => s"map($fuzzingValue, 1)::Map(Int32, Int8)" }
       )
   case MapInt64Int8
       extends CHType(
         "Map(Int64, Int8)",
-        Int64.baseFuzzingValues.map { fuzzingValue => s"map($fuzzingValue, 1)::Map(Int64, Int8)" }
+        Int64.fuzzingValues.map { fuzzingValue => s"map($fuzzingValue, 1)::Map(Int64, Int8)" }
       )
   case MapInt128Int8
       extends CHType(
         "Map(Int128, Int8)",
-        Int128.baseFuzzingValues.map { fuzzingValue => s"map($fuzzingValue, 1)::Map(Int128, Int8)" }
+        Int128.fuzzingValues.map { fuzzingValue => s"map($fuzzingValue, 1)::Map(Int128, Int8)" }
       )
   case MapInt256Int8
       extends CHType(
         "Map(Int256, Int8)",
-        Int256.baseFuzzingValues.map { fuzzingValue => s"map($fuzzingValue, 1)::Map(Int256, Int8)" }
+        Int256.fuzzingValues.map { fuzzingValue => s"map($fuzzingValue, 1)::Map(Int256, Int8)" }
       )
   case MapUInt8Int8
       extends CHType(
         "Map(UInt8, Int8)",
-        UInt8.baseFuzzingValues.map { fuzzingValue => s"map($fuzzingValue, 1)::Map(UInt8, Int8)" }
+        UInt8.fuzzingValues.map { fuzzingValue => s"map($fuzzingValue, 1)::Map(UInt8, Int8)" }
       )
   case MapUInt16Int8
       extends CHType(
         "Map(UInt16, Int8)",
-        UInt16.baseFuzzingValues.map { fuzzingValue => s"map($fuzzingValue, 1)::Map(UInt16, Int8)" }
+        UInt16.fuzzingValues.map { fuzzingValue => s"map($fuzzingValue, 1)::Map(UInt16, Int8)" }
       )
   case MapUInt32Int8
       extends CHType(
         "Map(UInt32, Int8)",
-        UInt32.baseFuzzingValues.map { fuzzingValue => s"map($fuzzingValue, 1)::Map(UInt32, Int8)" }
+        UInt32.fuzzingValues.map { fuzzingValue => s"map($fuzzingValue, 1)::Map(UInt32, Int8)" }
       )
   case MapUInt64Int8
       extends CHType(
         "Map(UInt64, Int8)",
-        UInt64.baseFuzzingValues.map { fuzzingValue => s"map($fuzzingValue, 1)::Map(UInt64, Int8)" }
+        UInt64.fuzzingValues.map { fuzzingValue => s"map($fuzzingValue, 1)::Map(UInt64, Int8)" }
       )
   case MapUInt128Int8
       extends CHType(
         "Map(UInt128, Int8)",
-        UInt128.baseFuzzingValues.map { fuzzingValue => s"map($fuzzingValue, 1)::Map(UInt128, Int8)" }
+        UInt128.fuzzingValues.map { fuzzingValue => s"map($fuzzingValue, 1)::Map(UInt128, Int8)" }
       )
   case MapUInt256Int8
       extends CHType(
         "Map(UInt256, Int8)",
-        UInt256.baseFuzzingValues.map { fuzzingValue => s"map($fuzzingValue, 1)::Map(UInt256, Int8)" }
+        UInt256.fuzzingValues.map { fuzzingValue => s"map($fuzzingValue, 1)::Map(UInt256, Int8)" }
       )
   case MapDateInt8
       extends CHType(
         "Map(Date, Int8)",
-        Date.baseFuzzingValues.map { fuzzingValue => s"map($fuzzingValue, 1)::Map(Date, Int8)" }
+        Date.fuzzingValues.map { fuzzingValue => s"map($fuzzingValue, 1)::Map(Date, Int8)" }
       )
   case MapDate32Int8
       extends CHType(
         "Map(Date32, Int8)",
-        Date32.baseFuzzingValues.map { fuzzingValue => s"map($fuzzingValue, 1)::Map(Date32, Int8)" }
+        Date32.fuzzingValues.map { fuzzingValue => s"map($fuzzingValue, 1)::Map(Date32, Int8)" }
       )
   case MapDateTimeInt8
       extends CHType(
         "Map(DateTime, Int8)",
-        DateTime.baseFuzzingValues.map { fuzzingValue => s"map($fuzzingValue, 1)::Map(DateTime, Int8)" }
+        DateTime.fuzzingValues.map { fuzzingValue => s"map($fuzzingValue, 1)::Map(DateTime, Int8)" }
       )
   case MapIntervalNanosecondInt8
       extends CHType(
         "Map(IntervalNanosecond, Int8)",
-        DateTime.baseFuzzingValues.map { fuzzingValue => s"map($fuzzingValue, 1)::Map(DateTime, Int8)" }
+        DateTime.fuzzingValues.map { fuzzingValue => s"map($fuzzingValue, 1)::Map(DateTime, Int8)" }
       )
   case MapIntervalMicrosecondInt8
       extends CHType(
         "Map(IntervalMicrosecond, Int8)",
-        DateTime.baseFuzzingValues.map { fuzzingValue => s"map($fuzzingValue, 1)::Map(DateTime, Int8)" }
+        DateTime.fuzzingValues.map { fuzzingValue => s"map($fuzzingValue, 1)::Map(DateTime, Int8)" }
       )
   case MapIntervalMillisecondInt8
       extends CHType(
         "Map(IntervalMillisecond, Int8)",
-        IntervalMillisecond.baseFuzzingValues.map { fuzzingValue =>
+        IntervalMillisecond.fuzzingValues.map { fuzzingValue =>
           s"map($fuzzingValue, 1)::Map(IntervalMillisecond, Int8)"
         }
       )
   case MapIntervalSecondInt8
       extends CHType(
         "Map(IntervalSecond, Int8)",
-        IntervalSecond.baseFuzzingValues.map { fuzzingValue => s"map($fuzzingValue, 1)::Map(IntervalSecond, Int8)" }
+        IntervalSecond.fuzzingValues.map { fuzzingValue => s"map($fuzzingValue, 1)::Map(IntervalSecond, Int8)" }
       )
   case MapIntervalMinuteInt8
       extends CHType(
         "Map(IntervalMinute, Int8)",
-        IntervalMinute.baseFuzzingValues.map { fuzzingValue => s"map($fuzzingValue, 1)::Map(IntervalMinute, Int8)" }
+        IntervalMinute.fuzzingValues.map { fuzzingValue => s"map($fuzzingValue, 1)::Map(IntervalMinute, Int8)" }
       )
   case MapIntervalHourInt8
       extends CHType(
         "Map(IntervalHour, Int8)",
-        IntervalHour.baseFuzzingValues.map { fuzzingValue => s"map($fuzzingValue, 1)::Map(IntervalHour, Int8)" }
+        IntervalHour.fuzzingValues.map { fuzzingValue => s"map($fuzzingValue, 1)::Map(IntervalHour, Int8)" }
       )
   case MapIntervalDayInt8
       extends CHType(
         "Map(IntervalDay, Int8)",
-        IntervalDay.baseFuzzingValues.map { fuzzingValue => s"map($fuzzingValue, 1)::Map(IntervalDay, Int8)" }
+        IntervalDay.fuzzingValues.map { fuzzingValue => s"map($fuzzingValue, 1)::Map(IntervalDay, Int8)" }
       )
   case MapIntervalWeekInt8
       extends CHType(
         "Map(IntervalWeek, Int8)",
-        IntervalWeek.baseFuzzingValues.map { fuzzingValue => s"map($fuzzingValue, 1)::Map(IntervalWeek, Int8)" }
+        IntervalWeek.fuzzingValues.map { fuzzingValue => s"map($fuzzingValue, 1)::Map(IntervalWeek, Int8)" }
       )
   case MapIntervalMonthInt8
       extends CHType(
         "Map(IntervalMonth, Int8)",
-        IntervalMonth.baseFuzzingValues.map { fuzzingValue => s"map($fuzzingValue, 1)::Map(IntervalMonth, Int8)" }
+        IntervalMonth.fuzzingValues.map { fuzzingValue => s"map($fuzzingValue, 1)::Map(IntervalMonth, Int8)" }
       )
   case MapIntervalQuarterInt8
       extends CHType(
         "Map(IntervalQuarter, Int8)",
-        IntervalQuarter.baseFuzzingValues.map { fuzzingValue => s"map($fuzzingValue, 1)::Map(IntervalQuarter, Int8)" }
+        IntervalQuarter.fuzzingValues.map { fuzzingValue => s"map($fuzzingValue, 1)::Map(IntervalQuarter, Int8)" }
       )
   case MapIntervalYearInt8
       extends CHType(
         "Map(IntervalYear, Int8)",
-        IntervalYear.baseFuzzingValues.map { fuzzingValue => s"map($fuzzingValue, 1)::Map(IntervalYear, Int8)" }
+        IntervalYear.fuzzingValues.map { fuzzingValue => s"map($fuzzingValue, 1)::Map(IntervalYear, Int8)" }
       )
   case MapEnumInt8
       extends CHType(
@@ -802,31 +1224,28 @@ enum CHType(
   case MapFixedStringInt8
       extends CHType(
         "Map(FixedString, Int8)",
-        FixedString.baseFuzzingValues.map { fuzzingValue =>
-          s"map($fuzzingValue, 1)::Map(FixedString(10), Int8)"
-        } :+ "map('azertyuiop'::LowCardinality(FixedString(10)), 1)::Map(LowCardinality(FixedString(10)), Int8)"
+        FixedString.fuzzingValues.map { fuzzingValue => s"map($fuzzingValue, 1)::Map(FixedString(10), Int8)" },
+        aliases = Seq("Map(FixedString(10), Int8)")
       )
   case MapIPv4Int8
       extends CHType(
         "Map(IPv4, Int8)",
-        IPv4.baseFuzzingValues.map { fuzzingValue => s"map($fuzzingValue, 1)::Map(IPv4, Int8)" }
+        IPv4.fuzzingValues.map { fuzzingValue => s"map($fuzzingValue, 1)::Map(IPv4, Int8)" }
       )
   case MapIPv6Int8
       extends CHType(
         "Map(IPv6, Int8)",
-        IPv6.baseFuzzingValues.map { fuzzingValue => s"map($fuzzingValue, 1)::Map(IPv6, Int8)" }
+        IPv6.fuzzingValues.map { fuzzingValue => s"map($fuzzingValue, 1)::Map(IPv6, Int8)" }
       )
   case MapStringInt8
       extends CHType(
         "Map(String, Int8)",
-        StringType.baseFuzzingValues.map { fuzzingValue =>
-          s"map($fuzzingValue, 1)::Map(String, Int8)"
-        } :+ "map('foo'::LowCardinality(String), 1)::Map(LowCardinality(String), Int8)"
+        StringType.fuzzingValues.map { fuzzingValue => s"map($fuzzingValue, 1)::Map(String, Int8)" }
       )
   case MapUUIDInt8
       extends CHType(
         "Map(UUID, Int8)",
-        UUID.baseFuzzingValues.map { fuzzingValue => s"map($fuzzingValue, 1)::Map(UUID, Int8)" }
+        UUID.fuzzingValues.map { fuzzingValue => s"map($fuzzingValue, 1)::Map(UUID, Int8)" }
       )
 
   // Tuple1
@@ -903,22 +1322,38 @@ enum CHType(
   case Tuple1Decimal32
       extends CHType(
         "Tuple(Decimal32)",
-        Seq(s"tuple(${Decimal32.fuzzingValues.head})::Tuple(Decimal32(0))")
+        Seq(s"tuple(${Decimal32.fuzzingValues.head})::Tuple(Decimal32(0))"),
+        aliases = Seq("Tuple(Decimal(9, 0), UInt64)", "Tuple(Decimal(9, 9), UInt64)")
       )
   case Tuple1Decimal64
       extends CHType(
         "Tuple(Decimal64)",
-        Seq(s"tuple(${Decimal64.fuzzingValues.head})::Tuple(Decimal64(0))")
+        Seq(s"tuple(${Decimal64.fuzzingValues.head})::Tuple(Decimal64(0))"),
+        aliases =
+          Seq("Tuple(Decimal(18, 0), UInt64)", "Tuple(Decimal(18, 18), UInt64)", "Tuple(Decimal(10, 0), UInt64)")
       )
   case Tuple1Decimal128
       extends CHType(
         "Tuple(Decimal128)",
-        Seq(s"tuple(${Decimal128.fuzzingValues.head})::Tuple(Decimal128(0))")
+        Seq(s"tuple(${Decimal128.fuzzingValues.head})::Tuple(Decimal128(0))"),
+        aliases = Seq(
+          "Tuple(Decimal(38, 0), UInt64)",
+          "Tuple(Decimal(38, 9), UInt64)",
+          "Tuple(Decimal(38, 18), UInt64)",
+          "Tuple(Decimal(38, 38), UInt64)"
+        )
       )
   case Tuple1Decimal256
       extends CHType(
         "Tuple(Decimal256)",
-        Seq(s"tuple(${Decimal256.fuzzingValues.head})::Tuple(Decimal256(0))")
+        Seq(s"tuple(${Decimal256.fuzzingValues.head})::Tuple(Decimal256(0))"),
+        aliases = Seq(
+          "Tuple(Decimal(39, 38), UInt64)",
+          "Tuple(Decimal(40, 0), UInt64)",
+          "Tuple(Decimal(76, 0), UInt64)",
+          "Tuple(Decimal(76, 38), UInt64)",
+          "Tuple(Decimal(76, 76), UInt64)"
+        )
       )
   case Tuple1Date
       extends CHType(
@@ -1018,7 +1453,7 @@ enum CHType(
       )
   case ArrayTuple1UInt8
       extends CHType(
-        "Array(Tuple(UInt8))",
+        "Array(Tuple)",
         Seq(s"[${Tuple1UInt8.fuzzingValues.head}]::Array(Tuple(UInt8))")
       )
   case Tuple1ArrayUInt8
@@ -1033,469 +1468,185 @@ enum CHType(
       )
 }
 
-enum CHAbstractType(val fuzzingValues: Seq[String], val chTypes: Seq[CHType]) {
-  // Numbers
-  case Numbers
-      extends CHAbstractType(
-        Seq("1"),
-        Seq(
-          CHType.Int8,
-          CHType.Int16,
-          CHType.Int32,
-          CHType.Int64,
-          CHType.Int128,
-          CHType.Int256,
-          CHType.UInt8,
-          CHType.UInt16,
-          CHType.UInt32,
-          CHType.UInt64,
-          CHType.UInt128,
-          CHType.UInt256,
-          CHType.Float32,
-          CHType.Float64,
-          CHType.Decimal32,
-          CHType.Decimal64,
-          CHType.Decimal128,
-          CHType.Decimal256
-        )
-      )
-
-  // Date
-  case Date extends CHAbstractType(Seq("'1970-01-02'::Date"), Seq(CHType.Date, CHType.Date32))
-  case DateTime extends CHAbstractType(Seq("'1970-01-02 00:00:00'::DateTime"), Seq(CHType.DateTime, CHType.DateTime64))
-  case IntervalDate
-      extends CHAbstractType(
-        Seq(CHType.IntervalDay.fuzzingValues.head),
-        Seq(CHType.IntervalDay, CHType.IntervalWeek, CHType.IntervalMonth, CHType.IntervalQuarter, CHType.IntervalYear)
-      )
-  case IntervalDateTime
-      extends CHAbstractType(
-        Seq(CHType.IntervalNanosecond.fuzzingValues.head),
-        Seq(
-          CHType.IntervalNanosecond,
-          CHType.IntervalMicrosecond,
-          CHType.IntervalMillisecond,
-          CHType.IntervalSecond,
-          CHType.IntervalMinute,
-          CHType.IntervalHour
-        )
-      )
-
-  // Geo
-  case Point extends CHAbstractType(Seq(CHType.Point.fuzzingValues.head), Seq(CHType.Point))
-  case Ring extends CHAbstractType(Seq(CHType.Ring.fuzzingValues.head), Seq(CHType.Ring))
-  case Polygon extends CHAbstractType(Seq(CHType.Polygon.fuzzingValues.head), Seq(CHType.Polygon))
-  case MultiPolygon extends CHAbstractType(Seq(CHType.MultiPolygon.fuzzingValues.head), Seq(CHType.MultiPolygon))
-
-  // Misc
-  case Enum extends CHAbstractType(Seq(CHType.Enum.fuzzingValues.head), Seq(CHType.Enum, CHType.Enum8, CHType.Enum16))
-  case IPv4 extends CHAbstractType(Seq(CHType.IPv4.fuzzingValues.head), Seq(CHType.IPv4))
-  case IPv6 extends CHAbstractType(Seq(CHType.IPv6.fuzzingValues.head), Seq(CHType.IPv6))
-  case Json extends CHAbstractType(Seq(CHType.Json.fuzzingValues.head), Seq(CHType.Json))
-  // case Nothing extends CHAbstractType(CHType.Nothing.fuzzingValues, Seq(CHType.Nothing))
-  case String
-      extends CHAbstractType(Seq(CHType.StringType.fuzzingValues.head), Seq(CHType.StringType, CHType.FixedString))
-  case UUID extends CHAbstractType(Seq(CHType.UUID.fuzzingValues.head), Seq(CHType.UUID))
-
-  // Array
-  case ArrayNumbers
-      extends CHAbstractType(
-        Seq(s"array(${Numbers.fuzzingValues.head})"),
-        Seq(
-          CHType.ArrayInt8,
-          CHType.ArrayInt16,
-          CHType.ArrayInt32,
-          CHType.ArrayInt64,
-          CHType.ArrayInt128,
-          CHType.ArrayInt256,
-          CHType.ArrayUInt8,
-          CHType.ArrayUInt16,
-          CHType.ArrayUInt32,
-          CHType.ArrayUInt64,
-          CHType.ArrayUInt128,
-          CHType.ArrayUInt256,
-          CHType.ArrayFloat32,
-          CHType.ArrayFloat64,
-          CHType.ArrayDecimal32,
-          CHType.ArrayDecimal64,
-          CHType.ArrayDecimal128,
-          CHType.ArrayDecimal256
-        )
-      )
-
-  case ArrayDate
-      extends CHAbstractType(
-        Seq(s"[${Date.fuzzingValues.head}]::Array(Date)"),
-        Seq(CHType.ArrayDate, CHType.ArrayDate32)
-      )
-  case ArrayDateTime
-      extends CHAbstractType(
-        Seq(s"[${DateTime.fuzzingValues.head}]::Array(DateTime)"),
-        Seq(CHType.ArrayDateTime, CHType.ArrayDateTime64)
-      )
-  case ArrayIntervalDate
-      extends CHAbstractType(
-        Seq(CHType.ArrayIntervalDay.fuzzingValues.head),
-        Seq(
-          CHType.ArrayIntervalDay,
-          CHType.ArrayIntervalWeek,
-          CHType.ArrayIntervalMonth,
-          CHType.ArrayIntervalQuarter,
-          CHType.ArrayIntervalYear
-        )
-      )
-  case ArrayIntervalDateTime
-      extends CHAbstractType(
-        Seq(CHType.ArrayIntervalNanosecond.fuzzingValues.head),
-        Seq(
-          CHType.ArrayIntervalNanosecond,
-          CHType.ArrayIntervalMicrosecond,
-          CHType.ArrayIntervalMillisecond,
-          CHType.ArrayIntervalSecond,
-          CHType.ArrayIntervalMinute,
-          CHType.ArrayIntervalHour
-        )
-      )
-  case ArrayPoint extends CHAbstractType(Seq(CHType.ArrayPoint.fuzzingValues.head), Seq(CHType.ArrayPoint))
-  case ArrayRing extends CHAbstractType(Seq(CHType.ArrayRing.fuzzingValues.head), Seq(CHType.ArrayRing))
-  case ArrayPolygon extends CHAbstractType(Seq(CHType.ArrayPolygon.fuzzingValues.head), Seq(CHType.ArrayPolygon))
-  case ArrayMultiPolygon
-      extends CHAbstractType(Seq(CHType.ArrayMultiPolygon.fuzzingValues.head), Seq(CHType.ArrayMultiPolygon))
-  case ArrayEnum
-      extends CHAbstractType(
-        Seq(s"[${Enum.fuzzingValues.head}]"),
-        Seq(CHType.ArrayEnum, CHType.ArrayEnum8, CHType.ArrayEnum16)
-      )
-  case ArrayIPv4 extends CHAbstractType(Seq(s"[${IPv4.fuzzingValues.head}]::Array(IPv4)"), Seq(CHType.ArrayIPv4))
-  case ArrayIPv6 extends CHAbstractType(Seq(s"[${IPv6.fuzzingValues.head}]::Array(IPv6)"), Seq(CHType.ArrayIPv6))
-  case ArrayJson extends CHAbstractType(Seq(s"[${Json.fuzzingValues.head}]::Array(JSON)"), Seq(CHType.ArrayJson))
-  // case ArrayNothing extends CHAbstractType(CHType.ArrayNothing.fuzzingValues, Seq(CHType.ArrayNothing))
-  case ArrayString
-      extends CHAbstractType(
-        Seq(s"[${String.fuzzingValues.head}]::Array(String)"),
-        Seq(CHType.ArrayFixedString, CHType.ArrayString)
-      )
-  case ArrayUUID extends CHAbstractType(Seq(s"[${UUID.fuzzingValues.head}]::Array(UUID)"), Seq(CHType.ArrayUUID))
-
-  // Map
-  case MapNumbersInt8
-      extends CHAbstractType(
-        Seq(s"map(${Numbers.fuzzingValues.head}, 1)"),
-        Seq(
-          CHType.MapInt8Int8,
-          CHType.MapInt16Int8,
-          CHType.MapInt32Int8,
-          CHType.MapInt64Int8,
-          CHType.MapInt128Int8,
-          CHType.MapInt256Int8,
-          CHType.MapUInt8Int8,
-          CHType.MapUInt16Int8,
-          CHType.MapUInt32Int8,
-          CHType.MapUInt64Int8,
-          CHType.MapUInt128Int8,
-          CHType.MapUInt256Int8
-        )
-      )
-
-  case MapDateInt8
-      extends CHAbstractType(
-        Seq(CHType.MapDateInt8.fuzzingValues.head),
-        Seq(CHType.MapDateInt8, CHType.MapDate32Int8)
-      )
-  case MapDateTimeInt8
-      extends CHAbstractType(
-        Seq(CHType.MapDateTimeInt8.fuzzingValues.head),
-        Seq(CHType.MapDateTimeInt8)
-      )
-  case MapIntervalDateInt8
-      extends CHAbstractType(
-        Seq(CHType.MapIntervalDayInt8.fuzzingValues.head),
-        Seq(
-          CHType.MapIntervalDayInt8,
-          CHType.MapIntervalWeekInt8,
-          CHType.MapIntervalMonthInt8,
-          CHType.MapIntervalQuarterInt8,
-          CHType.MapIntervalYearInt8
-        )
-      )
-  case MapIntervalDateTimeInt8
-      extends CHAbstractType(
-        Seq(CHType.MapIntervalNanosecondInt8.fuzzingValues.head),
-        Seq(
-          CHType.MapIntervalNanosecondInt8,
-          CHType.MapIntervalMicrosecondInt8,
-          CHType.MapIntervalMillisecondInt8,
-          CHType.MapIntervalSecondInt8,
-          CHType.MapIntervalMinuteInt8,
-          CHType.MapIntervalHourInt8
-        )
-      )
-  case MapEnumInt8
-      extends CHAbstractType(
-        Seq(s"map(${Enum.fuzzingValues.head}, 1)"),
-        Seq(CHType.MapEnumInt8, CHType.MapEnum8Int8, CHType.MapEnum16Int8)
-      )
-  case MapIPv4Int8
-      extends CHAbstractType(Seq(s"map(${IPv4.fuzzingValues.head}, 1)::Map(IPv4, Int8)"), Seq(CHType.MapIPv4Int8))
-  case MapIPv6Int8
-      extends CHAbstractType(Seq(s"map(${IPv6.fuzzingValues.head}, 1)::Map(IPv6, Int8)"), Seq(CHType.MapIPv6Int8))
-  case MapStringInt8
-      extends CHAbstractType(
-        Seq(s"map(${String.fuzzingValues.head}, 1)::Map(String, Int8)"),
-        Seq(CHType.MapFixedStringInt8, CHType.MapStringInt8)
-      )
-  case MapUUIDInt8
-      extends CHAbstractType(Seq(s"map(${UUID.fuzzingValues.head}, 1)::Map(UUID, Int8)"), Seq(CHType.MapUUIDInt8))
-
-  // Tuple1
-  case Tuple1Numbers
-      extends CHAbstractType(
-        Seq(s"tuple(${Numbers.fuzzingValues.head})::Tuple(UInt8)"),
-        Seq(
-          CHType.Tuple1Int8,
-          CHType.Tuple1Int16,
-          CHType.Tuple1Int32,
-          CHType.Tuple1Int64,
-          CHType.Tuple1Int128,
-          CHType.Tuple1Int256,
-          CHType.Tuple1UInt8,
-          CHType.Tuple1UInt16,
-          CHType.Tuple1UInt32,
-          CHType.Tuple1UInt64,
-          CHType.Tuple1UInt128,
-          CHType.Tuple1UInt256,
-          CHType.Tuple1Float32,
-          CHType.Tuple1Float64,
-          CHType.Tuple1Decimal32,
-          CHType.Tuple1Decimal64,
-          CHType.Tuple1Decimal128,
-          CHType.Tuple1Decimal256
-        )
-      )
-  case Tuple1Date
-      extends CHAbstractType(
-        Seq(s"tuple(${Date.fuzzingValues.head})::Tuple(Date)"),
-        Seq(CHType.Tuple1Date, CHType.Tuple1Date32)
-      )
-  case Tuple1DateTime
-      extends CHAbstractType(
-        Seq(s"tuple(${DateTime.fuzzingValues.head})::Tuple(DateTime)"),
-        Seq(CHType.Tuple1DateTime, CHType.Tuple1DateTime64)
-      )
-  case Tuple1IntervalDate
-      extends CHAbstractType(
-        Seq(CHType.Tuple1IntervalDay.fuzzingValues.head),
-        Seq(
-          CHType.Tuple1IntervalDay,
-          CHType.Tuple1IntervalWeek,
-          CHType.Tuple1IntervalMonth,
-          CHType.Tuple1IntervalQuarter,
-          CHType.Tuple1IntervalYear
-        )
-      )
-  case Tuple1IntervalDateTime
-      extends CHAbstractType(
-        Seq(CHType.Tuple1IntervalNanosecond.fuzzingValues.head),
-        Seq(
-          CHType.Tuple1IntervalNanosecond,
-          CHType.Tuple1IntervalMicrosecond,
-          CHType.Tuple1IntervalMillisecond,
-          CHType.Tuple1IntervalSecond,
-          CHType.Tuple1IntervalMinute,
-          CHType.Tuple1IntervalHour
-        )
-      )
-  case Tuple1Point extends CHAbstractType(Seq(CHType.Tuple1Point.fuzzingValues.head), Seq(CHType.Tuple1Point))
-  case Tuple1Ring extends CHAbstractType(Seq(CHType.Tuple1Ring.fuzzingValues.head), Seq(CHType.Tuple1Ring))
-  case Tuple1Polygon extends CHAbstractType(Seq(CHType.Tuple1Polygon.fuzzingValues.head), Seq(CHType.Tuple1Polygon))
-  case Tuple1MultiPolygon
-      extends CHAbstractType(Seq(CHType.Tuple1MultiPolygon.fuzzingValues.head), Seq(CHType.Tuple1MultiPolygon))
-  case Tuple1Enum
-      extends CHAbstractType(
-        Seq(s"tuple(${Enum.fuzzingValues.head})::Tuple(Enum('hello' = 1, 'world' = 2))"),
-        Seq(CHType.Tuple1Enum, CHType.Tuple1Enum8, CHType.Tuple1Enum16)
-      )
-  case Tuple1IPv4 extends CHAbstractType(Seq(s"tuple(${IPv4.fuzzingValues.head})::Tuple(IPv4)"), Seq(CHType.Tuple1IPv4))
-  case Tuple1IPv6 extends CHAbstractType(Seq(s"tuple(${IPv6.fuzzingValues.head})::Tuple(IPv6)"), Seq(CHType.Tuple1IPv6))
-  case Tuple1Json extends CHAbstractType(Seq(s"tuple(${Json.fuzzingValues.head})::Tuple(JSON)"), Seq(CHType.Tuple1Json))
-  // case Tuple1Nothing extends CHAbstractType(CHType.Tuple1Nothing.fuzzingValues, Seq(CHType.Tuple1Nothing))
-  case Tuple1String
-      extends CHAbstractType(
-        Seq(s"tuple(${String.fuzzingValues.head})::Tuple(String)"),
-        Seq(CHType.Tuple1FixedString, CHType.Tuple1String)
-      )
-  case Tuple1UUID extends CHAbstractType(Seq(s"tuple(${UUID.fuzzingValues.head})::Tuple(UUID)"), Seq(CHType.Tuple1UUID))
-
-  // Special
-  case ArrayMapStringInt8
-      extends CHAbstractType(
-        Seq(s"[${MapStringInt8.fuzzingValues.head}]::Array(Map(String, Int8))"),
-        Seq(CHType.ArrayMapStringInt8)
-      )
-  case ArrayTuple1Numbers
-      extends CHAbstractType(
-        Seq(s"[${Tuple1Numbers.fuzzingValues.head}]::Array(Tuple(UInt8))"),
-        Seq(CHType.ArrayTuple1UInt8)
-      )
-  case Tuple1ArrayNumbers
-      extends CHAbstractType(
-        Seq(s"tuple(${ArrayNumbers.fuzzingValues.head})::Tuple(Array(UInt8))"),
-        Seq(CHType.Tuple1ArrayUInt8)
-      )
-  case Tuple1MapStringInt8
-      extends CHAbstractType(
-        Seq(s"tuple(${MapStringInt8.fuzzingValues.head})::Tuple(Map(String, Int8))"),
-        Seq(CHType.Tuple1MapStringInt8)
-      )
-}
-
 object CHType extends StrictLogging {
 
   def getByName(name: String): CHType =
     findByName(name).getOrElse {
       val errMsg = s"Unable to determine CHType for $name"
-      logger.error(errMsg)
+      logger.debug(errMsg)
       throw new IllegalArgumentException(errMsg)
     }
 
   def findByName(name: String): Option[CHType] =
-    CHType.values.find(_.name.equals(name))
+    CHType.values.find(t => t.name.equals(name) || t.aliases.contains(name))
 
-  def merge(type1: CHType, type2: CHType): CHType =
+  def merge(type1: String, type2: String): String =
     val exceptionIfUnknown = new IllegalArgumentException(s"Unable to determine higher type for $type1 and $type2")
     if (type1 == type2) type1 // Expects both type to be identical, should be the most obvious use case
-    else if (type1 == Int8) {
-      type2 match
-        case UInt8                                   => Int16
-        case UInt16                                  => Int32
-        case UInt32                                  => Int64
-        case UInt64                                  => Int128
-        case UInt128 | UInt256                       => Int256
-        case Int16 | Int32 | Int64 | Int128 | Int256 => type2
-        case _                                       => throw exceptionIfUnknown
-    } else if (type2 == Int8) {
-      type1 match
-        case UInt8                                   => Int16
-        case UInt16                                  => Int32
-        case UInt32                                  => Int64
-        case UInt64                                  => Int128
-        case UInt128 | UInt256                       => Int256
-        case Int16 | Int32 | Int64 | Int128 | Int256 => type1
-        case _                                       => throw exceptionIfUnknown
-    } else if (type1 == Int16) {
-      type2 match
-        case UInt8                           => Int16
-        case UInt16                          => Int32
-        case UInt32                          => Int64
-        case UInt64                          => Int128
-        case UInt128 | UInt256               => Int256
-        case Int32 | Int64 | Int128 | Int256 => type2
-        case _                               => throw exceptionIfUnknown
-    } else if (type2 == Int16) {
-      type1 match
-        case UInt8                           => Int16
-        case UInt16                          => Int32
-        case UInt32                          => Int64
-        case UInt64                          => Int128
-        case UInt128 | UInt256               => Int256
-        case Int32 | Int64 | Int128 | Int256 => type1
-        case _                               => throw exceptionIfUnknown
-    } else if (type1 == Int32) {
-      type2 match
-        case UInt8 | UInt16          => Int32
-        case UInt32                  => Int64
-        case UInt64                  => Int128
-        case UInt128 | UInt256       => Int256
-        case Int64 | Int128 | Int256 => type2
-        case _                       => throw exceptionIfUnknown
-    } else if (type2 == Int32) {
-      type1 match
-        case UInt8 | UInt16          => Int32
-        case UInt32                  => Int64
-        case UInt64                  => Int128
-        case UInt128 | UInt256       => Int256
-        case Int64 | Int128 | Int256 => type1
-        case _                       => throw exceptionIfUnknown
-    } else if (type1 == Int64) {
-      type2 match
-        case UInt8 | UInt16 | UInt32 => Int64
-        case UInt64                  => Int128
-        case UInt128 | UInt256       => Int256
-        case Int128 | Int256         => type2
-        case _                       => throw exceptionIfUnknown
-    } else if (type2 == Int64) {
-      type1 match
-        case UInt8 | UInt16 | UInt32 => Int64
-        case UInt64                  => Int128
-        case UInt128 | UInt256       => Int256
-        case Int128 | Int256         => type1
-        case _                       => throw exceptionIfUnknown
-    } else if (type1 == Int128) {
-      type2 match
-        case UInt8 | UInt16 | UInt32 | UInt64 => Int128
-        case UInt128 | UInt256                => Int256
-        case Int256                           => Int256
-        case _                                => throw exceptionIfUnknown
-    } else if (type2 == Int128) {
-      type1 match
-        case UInt8 | UInt16 | UInt32 | UInt64 => Int128
-        case UInt128 | UInt256                => Int256
-        case Int256                           => Int256
-        case _                                => throw exceptionIfUnknown
-    } else if (type1 == Int256) Int256
-    else if (type2 == Int256) Int256
-    // From now on, neither type1 nor type2 can be a signed integer
-    else if (type1 == UInt8) {
-      type2 match
-        case UInt16 | UInt32 | UInt64 | UInt128 | UInt256 => type2
-        case _                                            => throw exceptionIfUnknown
-    } else if (type2 == UInt8) {
-      type1 match
-        case UInt16 | UInt32 | UInt64 | UInt128 | UInt256 => type1
-        case _                                            => throw exceptionIfUnknown
-    } else if (type1 == UInt16) {
-      type2 match
-        case UInt32 | UInt64 | UInt128 | UInt256 => type2
-        case _                                   => throw exceptionIfUnknown
-    } else if (type2 == UInt16) {
-      type1 match
-        case UInt32 | UInt64 | UInt128 | UInt256 => type1
-        case _                                   => throw exceptionIfUnknown
-    } else if (type1 == UInt32) {
-      type2 match
-        case UInt64 | UInt128 | UInt256 => type2
-        case _                          => throw exceptionIfUnknown
-    } else if (type2 == UInt32) {
-      type1 match
-        case UInt64 | UInt128 | UInt256 => type1
-        case _                          => throw exceptionIfUnknown
-    } else if (type1 == UInt64) {
-      type2 match
-        case UInt128 | UInt256 => type2
-        case _                 => throw exceptionIfUnknown
-    } else if (type2 == UInt64) {
-      type1 match
-        case UInt128 | UInt256 => type1
-        case _                 => throw exceptionIfUnknown
-    } else if (type1 == UInt128) {
-      type2 match
-        case UInt256 => type2
-        case _       => throw exceptionIfUnknown
-    } else if (type2 == UInt128) {
-      type1 match
-        case UInt256 => type1
-        case _       => throw exceptionIfUnknown
+    else {
+      val chType1 = CHType.getByName(type1)
+      val chType2 = CHType.getByName(type2)
+
+      val mergedType =
+        if (chType1 == chType2) chType1
+        else if (chType1 == Int8) {
+          chType2 match
+            case UInt8                                   => Int16
+            case UInt16                                  => Int32
+            case UInt32                                  => Int64
+            case UInt64                                  => Int128
+            case UInt128 | UInt256                       => Int256
+            case Int16 | Int32 | Int64 | Int128 | Int256 => chType2
+            case _                                       => throw exceptionIfUnknown
+        } else if (chType2 == Int8) {
+          chType1 match
+            case UInt8                                   => Int16
+            case UInt16                                  => Int32
+            case UInt32                                  => Int64
+            case UInt64                                  => Int128
+            case UInt128 | UInt256                       => Int256
+            case Int16 | Int32 | Int64 | Int128 | Int256 => chType1
+            case _                                       => throw exceptionIfUnknown
+        } else if (chType1 == Int16) {
+          chType2 match
+            case UInt8                           => Int16
+            case UInt16                          => Int32
+            case UInt32                          => Int64
+            case UInt64                          => Int128
+            case UInt128 | UInt256               => Int256
+            case Int32 | Int64 | Int128 | Int256 => chType2
+            case _                               => throw exceptionIfUnknown
+        } else if (chType2 == Int16) {
+          chType1 match
+            case UInt8                           => Int16
+            case UInt16                          => Int32
+            case UInt32                          => Int64
+            case UInt64                          => Int128
+            case UInt128 | UInt256               => Int256
+            case Int32 | Int64 | Int128 | Int256 => chType1
+            case _                               => throw exceptionIfUnknown
+        } else if (chType1 == Int32) {
+          chType2 match
+            case UInt8 | UInt16          => Int32
+            case UInt32                  => Int64
+            case UInt64                  => Int128
+            case UInt128 | UInt256       => Int256
+            case Int64 | Int128 | Int256 => chType2
+            case _                       => throw exceptionIfUnknown
+        } else if (chType2 == Int32) {
+          chType1 match
+            case UInt8 | UInt16          => Int32
+            case UInt32                  => Int64
+            case UInt64                  => Int128
+            case UInt128 | UInt256       => Int256
+            case Int64 | Int128 | Int256 => chType1
+            case _                       => throw exceptionIfUnknown
+        } else if (chType1 == Int64) {
+          chType2 match
+            case UInt8 | UInt16 | UInt32 => Int64
+            case UInt64                  => Int128
+            case UInt128 | UInt256       => Int256
+            case Int128 | Int256         => chType2
+            case _                       => throw exceptionIfUnknown
+        } else if (chType2 == Int64) {
+          chType1 match
+            case UInt8 | UInt16 | UInt32 => Int64
+            case UInt64                  => Int128
+            case UInt128 | UInt256       => Int256
+            case Int128 | Int256         => chType1
+            case _                       => throw exceptionIfUnknown
+        } else if (chType1 == Int128) {
+          chType2 match
+            case UInt8 | UInt16 | UInt32 | UInt64 => Int128
+            case UInt128 | UInt256                => Int256
+            case Int256                           => Int256
+            case _                                => throw exceptionIfUnknown
+        } else if (chType2 == Int128) {
+          chType1 match
+            case UInt8 | UInt16 | UInt32 | UInt64 => Int128
+            case UInt128 | UInt256                => Int256
+            case Int256                           => Int256
+            case _                                => throw exceptionIfUnknown
+        } else if (chType1 == Int256) Int256
+        else if (chType2 == Int256) Int256
+        // From now on, neither type1 nor type2 can be a signed integer
+        else if (chType1 == UInt8) {
+          chType2 match
+            case UInt16 | UInt32 | UInt64 | UInt128 | UInt256 => chType2
+            case _                                            => throw exceptionIfUnknown
+        } else if (chType2 == UInt8) {
+          chType1 match
+            case UInt16 | UInt32 | UInt64 | UInt128 | UInt256 => chType1
+            case _                                            => throw exceptionIfUnknown
+        } else if (chType1 == UInt16) {
+          chType2 match
+            case UInt32 | UInt64 | UInt128 | UInt256 => chType2
+            case _                                   => throw exceptionIfUnknown
+        } else if (chType2 == UInt16) {
+          chType1 match
+            case UInt32 | UInt64 | UInt128 | UInt256 => chType1
+            case _                                   => throw exceptionIfUnknown
+        } else if (chType1 == UInt32) {
+          chType2 match
+            case UInt64 | UInt128 | UInt256 => chType2
+            case _                          => throw exceptionIfUnknown
+        } else if (chType2 == UInt32) {
+          chType1 match
+            case UInt64 | UInt128 | UInt256 => chType1
+            case _                          => throw exceptionIfUnknown
+        } else if (chType1 == UInt64) {
+          chType2 match
+            case UInt128 | UInt256 => chType2
+            case _                 => throw exceptionIfUnknown
+        } else if (chType2 == UInt64) {
+          chType1 match
+            case UInt128 | UInt256 => chType1
+            case _                 => throw exceptionIfUnknown
+        } else if (chType1 == UInt128) {
+          chType2 match
+            case UInt256 => chType2
+            case _       => throw exceptionIfUnknown
+        } else if (chType2 == UInt128) {
+          chType1 match
+            case UInt256 => chType1
+            case _       => throw exceptionIfUnknown
+        }
+        // From now on, neither type1 nor type2 can be an unsigned integer
+        else if (chType1 == Float32) {
+          chType2 match
+            case Float64 => Float64
+            case _       => throw exceptionIfUnknown
+        } else if (chType2 == Float32) {
+          chType1 match
+            case Float64 => Float64
+            case _       => throw exceptionIfUnknown
+        }
+        // From now on, neither type1 nor type2 can be a float number
+        else throw exceptionIfUnknown
+
+      mergedType.name
     }
-    // From now on, neither type1 nor type2 can be an unsigned integer
-    else if (type1 == Float32) {
-      type2 match
-        case Float64 => Float64
-        case _       => throw exceptionIfUnknown
-    } else if (type2 == Float32) {
-      type1 match
-        case Float64 => Float64
-        case _       => throw exceptionIfUnknown
-    }
-    // From now on, neither type1 nor type2 can be a float number
-    else throw new IllegalArgumentException(s"Unable to determine higher type for $type1 and $type2")
+
+  private def lowCardinalityFuzzingValues(baseFuzzingValues: Seq[String]) = {
+    // Build a sample fuzzingValue and fetch its type
+    val firstFuzzingValue = baseFuzzingValues.head
+    val typeIndex = firstFuzzingValue.lastIndexOf("::")
+    val fuzzingValueWithoutType = firstFuzzingValue.substring(0, typeIndex)
+    val fuzzingType = firstFuzzingValue.substring(typeIndex + "::".size)
+
+    Seq(s"$fuzzingValueWithoutType::LowCardinality($fuzzingType)")
+  }
+
+  private def nullableFuzzingValues(baseFuzzingValues: Seq[String]) = {
+    // Build a sample fuzzingValue and fetch its type
+    val firstFuzzingValue = baseFuzzingValues.head
+    val typeIndex = firstFuzzingValue.lastIndexOf("::")
+    val fuzzingValueWithoutType = firstFuzzingValue.substring(0, typeIndex)
+    val fuzzingType = firstFuzzingValue.substring(typeIndex + "::".size)
+
+    Seq(
+      s"$fuzzingValueWithoutType::Nullable($fuzzingType)",
+      s"null::Nullable($fuzzingType)"
+    )
+  }
 }

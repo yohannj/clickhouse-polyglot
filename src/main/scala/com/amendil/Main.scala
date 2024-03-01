@@ -34,7 +34,10 @@ import scala.util.Try
           functionNames.zipWithIndex,
           (functionName: String, idx: Int) =>
             if (idx % Math.max(functionCount / 20, 1) == 0)
+              logger.info(s"===============================================================")
               logger.info(s"${100 * idx / functionCount}%")
+              logger.info(s"===============================================================")
+            logger.info(functionName)
 
             Fuzzer.fuzz(functionName).map { fuzzResult =>
               pw.write(s"${CHFunction.fromCHFunctionFuzzResult(fuzzResult, "x64").asString()}\n")
@@ -53,11 +56,11 @@ import scala.util.Try
       functionsFuzzResultsF.map { functionsFuzzResults =>
         val functionsWithoutASignature = functionsFuzzResults.filterNot(_.atLeastOneSignatureFound()).map(_.name)
 
-        println(
-          s"""|Rate of functions with a signature found: ${functionCount - functionsWithoutASignature.size}/$functionCount
-              |Functions we were unable to determine any signature:
-              |${functionsWithoutASignature.sorted.mkString("\"", "\", \"", "\"")}""".stripMargin
+        logger.info(
+          s"Rate of functions with a signature found: ${functionCount - functionsWithoutASignature.size}/$functionCount"
         )
+        logger.info("Functions we were unable to determine any signature:")
+        logger.info(functionsWithoutASignature.sorted.mkString("\"", "\", \"", "\""))
       }
     }).flatten
 
