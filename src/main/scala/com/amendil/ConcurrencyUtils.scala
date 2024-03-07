@@ -6,9 +6,27 @@ object ConcurrencyUtils {
 
   /**
     * Execute all calls in parallel, with the ability to partition queries to handle a max concurrency.
+    * Whenever a computation fails, all partitions stop.
+    *
+    * @throws IllegalArgumentException when maxConcurrency is less than 1
+    */
+  def executeInParallel[T, U](elements: Seq[T], fn: (T) => Future[U], maxConcurrency: Int)(
+      implicit ec: ExecutionContext
+  ): Future[Seq[U]] =
+    val futures = elements
+      .grouped(maxConcurrency)
+      .toSeq
+      .map { subElements =>
+        executeInSequence(subElements, el => fn(el))
+      }
+
+    Future.sequence(futures).map(_.flatten)
+
+  /**
+    * Execute all calls in parallel, with the ability to partition queries to handle a max concurrency.
     * Results of failing queries are skipped.
     *
-    * @param maxConcurrency if 0, execute all calls in parallel
+    * @throws IllegalArgumentException when maxConcurrency is less than 1
     */
   def executeInParallelOnlySuccess[T, U](elements: Seq[T], fn: (T) => Future[U], maxConcurrency: Int)(
       implicit ec: ExecutionContext

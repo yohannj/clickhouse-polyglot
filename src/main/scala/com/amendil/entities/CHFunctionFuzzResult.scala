@@ -11,6 +11,9 @@ import com.amendil.entities.CHFunctionIO._
 final case class CHFunctionFuzzResult(
     name: String,
     function0Ns: Seq[Function0N] = Nil,
+    function1Ns: Seq[Function1N] = Nil,
+    function2Ns: Seq[Function2N] = Nil,
+    function3Ns: Seq[Function3N] = Nil,
     function0Opt: Option[Function0] = None,
     function1s: Seq[Function1] = Nil,
     function2s: Seq[Function2] = Nil,
@@ -19,10 +22,11 @@ final case class CHFunctionFuzzResult(
 ):
   // Helps working with all those functions by providing a single variable
   // And check inputs are unique
-  val functions = function0Ns ++ function0Opt.toSeq ++ function1s ++ function2s ++ function3s ++ function4s
+  val functions =
+    function0Ns ++ function1Ns ++ function2Ns ++ function3Ns ++
+      function0Opt.toSeq ++ function1s ++ function2s ++ function3s ++ function4s
   require(functions.groupBy(_.input).values.filter(_.size != 1).isEmpty)
 
   def atLeastOneSignatureFound(): Boolean = functions.nonEmpty
-
-  override def toString(): String =
-    s"$name(isFunction0N=${function0Ns.nonEmpty}, isFunction0=${function0Opt.nonEmpty}, isFunction1=${function1s.nonEmpty}, isFunction2=${function2s.nonEmpty}, isFunction3=${function3s.nonEmpty}, isFunction4=${function4s.nonEmpty})"
+  def atLeastOneFunctionNSignatureFound(): Boolean =
+    function0Ns.nonEmpty || function1Ns.nonEmpty || function2Ns.nonEmpty

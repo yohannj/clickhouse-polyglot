@@ -1,6 +1,7 @@
 package com.amendil
 
 import com.amendil.entities.{CHAbstractType, CHFunction, CHType}
+import com.amendil.fuzz._
 import com.amendil.http.CHClient
 import com.typesafe.scalalogging.Logger
 
@@ -18,7 +19,7 @@ import scala.util.Try
 
   val runF =
     (for {
-      _ <- ensuringFuzzingValuesAreValid()
+      // _ <- ensuringFuzzingValuesAreValid()
 
       chVersion <- getCHVersion()
       // functionNames <- getCHFunctions()

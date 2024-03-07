@@ -2,11 +2,16 @@ package com.amendil.entities
 
 import com.typesafe.scalalogging.StrictLogging
 
+trait CHInputType { def name: String }
+enum CHAggregatedType(val name: String) extends CHInputType {
+  case Any extends CHAggregatedType("Any")
+}
+
 enum CHType(
     val name: String,
     val fuzzingValues: Seq[String],
     val aliases: Seq[String] = Nil
-) {
+) extends CHInputType {
 
   // Numbers
   case Int8
