@@ -7,7 +7,7 @@ import com.amendil.http.CHClient
 
 import scala.concurrent.{ExecutionContext, Future}
 
-object FuzzerNonParametricFunctions {
+object FuzzerNonParametricFunctions:
   private[fuzz] def fuzz(
       fn: CHFunctionFuzzResult
   )(implicit client: CHClient, ec: ExecutionContext): Future[CHFunctionFuzzResult] =
@@ -44,7 +44,7 @@ object FuzzerNonParametricFunctions {
             testInfiniteArgsFunctions(fn.name, inputTypes)
               .map { isInfiniteFunction =>
                 val function: CHFunctionIO.Function0N | CHFunctionIO.Function1 =
-                  if (isInfiniteFunction)
+                  if isInfiniteFunction then
                     CHFunctionIO.Function0N(inputType, outputType)
                   else
                     CHFunctionIO.Function1(inputType, outputType)
@@ -64,9 +64,9 @@ object FuzzerNonParametricFunctions {
   private def fuzzFunction2Or1N(
       fn: CHFunctionFuzzResult
   )(implicit client: CHClient, ec: ExecutionContext): Future[CHFunctionFuzzResult] =
-    if (fn.function0Ns.nonEmpty) {
+    if fn.function0Ns.nonEmpty then
       Future.successful(fn)
-    } else {
+    else
       fuzzFiniteArgsFunctions(fn.name, argCount = 2)
         .flatMap { validFunction2IOs =>
           executeInParallel(
@@ -80,7 +80,7 @@ object FuzzerNonParametricFunctions {
               testInfiniteArgsFunctions(fn.name, inputTypes)
                 .map { isInfiniteFunction =>
                   val function: CHFunctionIO.Function1N | CHFunctionIO.Function2 =
-                    if (isInfiniteFunction)
+                    if isInfiniteFunction then
                       CHFunctionIO.Function1N(inputType1, inputType2, outputType)
                     else
                       CHFunctionIO.Function2(inputType1, inputType2, outputType)
@@ -96,19 +96,18 @@ object FuzzerNonParametricFunctions {
             fn.copy(function1Ns = function1Ns, function2s = function2s)
           }
         }
-    }
 
   private def fuzzFunction3Or2N(
       fn: CHFunctionFuzzResult
   )(implicit client: CHClient, ec: ExecutionContext): Future[CHFunctionFuzzResult] =
-    if (
+    if
       fn.function0Ns.nonEmpty || fn.function1Ns.nonEmpty || (
         fn.function1s.filterNot(_.arg1.name.startsWith("Tuple")).nonEmpty &&
           fn.function2s.isEmpty
       )
-    ) {
+    then
       Future.successful(fn)
-    } else {
+    else
       fuzzFiniteArgsFunctions(fn.name, argCount = 3)
         .flatMap { validFunction3IOs =>
           executeInParallel(
@@ -122,7 +121,7 @@ object FuzzerNonParametricFunctions {
               testInfiniteArgsFunctions(fn.name, inputTypes)
                 .map { isInfiniteFunction =>
                   val function: CHFunctionIO.Function2N | CHFunctionIO.Function3 =
-                    if (isInfiniteFunction)
+                    if isInfiniteFunction then
                       CHFunctionIO.Function2N(inputType1, inputType2, inputType3, outputType)
                     else
                       CHFunctionIO.Function3(inputType1, inputType2, inputType3, outputType)
@@ -138,18 +137,17 @@ object FuzzerNonParametricFunctions {
             fn.copy(function2Ns = function2Ns, function3s = function3s)
           }
         }
-    }
 
   private def fuzzFunction4(
       fn: CHFunctionFuzzResult
   )(implicit client: CHClient, ec: ExecutionContext): Future[CHFunctionFuzzResult] =
-    if (
+    if
       fn.function0Ns.nonEmpty || ((fn.function1s.filterNot(_.arg1.name.startsWith("Tuple")).nonEmpty || fn.function2s
         .filterNot(f => f.arg1.name.startsWith("Tuple") || f.arg2.name.startsWith("Tuple"))
         .nonEmpty) && fn.function3s.isEmpty)
-    ) {
+    then
       Future.successful(fn)
-    } else {
+    else
       fuzzFiniteArgsFunctions(fn.name, argCount = 4)
         .map { list =>
           val validTypes = list.map { (inputTypes, outputType) =>
@@ -167,17 +165,16 @@ object FuzzerNonParametricFunctions {
 
           fn.copy(function4s = validTypes)
         }
-    }
 
-    if (
+    if
       fn.function0Ns.nonEmpty || fn.function1Ns.nonEmpty || fn.function2Ns.nonEmpty || (
         fn.function1s.filterNot(_.arg1.name.startsWith("Tuple")).nonEmpty &&
           fn.function2s.isEmpty &&
           fn.function3s.isEmpty
       )
-    ) {
+    then
       Future.successful(fn)
-    } else {
+    else
       fuzzFiniteArgsFunctions(fn.name, argCount = 4)
         .flatMap { validFunction4IOs =>
           executeInParallel(
@@ -191,7 +188,7 @@ object FuzzerNonParametricFunctions {
               testInfiniteArgsFunctions(fn.name, inputTypes)
                 .map { isInfiniteFunction =>
                   val function: CHFunctionIO.Function3N | CHFunctionIO.Function4 =
-                    if (isInfiniteFunction)
+                    if isInfiniteFunction then
                       CHFunctionIO.Function3N(inputType1, inputType2, inputType3, inputType4, outputType)
                     else
                       CHFunctionIO.Function4(inputType1, inputType2, inputType3, inputType4, outputType)
@@ -207,7 +204,6 @@ object FuzzerNonParametricFunctions {
             fn.copy(function3Ns = function3Ns, function4s = function4s)
           }
         }
-    }
 
   private def fuzzFiniteArgsFunctions(
       fnName: String,
@@ -220,7 +216,7 @@ object FuzzerNonParametricFunctions {
           executeInSequenceUntilSuccess(
             buildFuzzingValuesArgs(abstractTypes.map(_.fuzzingValues)).map(args => s"SELECT $fnName($args)"),
             client.execute
-          ).map(if (_) Some(abstractTypes) else None)
+          ).map(if _ then Some(abstractTypes) else None)
         },
         maxConcurrency = 40
       ).map(_.flatten)
@@ -266,4 +262,3 @@ object FuzzerNonParametricFunctions {
       client.execute
     )
 
-}

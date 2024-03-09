@@ -6,7 +6,7 @@ import com.typesafe.scalalogging.StrictLogging
 
 import scala.concurrent.{ExecutionContext, Future}
 
-object Fuzzer extends StrictLogging {
+object Fuzzer extends StrictLogging:
   def fuzz(functionName: String)(implicit client: CHClient, ec: ExecutionContext): Future[CHFunctionFuzzResult] =
     // TODO OPTIMIZE function check order!!!
     // 18:46:25.654 [pool-1-thread-1] INFO Main -- ===============================================================
@@ -41,25 +41,23 @@ object Fuzzer extends StrictLogging {
       currentArgs: Seq[CHAbstractType],
       chAbstractTypeList: Seq[CHAbstractType]
   ): Seq[Seq[CHAbstractType]] =
-    if (argCount > 0) {
+    if argCount > 0 then
       chAbstractTypeList.toSeq.map { abstractType =>
         generateCHAbstractTypeCombinations(argCount - 1, currentArgs :+ abstractType, chAbstractTypeList)
       }.flatten
-    } else {
+    else
       Seq(currentArgs)
-    }
 
   private[fuzz] def generateCHTypeCombinations(
       abstractTypes: Seq[CHAbstractType],
       currentArgs: Seq[CHType] = Seq.empty
   ): Seq[Seq[CHType]] =
-    abstractTypes match {
+    abstractTypes match
       case Seq(head, tail @ _*) =>
         head.chTypes
           .map(chType => generateCHTypeCombinations(tail, currentArgs :+ chType))
           .flatten
       case Seq() => Seq(currentArgs)
-    }
 
   private[fuzz] def buildFuzzingValuesArgs(argumentsValues: Seq[Seq[String]]): Seq[String] =
     argumentsValues match
@@ -69,4 +67,3 @@ object Fuzzer extends StrictLogging {
         val subChoices = buildFuzzingValuesArgs(tail)
         head.flatMap(el => subChoices.map(subChoice => s"$el, $subChoice"))
 
-}

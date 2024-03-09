@@ -8,7 +8,7 @@ import com.amendil.http.CHClient
 import scala.concurrent.{ExecutionContext, Future}
 import com.typesafe.scalalogging.StrictLogging
 
-object FuzzerParametricFunctions extends StrictLogging {
+object FuzzerParametricFunctions extends StrictLogging:
 
   // Remove some types that are obviously not parameters
   private val parametricAbstractType = CHAbstractType.values.toSeq.filterNot { abstractType =>
@@ -35,9 +35,9 @@ object FuzzerParametricFunctions extends StrictLogging {
   private def fuzzFunction1Or0NWithOneParameter(
       fn: CHFunctionFuzzResult
   )(implicit client: CHClient, ec: ExecutionContext): Future[CHFunctionFuzzResult] =
-    if (fn.atLeastOneNonParametricSignatureFound()) {
+    if fn.atLeastOneNonParametricSignatureFound() then
       Future.successful(fn)
-    } else {
+    else
       fuzzParametricFunction(fn.name, paramCount = 1, argCount = 1)
         .flatMap { validFunction1IOs =>
           executeInParallel(
@@ -51,7 +51,7 @@ object FuzzerParametricFunctions extends StrictLogging {
               testInfiniteArgsFunctions(fn.name, paramCHTypes = inputTypes._1, nonParamCHTypes = inputTypes._2)
                 .map { isInfiniteFunction =>
                   val function: CHFunctionIO.Parametric1Function0N | CHFunctionIO.Parametric1Function1 =
-                    if (isInfiniteFunction)
+                    if isInfiniteFunction then
                       CHFunctionIO.Parametric1Function0N(paramType1, nonParamType1, outputType)
                     else
                       CHFunctionIO.Parametric1Function1(paramType1, nonParamType1, outputType)
@@ -67,14 +67,13 @@ object FuzzerParametricFunctions extends StrictLogging {
             fn.copy(parametric1Function0Ns = parametric1Function0Ns, parametric1Function1s = parametric1Function1s)
           }
         }
-    }
 
   private def fuzzFunction2Or1NWithOneParameter(
       fn: CHFunctionFuzzResult
   )(implicit client: CHClient, ec: ExecutionContext): Future[CHFunctionFuzzResult] =
-    if (fn.atLeastOneNonParametricSignatureFound() || fn.parametric1Function0Ns.nonEmpty) {
+    if fn.atLeastOneNonParametricSignatureFound() || fn.parametric1Function0Ns.nonEmpty then
       Future.successful(fn)
-    } else {
+    else
       fuzzParametricFunction(fn.name, paramCount = 1, argCount = 2)
         .flatMap { validFunction2IOs =>
           executeInParallel(
@@ -89,7 +88,7 @@ object FuzzerParametricFunctions extends StrictLogging {
               testInfiniteArgsFunctions(fn.name, paramCHTypes = inputTypes._1, nonParamCHTypes = inputTypes._2)
                 .map { isInfiniteFunction =>
                   val function: CHFunctionIO.Parametric1Function1N | CHFunctionIO.Parametric1Function2 =
-                    if (isInfiniteFunction)
+                    if isInfiniteFunction then
                       CHFunctionIO.Parametric1Function1N(paramType1, nonParamType1, nonParamType2, outputType)
                     else
                       CHFunctionIO.Parametric1Function2(paramType1, nonParamType1, nonParamType2, outputType)
@@ -105,14 +104,13 @@ object FuzzerParametricFunctions extends StrictLogging {
             fn.copy(parametric1Function1Ns = parametric1Function1Ns, parametric1Function2s = parametric1Function2s)
           }
         }
-    }
 
   private def fuzzFunction1WithTwoParameters(
       fn: CHFunctionFuzzResult
   )(implicit client: CHClient, ec: ExecutionContext): Future[CHFunctionFuzzResult] =
-    if (fn.parametric1Function1s.isEmpty) {
+    if fn.parametric1Function1s.isEmpty then
       Future.successful(fn)
-    } else {
+    else
       val fnSample = fn.parametric1Function1s.head
       val param1Type = fnSample.paramArg1.asInstanceOf[CHType]
       val arg1Type = fnSample.arg1.asInstanceOf[CHType]
@@ -126,29 +124,27 @@ object FuzzerParametricFunctions extends StrictLogging {
             crossJoin(param1Type.fuzzingValues, param2Type.fuzzingValues, arg1Type.fuzzingValues)
               .map { case (param1, param2, arg1) => s"SELECT ${fn.name}($param1, $param2)($arg1)" },
             client.execute
-          ).map { if (_) Some(param2Type) else None }
+          ).map { if _ then Some(param2Type) else None }
         },
         maxConcurrency = 40
       ).map(_.flatten)
         .map { validParam2Types =>
           val parametric2Function1s =
-            for {
+            for
               param2Type <- validParam2Types
               f <- fn.parametric1Function1s
-            } yield {
+            yield
               CHFunctionIO.Parametric2Function1(f.paramArg1, param2Type, f.arg1, f.output)
-            }
 
           fn.copy(parametric2Function1s = parametric2Function1s)
         }
-    }
 
   private def fuzzFunction1WithThreeParameters(
       fn: CHFunctionFuzzResult
   )(implicit client: CHClient, ec: ExecutionContext): Future[CHFunctionFuzzResult] =
-    if (fn.parametric2Function1s.isEmpty) {
+    if fn.parametric2Function1s.isEmpty then
       Future.successful(fn)
-    } else {
+    else
       val fnSample = fn.parametric2Function1s.head
       val param1Type = fnSample.paramArg1.asInstanceOf[CHType]
       val param2Type = fnSample.paramArg2.asInstanceOf[CHType]
@@ -168,29 +164,27 @@ object FuzzerParametricFunctions extends StrictLogging {
             )
               .map { case (param1, param2, param3, arg1) => s"SELECT ${fn.name}($param1, $param2, $param3)($arg1)" },
             client.execute
-          ).map { if (_) Some(param3Type) else None }
+          ).map { if _ then Some(param3Type) else None }
         },
         maxConcurrency = 40
       ).map(_.flatten)
         .map { validParam3Types =>
           val parametric3Function1s =
-            for {
+            for
               param3Type <- validParam3Types
               f <- fn.parametric2Function1s
-            } yield {
+            yield
               CHFunctionIO.Parametric3Function1(f.paramArg1, f.paramArg2, param3Type, f.arg1, f.output)
-            }
 
           fn.copy(parametric3Function1s = parametric3Function1s)
         }
-    }
 
   private def fuzzFunction2WithTwoParameters(
       fn: CHFunctionFuzzResult
   )(implicit client: CHClient, ec: ExecutionContext): Future[CHFunctionFuzzResult] =
-    if (fn.parametric1Function2s.isEmpty) {
+    if fn.parametric1Function2s.isEmpty then
       Future.successful(fn)
-    } else {
+    else
       val fnSample = fn.parametric1Function2s.head
       val param1Type = fnSample.paramArg1.asInstanceOf[CHType]
       val arg1Type = fnSample.arg1.asInstanceOf[CHType]
@@ -210,29 +204,27 @@ object FuzzerParametricFunctions extends StrictLogging {
             )
               .map { case (param1, param2, arg1, arg2) => s"SELECT ${fn.name}($param1, $param2)($arg1, $arg2)" },
             client.execute
-          ).map { if (_) Some(param2Type) else None }
+          ).map { if _ then Some(param2Type) else None }
         },
         maxConcurrency = 40
       ).map(_.flatten)
         .map { validParam2Types =>
           val parametric2Function2s =
-            for {
+            for
               param2Type <- validParam2Types
               f <- fn.parametric1Function2s
-            } yield {
+            yield
               CHFunctionIO.Parametric2Function2(f.paramArg1, param2Type, f.arg1, f.arg2, f.output)
-            }
 
           fn.copy(parametric2Function2s = parametric2Function2s)
         }
-    }
 
   private def fuzzFunction2WithThreeParameters(
       fn: CHFunctionFuzzResult
   )(implicit client: CHClient, ec: ExecutionContext): Future[CHFunctionFuzzResult] =
-    if (fn.parametric2Function2s.isEmpty) {
+    if fn.parametric2Function2s.isEmpty then
       Future.successful(fn)
-    } else {
+    else
       val fnSample = fn.parametric2Function2s.head
       val param1Type = fnSample.paramArg1.asInstanceOf[CHType]
       val param2Type = fnSample.paramArg2.asInstanceOf[CHType]
@@ -256,29 +248,27 @@ object FuzzerParametricFunctions extends StrictLogging {
                 s"SELECT ${fn.name}($param1, $param2, $param3)($arg1, $arg2)"
               },
             client.execute
-          ).map { if (_) Some(param3Type) else None }
+          ).map { if _ then Some(param3Type) else None }
         },
         maxConcurrency = 40
       ).map(_.flatten)
         .map { validParam3Types =>
           val parametric3Function2s =
-            for {
+            for
               param3Type <- validParam3Types
               f <- fn.parametric2Function2s
-            } yield {
+            yield
               CHFunctionIO.Parametric3Function2(f.paramArg1, f.paramArg2, param3Type, f.arg1, f.arg2, f.output)
-            }
 
           fn.copy(parametric3Function2s = parametric3Function2s)
         }
-    }
 
   private def fuzzFunction0NWithTwoParameters(
       fn: CHFunctionFuzzResult
   )(implicit client: CHClient, ec: ExecutionContext): Future[CHFunctionFuzzResult] =
-    if (fn.parametric1Function0Ns.isEmpty) {
+    if fn.parametric1Function0Ns.isEmpty then
       Future.successful(fn)
-    } else {
+    else
       val fnSample = fn.parametric1Function0Ns.head
       val param1Type = fnSample.paramArg1.asInstanceOf[CHType]
       val argNType = fnSample.argN.asInstanceOf[CHType]
@@ -294,29 +284,27 @@ object FuzzerParametricFunctions extends StrictLogging {
                 (s"SELECT ${fn.name}($param1, $param2)($argN)", s"SELECT ${fn.name}($param1, $param2)($argN, $argN)")
               },
             (query1, query2) => client.execute(query1).recoverWith(_ => client.execute(query2))
-          ).map { if (_) Some(param2Type) else None }
+          ).map { if _ then Some(param2Type) else None }
         },
         maxConcurrency = 40
       ).map(_.flatten)
         .map { validParam2Types =>
           val parametric2Function0Ns =
-            for {
+            for
               param2Type <- validParam2Types
               f <- fn.parametric1Function0Ns
-            } yield {
+            yield
               CHFunctionIO.Parametric2Function0N(f.paramArg1, param2Type, f.argN, f.output)
-            }
 
           fn.copy(parametric2Function0Ns = parametric2Function0Ns)
         }
-    }
 
   private def fuzzFunction0NWithThreeParameters(
       fn: CHFunctionFuzzResult
   )(implicit client: CHClient, ec: ExecutionContext): Future[CHFunctionFuzzResult] =
-    if (fn.parametric2Function0Ns.isEmpty) {
+    if fn.parametric2Function0Ns.isEmpty then
       Future.successful(fn)
-    } else {
+    else
       val fnSample = fn.parametric2Function0Ns.head
       val param1Type = fnSample.paramArg1.asInstanceOf[CHType]
       val param2Type = fnSample.paramArg1.asInstanceOf[CHType]
@@ -341,29 +329,27 @@ object FuzzerParametricFunctions extends StrictLogging {
                 )
               },
             (query1, query2) => client.execute(query1).recoverWith(_ => client.execute(query2))
-          ).map { if (_) Some(param3Type) else None }
+          ).map { if _ then Some(param3Type) else None }
         },
         maxConcurrency = 40
       ).map(_.flatten)
         .map { validParam3Types =>
           val parametric3Function0Ns =
-            for {
+            for
               param3Type <- validParam3Types
               f <- fn.parametric2Function0Ns
-            } yield {
+            yield
               CHFunctionIO.Parametric3Function0N(f.paramArg1, f.paramArg2, param3Type, f.argN, f.output)
-            }
 
           fn.copy(parametric3Function0Ns = parametric3Function0Ns)
         }
-    }
 
   private def fuzzFunction1NWithTwoParameters(
       fn: CHFunctionFuzzResult
   )(implicit client: CHClient, ec: ExecutionContext): Future[CHFunctionFuzzResult] =
-    if (fn.parametric1Function1Ns.isEmpty) {
+    if fn.parametric1Function1Ns.isEmpty then
       Future.successful(fn)
-    } else {
+    else
       val fnSample = fn.parametric1Function1Ns.head
       val param1Type = fnSample.paramArg1.asInstanceOf[CHType]
       val arg1Type = fnSample.arg1.asInstanceOf[CHType]
@@ -388,29 +374,27 @@ object FuzzerParametricFunctions extends StrictLogging {
                 )
               },
             (query1, query2) => client.execute(query1).recoverWith(_ => client.execute(query2))
-          ).map { if (_) Some(param2Type) else None }
+          ).map { if _ then Some(param2Type) else None }
         },
         maxConcurrency = 40
       ).map(_.flatten)
         .map { validParam2Types =>
           val parametric2Function1Ns =
-            for {
+            for
               param2Type <- validParam2Types
               f <- fn.parametric1Function1Ns
-            } yield {
+            yield
               CHFunctionIO.Parametric2Function1N(f.paramArg1, param2Type, f.arg1, f.argN, f.output)
-            }
 
           fn.copy(parametric2Function1Ns = parametric2Function1Ns)
         }
-    }
 
   private def fuzzFunction1NWithThreeParameters(
       fn: CHFunctionFuzzResult
   )(implicit client: CHClient, ec: ExecutionContext): Future[CHFunctionFuzzResult] =
-    if (fn.parametric2Function1Ns.isEmpty) {
+    if fn.parametric2Function1Ns.isEmpty then
       Future.successful(fn)
-    } else {
+    else
       val fnSample = fn.parametric2Function1Ns.head
       val param1Type = fnSample.paramArg1.asInstanceOf[CHType]
       val param2Type = fnSample.paramArg1.asInstanceOf[CHType]
@@ -437,22 +421,20 @@ object FuzzerParametricFunctions extends StrictLogging {
                 )
               },
             (query1, query2) => client.execute(query1).recoverWith(_ => client.execute(query2))
-          ).map { if (_) Some(param3Type) else None }
+          ).map { if _ then Some(param3Type) else None }
         },
         maxConcurrency = 40
       ).map(_.flatten)
         .map { validParam3Types =>
           val parametric3Function1Ns =
-            for {
+            for
               param3Type <- validParam3Types
               f <- fn.parametric2Function1Ns
-            } yield {
+            yield
               CHFunctionIO.Parametric3Function1N(f.paramArg1, f.paramArg2, param3Type, f.arg1, f.argN, f.output)
-            }
 
           fn.copy(parametric3Function1Ns = parametric3Function1Ns)
         }
-    }
 
   private def fuzzParametricFunction(
       fnName: String,
@@ -472,13 +454,13 @@ object FuzzerParametricFunctions extends StrictLogging {
               buildFuzzingValuesArgs(nonParamTypes.map(_.fuzzingValues))
             ).map { case (paramArgs, nonParamArgs) => s"SELECT $fnName($paramArgs)($nonParamArgs)" },
             client.execute
-          ).map(if (_) Some((paramTypes, nonParamTypes)) else None)
+          ).map(if _ then Some((paramTypes, nonParamTypes)) else None)
         },
         maxConcurrency = 40
       ).map(_.flatten)
 
     // Intermediate steps to try to avoid a lot of combinations, if we can filter many args combinations.
-    val validCHAbstractParamWithNonAbstractArgsF = validCHAbstractTypeCombinationsF.flatMap {
+    val validCHAbstractParamWithNonAbstractArgsF = validCHAbstractTypeCombinationsF.flatMap:
       validCHAbstractTypeCombinations =>
         val checksToDo =
           validCHAbstractTypeCombinations
@@ -498,7 +480,6 @@ object FuzzerParametricFunctions extends StrictLogging {
           (paramTypes, nonParamTypes, query) => client.execute(query).map(resp => (paramTypes, nonParamTypes)),
           maxConcurrency = 40
         )
-    }
 
     validCHAbstractParamWithNonAbstractArgsF
       .flatMap { validCHAbstractParamWithNonAbstractArgs =>
@@ -553,25 +534,25 @@ object FuzzerParametricFunctions extends StrictLogging {
     )
 
   private def crossJoin[T, U](s1: Seq[T], s2: Seq[U]): Seq[(T, U)] =
-    for {
+    for
       e1 <- s1
       e2 <- s2
-    } yield { (e1, e2) }
+    yield { (e1, e2) }
 
   private def crossJoin[T, U, V](s1: Seq[T], s2: Seq[U], s3: Seq[V]): Seq[(T, U, V)] =
-    for {
+    for
       e1 <- s1
       e2 <- s2
       e3 <- s3
-    } yield { (e1, e2, e3) }
+    yield { (e1, e2, e3) }
 
   private def crossJoin[T, U, V, W](s1: Seq[T], s2: Seq[U], s3: Seq[V], s4: Seq[W]): Seq[(T, U, V, W)] =
-    for {
+    for
       e1 <- s1
       e2 <- s2
       e3 <- s3
       e4 <- s4
-    } yield { (e1, e2, e3, e4) }
+    yield { (e1, e2, e3, e4) }
 
   private def crossJoin[T, U, V, W, X](
       s1: Seq[T],
@@ -580,11 +561,10 @@ object FuzzerParametricFunctions extends StrictLogging {
       s4: Seq[W],
       s5: Seq[X]
   ): Seq[(T, U, V, W, X)] =
-    for {
+    for
       e1 <- s1
       e2 <- s2
       e3 <- s3
       e4 <- s4
       e5 <- s5
-    } yield { (e1, e2, e3, e4, e5) }
-}
+    yield { (e1, e2, e3, e4, e5) }

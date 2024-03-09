@@ -5,7 +5,7 @@ import com.amendil.http.CHClient
 
 import scala.concurrent.{ExecutionContext, Future}
 
-object FuzzerSpecialFunctions {
+object FuzzerSpecialFunctions:
   private[fuzz] def fuzz(
       fn: CHFunctionFuzzResult
   )(implicit client: CHClient, ec: ExecutionContext): Future[CHFunctionFuzzResult] =
@@ -21,4 +21,3 @@ object FuzzerSpecialFunctions {
     //     fn.copy(function0Ns = fn.function0Ns :+ newFunction)
     //   }
     //   .recover(_ => fn)
-}

@@ -47,12 +47,12 @@ class CHClient(port: Int)(implicit ec: ExecutionContext):
     toScala {
       client.sendAsync(req, BodyHandlers.ofInputStream())
     }.flatMap { r =>
-      if (r.statusCode() == HttpURLConnection.HTTP_OK) {
+      if r.statusCode() == HttpURLConnection.HTTP_OK then
         Future.successful(mapper.readValue(r.body(), classOf[CHResponse]))
-      } else {
+      else
         val message = new String(r.body().readAllBytes(), StandardCharsets.UTF_8)
 
-        if (message.contains("Too many simultaneous queries.")) {
+        if message.contains("Too many simultaneous queries.") then
           val waitTime = (Math.min(previousWaitTime * 1.15, 60000) + random.nextInt(200)).toLong
           val p = Promise[CHResponse]()
           scheduledExecutor.schedule(
@@ -62,17 +62,14 @@ class CHClient(port: Int)(implicit ec: ExecutionContext):
           )
 
           p.future
-        } else {
+        else
           Future.failed(new Exception(s"ClickHouse query failed: $message"))
-        }
-      }
     }
 
-object CHClient {
+object CHClient:
   private val settings: String = Seq(
     "allow_suspicious_low_cardinality_types=1",
     "allow_experimental_object_type=1",
     "allow_experimental_nlp_functions=1",
     "allow_experimental_funnel_functions=1"
   ).mkString(", ")
-}

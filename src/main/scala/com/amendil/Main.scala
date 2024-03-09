@@ -18,13 +18,13 @@ import scala.util.Try
   implicit val client: CHClient = CHClient(8123)
 
   val runF =
-    (for {
+    (for
       // _ <- ensuringFuzzingValuesAreValid()
 
       chVersion <- getCHVersion()
       // functionNames <- getCHFunctions()
       functionNames <- Future.successful(unknownFunctions)
-    } yield {
+    yield {
       assume(Try { chVersion.toDouble }.isSuccess)
 
       val pw = new PrintWriter(new File(s"res/functions_v${chVersion}.txt.part"))
@@ -34,7 +34,7 @@ import scala.util.Try
         .executeInSequence(
           functionNames.zipWithIndex,
           (functionName: String, idx: Int) =>
-            if (idx % Math.max(functionCount / 20, 1) == 0)
+            if idx % Math.max(functionCount / 20, 1) == 0 then
               logger.info(s"===============================================================")
               logger.info(s"${100 * idx / functionCount}%")
               logger.info(s"===============================================================")
@@ -80,7 +80,7 @@ def ensuringFuzzingValuesAreValid()(implicit client: CHClient, ec: ExecutionCont
     )
     .map { results =>
       val errors = results.flatten
-      if (errors.nonEmpty)
+      if errors.nonEmpty then
         throw Exception(s"Invalid fuzzing value founds.\n${errors.mkString("\n")}")
     }
 

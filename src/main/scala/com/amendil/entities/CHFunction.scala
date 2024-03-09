@@ -7,11 +7,11 @@ final case class CHFunction(
     supportedPlatforms: Seq[String],
     signatures: Seq[CHFunctionIO],
     isExperimental: Boolean
-) {
+):
   def asString(): String =
-    if (signatures.isEmpty) {
+    if signatures.isEmpty then
       name
-    } else {
+    else
       val signaturesStr =
         signatures
           .map(_.asString())
@@ -21,13 +21,11 @@ final case class CHFunction(
 
       s"""|$name
           |${indent}Supported platforms: ${supportedPlatforms.sorted.mkString(", ")}
-          |${indent}Is experimental: ${if (isExperimental) "Yes" else "No"}
+          |${indent}Is experimental: ${if isExperimental then "Yes" else "No"}
           |${indent}Signatures:
           |$signaturesStr""".stripMargin
-    }
-}
 
-object CHFunction {
+object CHFunction:
   val indent = "    "
 
   // TODO: Write tests
@@ -38,4 +36,3 @@ object CHFunction {
       signatures = fuzzResult.functions,
       isExperimental = false // FIXME
     )
-}

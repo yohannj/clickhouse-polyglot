@@ -1,6 +1,6 @@
 package com.amendil.entities
 
-enum CHAbstractType(val fuzzingValues: Seq[String], val chTypes: Seq[CHType]) {
+enum CHAbstractType(val fuzzingValues: Seq[String], val chTypes: Seq[CHType]):
   // Numbers
   case Numbers
       extends CHAbstractType(
@@ -422,4 +422,3 @@ enum CHAbstractType(val fuzzingValues: Seq[String], val chTypes: Seq[CHType]) {
   case ClickHouseType extends CHAbstractType(Seq("Nullable(String)"), Seq(CHType.ClickHouseType))
   case WindowFunctionMode
       extends CHAbstractType(CHType.WindowFunctionMode.fuzzingValues, Seq(CHType.WindowFunctionMode))
-}

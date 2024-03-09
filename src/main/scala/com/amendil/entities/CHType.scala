@@ -3,15 +3,14 @@ package com.amendil.entities
 import com.typesafe.scalalogging.StrictLogging
 
 trait CHInputType { def name: String }
-enum CHAggregatedType(val name: String) extends CHInputType {
+enum CHAggregatedType(val name: String) extends CHInputType:
   case Any extends CHAggregatedType("Any")
-}
 
 enum CHType(
     val name: String,
     val fuzzingValues: Seq[String],
     val aliases: Seq[String] = Nil
-) extends CHInputType {
+) extends CHInputType:
 
   // Numbers
   case Int8
@@ -1546,30 +1545,28 @@ enum CHType(
         "WindowFunctionMode",
         Seq("strict_deduplication", "strict_increase", "strict_order")
       )
-}
 
-object CHType extends StrictLogging {
+object CHType extends StrictLogging:
 
   def getByName(name: String): CHType =
-    findByName(name).getOrElse {
+    findByName(name).getOrElse:
       val errMsg = s"Unable to determine CHType for $name"
       logger.debug(errMsg)
       throw new IllegalArgumentException(errMsg)
-    }
 
   def findByName(name: String): Option[CHType] =
     CHType.values.find(t => t.name.equals(name) || t.aliases.contains(name))
 
   def merge(type1: String, type2: String): String =
     val exceptionIfUnknown = new IllegalArgumentException(s"Unable to determine higher type for $type1 and $type2")
-    if (type1 == type2) type1 // Expects both type to be identical, should be the most obvious use case
-    else {
+    if type1 == type2 then type1 // Expects both type to be identical, should be the most obvious use case
+    else
       val chType1 = CHType.getByName(type1)
       val chType2 = CHType.getByName(type2)
 
       val mergedType =
-        if (chType1 == chType2) chType1
-        else if (chType1 == Int8) {
+        if chType1 == chType2 then chType1
+        else if chType1 == Int8 then
           chType2 match
             case UInt8                                   => Int16
             case UInt16                                  => Int32
@@ -1578,7 +1575,7 @@ object CHType extends StrictLogging {
             case UInt128 | UInt256                       => Int256
             case Int16 | Int32 | Int64 | Int128 | Int256 => chType2
             case _                                       => throw exceptionIfUnknown
-        } else if (chType2 == Int8) {
+        else if chType2 == Int8 then
           chType1 match
             case UInt8                                   => Int16
             case UInt16                                  => Int32
@@ -1587,7 +1584,7 @@ object CHType extends StrictLogging {
             case UInt128 | UInt256                       => Int256
             case Int16 | Int32 | Int64 | Int128 | Int256 => chType1
             case _                                       => throw exceptionIfUnknown
-        } else if (chType1 == Int16) {
+        else if chType1 == Int16 then
           chType2 match
             case UInt8                           => Int16
             case UInt16                          => Int32
@@ -1596,7 +1593,7 @@ object CHType extends StrictLogging {
             case UInt128 | UInt256               => Int256
             case Int32 | Int64 | Int128 | Int256 => chType2
             case _                               => throw exceptionIfUnknown
-        } else if (chType2 == Int16) {
+        else if chType2 == Int16 then
           chType1 match
             case UInt8                           => Int16
             case UInt16                          => Int32
@@ -1605,7 +1602,7 @@ object CHType extends StrictLogging {
             case UInt128 | UInt256               => Int256
             case Int32 | Int64 | Int128 | Int256 => chType1
             case _                               => throw exceptionIfUnknown
-        } else if (chType1 == Int32) {
+        else if chType1 == Int32 then
           chType2 match
             case UInt8 | UInt16          => Int32
             case UInt32                  => Int64
@@ -1613,7 +1610,7 @@ object CHType extends StrictLogging {
             case UInt128 | UInt256       => Int256
             case Int64 | Int128 | Int256 => chType2
             case _                       => throw exceptionIfUnknown
-        } else if (chType2 == Int32) {
+        else if chType2 == Int32 then
           chType1 match
             case UInt8 | UInt16          => Int32
             case UInt32                  => Int64
@@ -1621,93 +1618,90 @@ object CHType extends StrictLogging {
             case UInt128 | UInt256       => Int256
             case Int64 | Int128 | Int256 => chType1
             case _                       => throw exceptionIfUnknown
-        } else if (chType1 == Int64) {
+        else if chType1 == Int64 then
           chType2 match
             case UInt8 | UInt16 | UInt32 => Int64
             case UInt64                  => Int128
             case UInt128 | UInt256       => Int256
             case Int128 | Int256         => chType2
             case _                       => throw exceptionIfUnknown
-        } else if (chType2 == Int64) {
+        else if chType2 == Int64 then
           chType1 match
             case UInt8 | UInt16 | UInt32 => Int64
             case UInt64                  => Int128
             case UInt128 | UInt256       => Int256
             case Int128 | Int256         => chType1
             case _                       => throw exceptionIfUnknown
-        } else if (chType1 == Int128) {
+        else if chType1 == Int128 then
           chType2 match
             case UInt8 | UInt16 | UInt32 | UInt64 => Int128
             case UInt128 | UInt256                => Int256
             case Int256                           => Int256
             case _                                => throw exceptionIfUnknown
-        } else if (chType2 == Int128) {
+        else if chType2 == Int128 then
           chType1 match
             case UInt8 | UInt16 | UInt32 | UInt64 => Int128
             case UInt128 | UInt256                => Int256
             case Int256                           => Int256
             case _                                => throw exceptionIfUnknown
-        } else if (chType1 == Int256) Int256
-        else if (chType2 == Int256) Int256
+        else if chType1 == Int256 then Int256
+        else if chType2 == Int256 then Int256
         // From now on, neither type1 nor type2 can be a signed integer
-        else if (chType1 == UInt8) {
+        else if chType1 == UInt8 then
           chType2 match
             case UInt16 | UInt32 | UInt64 | UInt128 | UInt256 => chType2
             case _                                            => throw exceptionIfUnknown
-        } else if (chType2 == UInt8) {
+        else if chType2 == UInt8 then
           chType1 match
             case UInt16 | UInt32 | UInt64 | UInt128 | UInt256 => chType1
             case _                                            => throw exceptionIfUnknown
-        } else if (chType1 == UInt16) {
+        else if chType1 == UInt16 then
           chType2 match
             case UInt32 | UInt64 | UInt128 | UInt256 => chType2
             case _                                   => throw exceptionIfUnknown
-        } else if (chType2 == UInt16) {
+        else if chType2 == UInt16 then
           chType1 match
             case UInt32 | UInt64 | UInt128 | UInt256 => chType1
             case _                                   => throw exceptionIfUnknown
-        } else if (chType1 == UInt32) {
+        else if chType1 == UInt32 then
           chType2 match
             case UInt64 | UInt128 | UInt256 => chType2
             case _                          => throw exceptionIfUnknown
-        } else if (chType2 == UInt32) {
+        else if chType2 == UInt32 then
           chType1 match
             case UInt64 | UInt128 | UInt256 => chType1
             case _                          => throw exceptionIfUnknown
-        } else if (chType1 == UInt64) {
+        else if chType1 == UInt64 then
           chType2 match
             case UInt128 | UInt256 => chType2
             case _                 => throw exceptionIfUnknown
-        } else if (chType2 == UInt64) {
+        else if chType2 == UInt64 then
           chType1 match
             case UInt128 | UInt256 => chType1
             case _                 => throw exceptionIfUnknown
-        } else if (chType1 == UInt128) {
+        else if chType1 == UInt128 then
           chType2 match
             case UInt256 => chType2
             case _       => throw exceptionIfUnknown
-        } else if (chType2 == UInt128) {
+        else if chType2 == UInt128 then
           chType1 match
             case UInt256 => chType1
             case _       => throw exceptionIfUnknown
-        }
         // From now on, neither type1 nor type2 can be an unsigned integer
-        else if (chType1 == Float32) {
+        else if chType1 == Float32 then
           chType2 match
             case Float64 => Float64
             case _       => throw exceptionIfUnknown
-        } else if (chType2 == Float32) {
+        else if chType2 == Float32 then
           chType1 match
             case Float64 => Float64
             case _       => throw exceptionIfUnknown
-        }
         // From now on, neither type1 nor type2 can be a float number
         else throw exceptionIfUnknown
 
       mergedType.name
-    }
 
-  private def lowCardinalityFuzzingValues(baseFuzzingValues: Seq[String]) = {
+  private def lowCardinalityFuzzingValues(baseFuzzingValues: Seq[String]) =
     // Build a sample fuzzingValue and fetch its type
     val firstFuzzingValue = baseFuzzingValues.head
     val typeIndex = firstFuzzingValue.lastIndexOf("::")
@@ -1715,9 +1709,8 @@ object CHType extends StrictLogging {
     val fuzzingType = firstFuzzingValue.substring(typeIndex + "::".size)
 
     Seq(s"$fuzzingValueWithoutType::LowCardinality($fuzzingType)")
-  }
 
-  private def nullableFuzzingValues(baseFuzzingValues: Seq[String]) = {
+  private def nullableFuzzingValues(baseFuzzingValues: Seq[String]) =
     // Build a sample fuzzingValue and fetch its type
     val firstFuzzingValue = baseFuzzingValues.head
     val typeIndex = firstFuzzingValue.lastIndexOf("::")
@@ -1728,5 +1721,3 @@ object CHType extends StrictLogging {
       s"$fuzzingValueWithoutType::Nullable($fuzzingType)",
       s"null::Nullable($fuzzingType)"
     )
-  }
-}

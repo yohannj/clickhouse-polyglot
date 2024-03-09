@@ -2,7 +2,7 @@ package com.amendil
 
 import scala.concurrent.{ExecutionContext, Future}
 
-object ConcurrencyUtils {
+object ConcurrencyUtils:
 
   /**
     * Execute all calls in parallel, with the ability to partition queries to handle a max concurrency.
@@ -67,4 +67,3 @@ object ConcurrencyUtils {
       case Seq(head, tail @ _*) => fn(head).map(_ => true).recoverWith(_ => executeInSequenceUntilSuccess(tail, fn))
       case _                    => Future.successful(false)
 
-}

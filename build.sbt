@@ -13,7 +13,8 @@ lazy val root = project
         "-Xfatal-warnings",
         "-deprecation",
         "-feature",
-        "-Wunused:imports"
+        "-Wunused:imports",
+        "-new-syntax"
       ),
     libraryDependencies ++= Seq(
       // Logging
