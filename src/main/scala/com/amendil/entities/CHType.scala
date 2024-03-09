@@ -1450,7 +1450,7 @@ enum CHType(
         Seq(s"tuple(${UUID.fuzzingValues.head})::Tuple(UUID)")
       )
 
-  // Special
+  // Nested
   case ArrayMapStringInt8
       extends CHType(
         "Array(Map(String, Int8))",
@@ -1470,6 +1470,81 @@ enum CHType(
       extends CHType(
         "Tuple(Map(String, Int8))",
         Seq(s"tuple(${MapStringInt8.fuzzingValues.head})::Tuple(Map(String, Int8))")
+      )
+
+  // Special
+  case ClickHouseType
+      extends CHType(
+        "ClickHouseType",
+        // XXX Should be a conf?! => Built using `SELECT name FROM system.data_type_families WHERE empty(alias_to) ORDER BY name FORMAT TSV`
+        // XXX How to handle parameterized types?
+        Seq(
+          "AggregateFunction",
+          "Array",
+          "Bool",
+          "Date",
+          "Date32",
+          "DateTime",
+          "DateTime32",
+          "DateTime64",
+          "Decimal",
+          "Decimal128",
+          "Decimal256",
+          "Decimal32",
+          "Decimal64",
+          "Enum",
+          "Enum16",
+          "Enum8",
+          "FixedString",
+          "Float32",
+          "Float64",
+          "IPv4",
+          "IPv6",
+          "Int128",
+          "Int16",
+          "Int256",
+          "Int32",
+          "Int64",
+          "Int8",
+          "IntervalDay",
+          "IntervalHour",
+          "IntervalMicrosecond",
+          "IntervalMillisecond",
+          "IntervalMinute",
+          "IntervalMonth",
+          "IntervalNanosecond",
+          "IntervalQuarter",
+          "IntervalSecond",
+          "IntervalWeek",
+          "IntervalYear",
+          "JSON",
+          "LowCardinality",
+          "Map",
+          "MultiPolygon",
+          "Nested",
+          "Nothing",
+          "Nullable",
+          "Object",
+          "Point",
+          "Polygon",
+          "Ring",
+          "SimpleAggregateFunction",
+          "String",
+          "Tuple",
+          "UInt128",
+          "UInt16",
+          "UInt256",
+          "UInt32",
+          "UInt64",
+          "UInt8",
+          "UUID",
+          "Variant"
+        )
+      )
+  case WindowFunctionMode
+      extends CHType(
+        "WindowFunctionMode",
+        Seq("strict_deduplication", "strict_increase", "strict_order")
       )
 }
 

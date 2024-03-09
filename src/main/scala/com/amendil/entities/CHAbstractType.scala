@@ -396,7 +396,7 @@ enum CHAbstractType(val fuzzingValues: Seq[String], val chTypes: Seq[CHType]) {
       )
   case Tuple1UUID extends CHAbstractType(Seq(s"tuple(${UUID.fuzzingValues.head})::Tuple(UUID)"), Seq(CHType.Tuple1UUID))
 
-  // Special
+  // Nested
   case ArrayMapStringInt8
       extends CHAbstractType(
         Seq(s"[${MapStringInt8.fuzzingValues.head}]::Array(Map(String, Int8))"),
@@ -417,4 +417,9 @@ enum CHAbstractType(val fuzzingValues: Seq[String], val chTypes: Seq[CHType]) {
         Seq(s"tuple(${MapStringInt8.fuzzingValues.head})::Tuple(Map(String, Int8))"),
         Seq(CHType.Tuple1MapStringInt8)
       )
+
+  // Special
+  case ClickHouseType extends CHAbstractType(Seq("Nullable(String)"), Seq(CHType.ClickHouseType))
+  case WindowFunctionMode
+      extends CHAbstractType(CHType.WindowFunctionMode.fuzzingValues, Seq(CHType.WindowFunctionMode))
 }

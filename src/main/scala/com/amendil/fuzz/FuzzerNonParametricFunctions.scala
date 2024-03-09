@@ -264,6 +264,6 @@ object FuzzerNonParametricFunctions {
     executeInSequenceUntilSuccess(
       (fuzzingValuesArgsv1 ++ fuzzingValuesArgsv2).map(args => s"SELECT $fnName($args)"),
       client.execute
-    ).map(_ => true).recover(_ => false)
+    )
 
 }

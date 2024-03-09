@@ -53,4 +53,95 @@ object CHFunctionIO {
     val kind = "function4"
     val input = Seq(arg1, arg2, arg3, arg4)
   }
+
+  case class Parametric1Function0N(paramArg1: CHInputType, argN: CHInputType, output: String) extends CHFunctionIO {
+    val kind = "parametric1Function0N"
+    val input = Seq(paramArg1, argN)
+  }
+  case class Parametric1Function1N(paramArg1: CHInputType, arg1: CHInputType, argN: CHInputType, output: String)
+      extends CHFunctionIO {
+    val kind = "parametric1Function1N"
+    val input = Seq(paramArg1, arg1, argN)
+  }
+  case class Parametric1Function1(paramArg1: CHInputType, arg1: CHInputType, output: String) extends CHFunctionIO {
+    val kind = "parametric1Function1"
+    val input = Seq(paramArg1, arg1)
+  }
+  case class Parametric1Function2(paramArg1: CHInputType, arg1: CHInputType, arg2: CHInputType, output: String)
+      extends CHFunctionIO {
+    val kind = "parametric1Function2"
+    val input = Seq(paramArg1, arg1, arg2)
+  }
+  case class Parametric2Function0N(paramArg1: CHInputType, paramArg2: CHInputType, argN: CHInputType, output: String)
+      extends CHFunctionIO {
+    val kind = "parametric2Function0N"
+    val input = Seq(paramArg1, paramArg2, argN)
+  }
+  case class Parametric2Function1N(
+      paramArg1: CHInputType,
+      paramArg2: CHInputType,
+      arg1: CHInputType,
+      argN: CHInputType,
+      output: String
+  ) extends CHFunctionIO {
+    val kind = "parametric2Function1N"
+    val input = Seq(paramArg1, paramArg2, arg1, argN)
+  }
+  case class Parametric2Function1(paramArg1: CHInputType, paramArg2: CHInputType, arg1: CHInputType, output: String)
+      extends CHFunctionIO {
+    val kind = "parametric2Function1"
+    val input = Seq(paramArg1, paramArg2, arg1)
+  }
+  case class Parametric2Function2(
+      paramArg1: CHInputType,
+      paramArg2: CHInputType,
+      arg1: CHInputType,
+      arg2: CHInputType,
+      output: String
+  ) extends CHFunctionIO {
+    val kind = "parametric2Function2"
+    val input = Seq(paramArg1, paramArg2, arg1, arg2)
+  }
+  case class Parametric3Function0N(
+      paramArg1: CHInputType,
+      paramArg2: CHInputType,
+      paramArg3: CHInputType,
+      argN: CHInputType,
+      output: String
+  ) extends CHFunctionIO {
+    val kind = "parametric3Function0N"
+    val input = Seq(paramArg1, paramArg2, paramArg3, argN)
+  }
+  case class Parametric3Function1N(
+      paramArg1: CHInputType,
+      paramArg2: CHInputType,
+      paramArg3: CHInputType,
+      arg1: CHInputType,
+      argN: CHInputType,
+      output: String
+  ) extends CHFunctionIO {
+    val kind = "parametric3Function1N"
+    val input = Seq(paramArg1, paramArg2, paramArg3, arg1, argN)
+  }
+  case class Parametric3Function1(
+      paramArg1: CHInputType,
+      paramArg2: CHInputType,
+      paramArg3: CHInputType,
+      arg1: CHInputType,
+      output: String
+  ) extends CHFunctionIO {
+    val kind = "parametric3Function1"
+    val input = Seq(paramArg1, paramArg2, paramArg3, arg1)
+  }
+  case class Parametric3Function2(
+      paramArg1: CHInputType,
+      paramArg2: CHInputType,
+      paramArg3: CHInputType,
+      arg1: CHInputType,
+      arg2: CHInputType,
+      output: String
+  ) extends CHFunctionIO {
+    val kind = "parametric3Function2"
+    val input = Seq(paramArg1, paramArg2, paramArg3, arg1, arg2)
+  }
 }
