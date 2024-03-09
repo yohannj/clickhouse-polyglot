@@ -60,10 +60,14 @@ object ConcurrencyUtils:
       case Seq(head, tail @ _*) => fn(head).flatMap(res => executeInSequence(tail, fn).map(l => l :+ res))
       case _                    => Future.successful(Seq.empty)
 
+  def executeChain[T, U](element: T, fns: Seq[(T) => Future[T]])(implicit ec: ExecutionContext): Future[T] =
+    fns match
+      case Seq(fn, tail @ _*) => fn(element).flatMap(executeChain(_, tail))
+      case _                  => Future.successful(element)
+
   def executeInSequenceUntilSuccess[T](elements: Seq[T], fn: (T) => Future[_])(
       implicit ec: ExecutionContext
   ): Future[Boolean] =
     elements match
       case Seq(head, tail @ _*) => fn(head).map(_ => true).recoverWith(_ => executeInSequenceUntilSuccess(tail, fn))
       case _                    => Future.successful(false)
-

@@ -6,9 +6,8 @@ import com.amendil.fuzz.Fuzzer._
 import com.amendil.http.CHClient
 
 import scala.concurrent.{ExecutionContext, Future}
-import com.typesafe.scalalogging.StrictLogging
 
-object FuzzerParametricFunctions extends StrictLogging:
+object FuzzerParametricFunctions:
 
   // Remove some types that are obviously not parameters
   private val parametricAbstractType = CHAbstractType.values.toSeq.filterNot { abstractType =>
@@ -17,26 +16,31 @@ object FuzzerParametricFunctions extends StrictLogging:
     abstractType.fuzzingValues.head.contains("::Tuple(")
   }
 
-  private[fuzz] def fuzz(
-      fn: CHFunctionFuzzResult
-  )(implicit client: CHClient, ec: ExecutionContext): Future[CHFunctionFuzzResult] =
-    // Future.successful(fn)
-    fuzzFunction1Or0NWithOneParameter(fn)
-      .flatMap(fuzzFunction2Or1NWithOneParameter)
-      .flatMap(fuzzFunction1WithTwoParameters)
-      .flatMap(fuzzFunction1WithThreeParameters)
-      .flatMap(fuzzFunction2WithTwoParameters)
-      .flatMap(fuzzFunction2WithThreeParameters)
-      .flatMap(fuzzFunction0NWithTwoParameters)
-      .flatMap(fuzzFunction0NWithThreeParameters)
-      .flatMap(fuzzFunction1NWithTwoParameters)
-      .flatMap(fuzzFunction1NWithThreeParameters)
+  private[fuzz] def fuzzingFunctionWithCost(
+      implicit client: CHClient,
+      ec: ExecutionContext
+  ): Seq[((CHFunctionFuzzResult) => Future[CHFunctionFuzzResult], Long)] =
+    val paramCount = parametricAbstractType.flatMap(_.chTypes).size.toLong
+    val argCount = CHType.values.size.toLong
+    Seq(
+      (fuzzFunction1Or0NWithOneParameter, paramCount * argCount),
+      (fuzzFunction2Or1NWithOneParameter, paramCount * argCount * argCount),
+      // Functions below MUST happen after the "WithOneParameter", they are then very easy to compute
+      (fuzzFunction1WithTwoParameters, paramCount * argCount + 1),
+      (fuzzFunction0NWithTwoParameters, paramCount * argCount + 1),
+      (fuzzFunction2WithTwoParameters, paramCount * argCount * argCount + 1),
+      (fuzzFunction1NWithTwoParameters, paramCount * argCount * argCount + 1),
+      // Functions below MUST happen after the "WithTwoParameter", they are then very easy to compute
+      (fuzzFunction1WithThreeParameters, paramCount * argCount + 2),
+      (fuzzFunction0NWithThreeParameters, paramCount * argCount + 2),
+      (fuzzFunction2WithThreeParameters, paramCount * argCount * argCount + 2),
+      (fuzzFunction1NWithThreeParameters, paramCount * argCount * argCount + 2)
+    )
 
   private def fuzzFunction1Or0NWithOneParameter(
       fn: CHFunctionFuzzResult
   )(implicit client: CHClient, ec: ExecutionContext): Future[CHFunctionFuzzResult] =
-    if fn.atLeastOneNonParametricSignatureFound() then
-      Future.successful(fn)
+    if fn.isNonParametric || fn.isSpecialInfiniteFunction then Future.successful(fn)
     else
       fuzzParametricFunction(fn.name, paramCount = 1, argCount = 1)
         .flatMap { validFunction1IOs =>
@@ -51,10 +55,8 @@ object FuzzerParametricFunctions extends StrictLogging:
               testInfiniteArgsFunctions(fn.name, paramCHTypes = inputTypes._1, nonParamCHTypes = inputTypes._2)
                 .map { isInfiniteFunction =>
                   val function: CHFunctionIO.Parametric1Function0N | CHFunctionIO.Parametric1Function1 =
-                    if isInfiniteFunction then
-                      CHFunctionIO.Parametric1Function0N(paramType1, nonParamType1, outputType)
-                    else
-                      CHFunctionIO.Parametric1Function1(paramType1, nonParamType1, outputType)
+                    if isInfiniteFunction then CHFunctionIO.Parametric1Function0N(paramType1, nonParamType1, outputType)
+                    else CHFunctionIO.Parametric1Function1(paramType1, nonParamType1, outputType)
 
                   function
                 }
@@ -71,7 +73,7 @@ object FuzzerParametricFunctions extends StrictLogging:
   private def fuzzFunction2Or1NWithOneParameter(
       fn: CHFunctionFuzzResult
   )(implicit client: CHClient, ec: ExecutionContext): Future[CHFunctionFuzzResult] =
-    if fn.atLeastOneNonParametricSignatureFound() || fn.parametric1Function0Ns.nonEmpty then
+    if fn.isNonParametric || fn.isSpecialInfiniteFunction || fn.parametric1Function0Ns.nonEmpty then
       Future.successful(fn)
     else
       fuzzParametricFunction(fn.name, paramCount = 1, argCount = 2)
@@ -90,8 +92,7 @@ object FuzzerParametricFunctions extends StrictLogging:
                   val function: CHFunctionIO.Parametric1Function1N | CHFunctionIO.Parametric1Function2 =
                     if isInfiniteFunction then
                       CHFunctionIO.Parametric1Function1N(paramType1, nonParamType1, nonParamType2, outputType)
-                    else
-                      CHFunctionIO.Parametric1Function2(paramType1, nonParamType1, nonParamType2, outputType)
+                    else CHFunctionIO.Parametric1Function2(paramType1, nonParamType1, nonParamType2, outputType)
 
                   function
                 }
@@ -108,8 +109,7 @@ object FuzzerParametricFunctions extends StrictLogging:
   private def fuzzFunction1WithTwoParameters(
       fn: CHFunctionFuzzResult
   )(implicit client: CHClient, ec: ExecutionContext): Future[CHFunctionFuzzResult] =
-    if fn.parametric1Function1s.isEmpty then
-      Future.successful(fn)
+    if fn.parametric1Function1s.isEmpty then Future.successful(fn)
     else
       val fnSample = fn.parametric1Function1s.head
       val param1Type = fnSample.paramArg1.asInstanceOf[CHType]
@@ -133,8 +133,7 @@ object FuzzerParametricFunctions extends StrictLogging:
             for
               param2Type <- validParam2Types
               f <- fn.parametric1Function1s
-            yield
-              CHFunctionIO.Parametric2Function1(f.paramArg1, param2Type, f.arg1, f.output)
+            yield CHFunctionIO.Parametric2Function1(f.paramArg1, param2Type, f.arg1, f.output)
 
           fn.copy(parametric2Function1s = parametric2Function1s)
         }
@@ -142,8 +141,7 @@ object FuzzerParametricFunctions extends StrictLogging:
   private def fuzzFunction1WithThreeParameters(
       fn: CHFunctionFuzzResult
   )(implicit client: CHClient, ec: ExecutionContext): Future[CHFunctionFuzzResult] =
-    if fn.parametric2Function1s.isEmpty then
-      Future.successful(fn)
+    if fn.parametric2Function1s.isEmpty then Future.successful(fn)
     else
       val fnSample = fn.parametric2Function1s.head
       val param1Type = fnSample.paramArg1.asInstanceOf[CHType]
@@ -173,8 +171,7 @@ object FuzzerParametricFunctions extends StrictLogging:
             for
               param3Type <- validParam3Types
               f <- fn.parametric2Function1s
-            yield
-              CHFunctionIO.Parametric3Function1(f.paramArg1, f.paramArg2, param3Type, f.arg1, f.output)
+            yield CHFunctionIO.Parametric3Function1(f.paramArg1, f.paramArg2, param3Type, f.arg1, f.output)
 
           fn.copy(parametric3Function1s = parametric3Function1s)
         }
@@ -182,8 +179,7 @@ object FuzzerParametricFunctions extends StrictLogging:
   private def fuzzFunction2WithTwoParameters(
       fn: CHFunctionFuzzResult
   )(implicit client: CHClient, ec: ExecutionContext): Future[CHFunctionFuzzResult] =
-    if fn.parametric1Function2s.isEmpty then
-      Future.successful(fn)
+    if fn.parametric1Function2s.isEmpty then Future.successful(fn)
     else
       val fnSample = fn.parametric1Function2s.head
       val param1Type = fnSample.paramArg1.asInstanceOf[CHType]
@@ -213,8 +209,7 @@ object FuzzerParametricFunctions extends StrictLogging:
             for
               param2Type <- validParam2Types
               f <- fn.parametric1Function2s
-            yield
-              CHFunctionIO.Parametric2Function2(f.paramArg1, param2Type, f.arg1, f.arg2, f.output)
+            yield CHFunctionIO.Parametric2Function2(f.paramArg1, param2Type, f.arg1, f.arg2, f.output)
 
           fn.copy(parametric2Function2s = parametric2Function2s)
         }
@@ -222,8 +217,7 @@ object FuzzerParametricFunctions extends StrictLogging:
   private def fuzzFunction2WithThreeParameters(
       fn: CHFunctionFuzzResult
   )(implicit client: CHClient, ec: ExecutionContext): Future[CHFunctionFuzzResult] =
-    if fn.parametric2Function2s.isEmpty then
-      Future.successful(fn)
+    if fn.parametric2Function2s.isEmpty then Future.successful(fn)
     else
       val fnSample = fn.parametric2Function2s.head
       val param1Type = fnSample.paramArg1.asInstanceOf[CHType]
@@ -257,8 +251,7 @@ object FuzzerParametricFunctions extends StrictLogging:
             for
               param3Type <- validParam3Types
               f <- fn.parametric2Function2s
-            yield
-              CHFunctionIO.Parametric3Function2(f.paramArg1, f.paramArg2, param3Type, f.arg1, f.arg2, f.output)
+            yield CHFunctionIO.Parametric3Function2(f.paramArg1, f.paramArg2, param3Type, f.arg1, f.arg2, f.output)
 
           fn.copy(parametric3Function2s = parametric3Function2s)
         }
@@ -266,8 +259,7 @@ object FuzzerParametricFunctions extends StrictLogging:
   private def fuzzFunction0NWithTwoParameters(
       fn: CHFunctionFuzzResult
   )(implicit client: CHClient, ec: ExecutionContext): Future[CHFunctionFuzzResult] =
-    if fn.parametric1Function0Ns.isEmpty then
-      Future.successful(fn)
+    if fn.parametric1Function0Ns.isEmpty then Future.successful(fn)
     else
       val fnSample = fn.parametric1Function0Ns.head
       val param1Type = fnSample.paramArg1.asInstanceOf[CHType]
@@ -293,8 +285,7 @@ object FuzzerParametricFunctions extends StrictLogging:
             for
               param2Type <- validParam2Types
               f <- fn.parametric1Function0Ns
-            yield
-              CHFunctionIO.Parametric2Function0N(f.paramArg1, param2Type, f.argN, f.output)
+            yield CHFunctionIO.Parametric2Function0N(f.paramArg1, param2Type, f.argN, f.output)
 
           fn.copy(parametric2Function0Ns = parametric2Function0Ns)
         }
@@ -302,8 +293,7 @@ object FuzzerParametricFunctions extends StrictLogging:
   private def fuzzFunction0NWithThreeParameters(
       fn: CHFunctionFuzzResult
   )(implicit client: CHClient, ec: ExecutionContext): Future[CHFunctionFuzzResult] =
-    if fn.parametric2Function0Ns.isEmpty then
-      Future.successful(fn)
+    if fn.parametric2Function0Ns.isEmpty then Future.successful(fn)
     else
       val fnSample = fn.parametric2Function0Ns.head
       val param1Type = fnSample.paramArg1.asInstanceOf[CHType]
@@ -338,8 +328,7 @@ object FuzzerParametricFunctions extends StrictLogging:
             for
               param3Type <- validParam3Types
               f <- fn.parametric2Function0Ns
-            yield
-              CHFunctionIO.Parametric3Function0N(f.paramArg1, f.paramArg2, param3Type, f.argN, f.output)
+            yield CHFunctionIO.Parametric3Function0N(f.paramArg1, f.paramArg2, param3Type, f.argN, f.output)
 
           fn.copy(parametric3Function0Ns = parametric3Function0Ns)
         }
@@ -347,8 +336,7 @@ object FuzzerParametricFunctions extends StrictLogging:
   private def fuzzFunction1NWithTwoParameters(
       fn: CHFunctionFuzzResult
   )(implicit client: CHClient, ec: ExecutionContext): Future[CHFunctionFuzzResult] =
-    if fn.parametric1Function1Ns.isEmpty then
-      Future.successful(fn)
+    if fn.parametric1Function1Ns.isEmpty then Future.successful(fn)
     else
       val fnSample = fn.parametric1Function1Ns.head
       val param1Type = fnSample.paramArg1.asInstanceOf[CHType]
@@ -383,8 +371,7 @@ object FuzzerParametricFunctions extends StrictLogging:
             for
               param2Type <- validParam2Types
               f <- fn.parametric1Function1Ns
-            yield
-              CHFunctionIO.Parametric2Function1N(f.paramArg1, param2Type, f.arg1, f.argN, f.output)
+            yield CHFunctionIO.Parametric2Function1N(f.paramArg1, param2Type, f.arg1, f.argN, f.output)
 
           fn.copy(parametric2Function1Ns = parametric2Function1Ns)
         }
@@ -392,8 +379,7 @@ object FuzzerParametricFunctions extends StrictLogging:
   private def fuzzFunction1NWithThreeParameters(
       fn: CHFunctionFuzzResult
   )(implicit client: CHClient, ec: ExecutionContext): Future[CHFunctionFuzzResult] =
-    if fn.parametric2Function1Ns.isEmpty then
-      Future.successful(fn)
+    if fn.parametric2Function1Ns.isEmpty then Future.successful(fn)
     else
       val fnSample = fn.parametric2Function1Ns.head
       val param1Type = fnSample.paramArg1.asInstanceOf[CHType]
@@ -430,8 +416,7 @@ object FuzzerParametricFunctions extends StrictLogging:
             for
               param3Type <- validParam3Types
               f <- fn.parametric2Function1Ns
-            yield
-              CHFunctionIO.Parametric3Function1N(f.paramArg1, f.paramArg2, param3Type, f.arg1, f.argN, f.output)
+            yield CHFunctionIO.Parametric3Function1N(f.paramArg1, f.paramArg2, param3Type, f.arg1, f.argN, f.output)
 
           fn.copy(parametric3Function1Ns = parametric3Function1Ns)
         }

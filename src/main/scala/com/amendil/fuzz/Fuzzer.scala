@@ -1,30 +1,24 @@
 package com.amendil.fuzz
 
+import com.amendil.ConcurrencyUtils.executeChain
 import com.amendil.entities._
 import com.amendil.http.CHClient
-import com.typesafe.scalalogging.StrictLogging
 
 import scala.concurrent.{ExecutionContext, Future}
 
-object Fuzzer extends StrictLogging:
+object Fuzzer:
   def fuzz(functionName: String)(implicit client: CHClient, ec: ExecutionContext): Future[CHFunctionFuzzResult] =
-    // TODO OPTIMIZE function check order!!!
-    // 18:46:25.654 [pool-1-thread-1] INFO Main -- ===============================================================
-    // 18:46:25.658 [pool-1-thread-1] INFO Main -- 0%
-    // 18:46:25.661 [pool-1-thread-1] INFO Main -- ===============================================================
-    // 18:46:25.661 [pool-1-thread-1] INFO Main -- CAST
-    // 19:09:05.722 [pool-1-thread-1] INFO Main -- ===============================================================
-    // 19:09:05.722 [pool-1-thread-1] INFO Main -- 33%
-    // 19:09:05.722 [pool-1-thread-1] INFO Main -- ===============================================================
-    // 19:09:05.722 [pool-1-thread-1] INFO Main -- histogram
-    // 19:35:39.891 [pool-1-thread-1] INFO Main -- ===============================================================
-    // 19:35:39.891 [pool-1-thread-1] INFO Main -- 66%
-    // 19:35:39.891 [pool-1-thread-1] INFO Main -- ===============================================================
-    // 19:35:39.891 [pool-1-thread-1] INFO Main -- windowFunnel
-    FuzzerSpecialFunctions
-      .fuzz(CHFunctionFuzzResult(name = functionName))
-      .flatMap(FuzzerNonParametricFunctions.fuzz)
-      .flatMap(FuzzerParametricFunctions.fuzz)
+    val fuzzingFunctionsWithCost: Seq[((CHFunctionFuzzResult) => Future[CHFunctionFuzzResult], Long)] =
+      FuzzerSpecialFunctions.fuzzingFunctionWithCost ++
+        FuzzerNonParametricFunctions.fuzzingFunctionWithCost ++
+        FuzzerParametricFunctions.fuzzingFunctionWithCost
+
+    val sortedFuzzingFunctions = fuzzingFunctionsWithCost.sortBy(_._2).map(_._1)
+
+    executeChain(
+      CHFunctionFuzzResult(name = functionName),
+      sortedFuzzingFunctions
+    )
 
   /**
     * @param chAbstractTypeList List of CHAbstractType that will be used to generate the combinations
@@ -45,8 +39,7 @@ object Fuzzer extends StrictLogging:
       chAbstractTypeList.toSeq.map { abstractType =>
         generateCHAbstractTypeCombinations(argCount - 1, currentArgs :+ abstractType, chAbstractTypeList)
       }.flatten
-    else
-      Seq(currentArgs)
+    else Seq(currentArgs)
 
   private[fuzz] def generateCHTypeCombinations(
       abstractTypes: Seq[CHAbstractType],
@@ -66,4 +59,3 @@ object Fuzzer extends StrictLogging:
       case Seq(head, tail @ _*) =>
         val subChoices = buildFuzzingValuesArgs(tail)
         head.flatMap(el => subChoices.map(subChoice => s"$el, $subChoice"))
-

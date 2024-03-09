@@ -30,7 +30,8 @@ final case class CHFunctionFuzzResult(
     parametric3Function0Ns: Seq[Parametric3Function0N] = Nil,
     parametric3Function1Ns: Seq[Parametric3Function1N] = Nil,
     parametric3Function1s: Seq[Parametric3Function1] = Nil,
-    parametric3Function2s: Seq[Parametric3Function2] = Nil
+    parametric3Function2s: Seq[Parametric3Function2] = Nil,
+    specialFunction0Ns: Seq[Function0N] = Nil
 ):
   // Helps working with all those functions by providing a single variable
   // And check inputs are unique
@@ -40,12 +41,22 @@ final case class CHFunctionFuzzResult(
       parametric1Function0Ns ++ parametric1Function1Ns ++ parametric1Function1s ++
       parametric1Function2s ++ parametric2Function0Ns ++ parametric2Function1Ns ++
       parametric2Function1s ++ parametric2Function2s ++ parametric3Function0Ns ++
-      parametric3Function1Ns ++ parametric3Function1s ++ parametric3Function2s
+      parametric3Function1Ns ++ parametric3Function1s ++ parametric3Function2s ++
+      specialFunction0Ns
 
   require(functions.groupBy(_.input).values.filter(_.size != 1).isEmpty)
 
-  def atLeastOneSignatureFound(): Boolean = functions.nonEmpty
-  def atLeastOneNonParametricSignatureFound(): Boolean =
+  val atLeastOneSignatureFound: Boolean = functions.nonEmpty
+
+  val isSpecialInfiniteFunction: Boolean = specialFunction0Ns.nonEmpty
+
+  val isNonParametric: Boolean =
     function0Ns.nonEmpty || function1Ns.nonEmpty || function2Ns.nonEmpty ||
       function3Ns.nonEmpty || function0Opt.nonEmpty || function1s.nonEmpty ||
       function2s.nonEmpty || function3s.nonEmpty || function4s.nonEmpty
+
+  val isParametric: Boolean =
+    parametric1Function0Ns.nonEmpty || parametric1Function1Ns.nonEmpty || parametric1Function1s.nonEmpty ||
+      parametric1Function2s.nonEmpty || parametric2Function0Ns.nonEmpty || parametric2Function1Ns.nonEmpty ||
+      parametric2Function1s.nonEmpty || parametric2Function2s.nonEmpty || parametric3Function0Ns.nonEmpty ||
+      parametric3Function1Ns.nonEmpty || parametric3Function1s.nonEmpty || parametric3Function2s.nonEmpty

@@ -55,7 +55,7 @@ import scala.util.Try
         )
 
       functionsFuzzResultsF.map { functionsFuzzResults =>
-        val functionsWithoutASignature = functionsFuzzResults.filterNot(_.atLeastOneSignatureFound()).map(_.name)
+        val functionsWithoutASignature = functionsFuzzResults.filterNot(_.atLeastOneSignatureFound).map(_.name)
 
         logger.info(
           s"Rate of functions with a signature found: ${functionCount - functionsWithoutASignature.size}/$functionCount"
@@ -80,8 +80,7 @@ def ensuringFuzzingValuesAreValid()(implicit client: CHClient, ec: ExecutionCont
     )
     .map { results =>
       val errors = results.flatten
-      if errors.nonEmpty then
-        throw Exception(s"Invalid fuzzing value founds.\n${errors.mkString("\n")}")
+      if errors.nonEmpty then throw Exception(s"Invalid fuzzing value founds.\n${errors.mkString("\n")}")
     }
 
 def getCHFunctions()(implicit client: CHClient, ec: ExecutionContext): Future[Seq[String]] =
