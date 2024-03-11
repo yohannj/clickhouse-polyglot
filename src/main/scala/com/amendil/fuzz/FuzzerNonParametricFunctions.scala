@@ -12,7 +12,7 @@ object FuzzerNonParametricFunctions:
       implicit client: CHClient,
       ec: ExecutionContext
   ): Seq[((CHFunctionFuzzResult) => Future[CHFunctionFuzzResult], Long)] =
-    val elemCount = CHType.values.size.toLong
+    val elemCount = CHFuzzableType.values.size.toLong
     Seq(
       (fuzzFunction0, 1L),
       (fuzzFunction1Or0N, elemCount),
@@ -27,13 +27,15 @@ object FuzzerNonParametricFunctions:
   private def fuzzFunction0(
       fn: CHFunctionFuzzResult
   )(implicit client: CHClient, ec: ExecutionContext): Future[CHFunctionFuzzResult] =
-    client
-      .execute(s"SELECT ${fn.name}()")
-      .map(resp =>
-        val outputType = resp.meta.head.`type`
-        fn.copy(function0Opt = Some(CHFunctionIO.Function0(outputType)))
-      )
-      .recover(_ => fn)
+    if fn.isLambda then Future.successful(fn)
+    else
+      client
+        .execute(s"SELECT ${fn.name}()")
+        .map(resp =>
+          val outputType = resp.meta.head.`type`
+          fn.copy(function0Opt = Some(CHFunctionIO.Function0(outputType)))
+        )
+        .recover(_ => fn)
 
   private def fuzzFunction1Or0N(
       fn: CHFunctionFuzzResult
@@ -71,7 +73,8 @@ object FuzzerNonParametricFunctions:
   private def fuzzFunction2Or1N(
       fn: CHFunctionFuzzResult
   )(implicit client: CHClient, ec: ExecutionContext): Future[CHFunctionFuzzResult] =
-    if fn.isParametric || fn.isSpecialInfiniteFunction || fn.function0Ns.nonEmpty then Future.successful(fn)
+    if fn.isLambda || fn.isParametric || fn.isSpecialInfiniteFunction || fn.function0Ns.nonEmpty then
+      Future.successful(fn)
     else
       fuzzFiniteArgsFunctions(fn.name, argCount = 2)
         .flatMap { validFunction2IOs =>
@@ -104,7 +107,7 @@ object FuzzerNonParametricFunctions:
   private def fuzzFunction3Or2N(
       fn: CHFunctionFuzzResult
   )(implicit client: CHClient, ec: ExecutionContext): Future[CHFunctionFuzzResult] =
-    if fn.isParametric || fn.isSpecialInfiniteFunction || fn.function0Ns.nonEmpty || fn.function1Ns.nonEmpty ||
+    if fn.isLambda || fn.isParametric || fn.isSpecialInfiniteFunction || fn.function0Ns.nonEmpty || fn.function1Ns.nonEmpty ||
       (fn.function1s.filterNot(_.arg1.name.startsWith("Tuple")).nonEmpty && fn.function2s.isEmpty)
     then Future.successful(fn)
     else
@@ -139,7 +142,7 @@ object FuzzerNonParametricFunctions:
   private def fuzzFunction4Or3N(
       fn: CHFunctionFuzzResult
   )(implicit client: CHClient, ec: ExecutionContext): Future[CHFunctionFuzzResult] =
-    if fn.isParametric || fn.isSpecialInfiniteFunction || fn.function0Ns.nonEmpty || fn.function1Ns.nonEmpty ||
+    if fn.isLambda || fn.isParametric || fn.isSpecialInfiniteFunction || fn.function0Ns.nonEmpty || fn.function1Ns.nonEmpty ||
       fn.function2Ns.nonEmpty || (fn.function1s
         .filterNot(_.arg1.name.startsWith("Tuple"))
         .nonEmpty && fn.function3s.isEmpty)
@@ -202,10 +205,10 @@ object FuzzerNonParametricFunctions:
   private def fuzzFiniteArgsFunctions(
       fnName: String,
       argCount: Int
-  )(implicit client: CHClient, ec: ExecutionContext): Future[Seq[(Seq[CHType], String)]] =
-    val validCHAbstractTypeCombinationsF =
+  )(implicit client: CHClient, ec: ExecutionContext): Future[Seq[(Seq[CHFuzzableType], String)]] =
+    val validCHFuzzableAbstractTypeCombinationsF =
       executeInParallelOnlySuccess(
-        generateCHAbstractTypeCombinations(argCount),
+        generateCHFuzzableAbstractTypeCombinations(argCount),
         abstractTypes => {
           executeInSequenceUntilSuccess(
             buildFuzzingValuesArgs(abstractTypes.map(_.fuzzingValues)).map(args => s"SELECT $fnName($args)"),
@@ -215,22 +218,22 @@ object FuzzerNonParametricFunctions:
         maxConcurrency = 40
       ).map(_.flatten)
 
-    validCHAbstractTypeCombinationsF.flatMap { validCHAbstractTypeCombinations =>
+    validCHFuzzableAbstractTypeCombinationsF.flatMap { validCHFuzzableAbstractTypeCombinations =>
       val checksToDo =
-        validCHAbstractTypeCombinations
-          .flatMap(generateCHTypeCombinations(_))
-          .flatMap { chTypesArgs =>
-            buildFuzzingValuesArgs(chTypesArgs.map(_.fuzzingValues))
+        validCHFuzzableAbstractTypeCombinations
+          .flatMap(generateCHFuzzableTypeCombinations(_))
+          .flatMap { CHFuzzableTypesArgs =>
+            buildFuzzingValuesArgs(CHFuzzableTypesArgs.map(_.fuzzingValues))
               .map(args => s"SELECT $fnName($args)")
-              .map(query => (chTypesArgs, query))
+              .map(query => (CHFuzzableTypesArgs, query))
           }
 
       executeInParallelOnlySuccess(
         checksToDo,
-        (chTypesArgs, query) => client.execute(query).map(resp => (chTypesArgs, resp.meta.head.`type`)),
+        (CHFuzzableTypesArgs, query) => client.execute(query).map(resp => (CHFuzzableTypesArgs, resp.meta.head.`type`)),
         maxConcurrency = 40
       ).map { results =>
-        results.groupBy(_._1).view.mapValues(_.map(_._2).reduce(CHType.merge)).toSeq
+        results.groupBy(_._1).view.mapValues(_.map(_._2).reduce(CHFuzzableType.merge)).toSeq
       }
     }
 
@@ -241,15 +244,15 @@ object FuzzerNonParametricFunctions:
     */
   private def testInfiniteArgsFunctions(
       fnName: String,
-      chTypes: Seq[CHType]
+      CHFuzzableTypes: Seq[CHFuzzableType]
   )(implicit client: CHClient, ec: ExecutionContext): Future[Boolean] =
-    require(chTypes.nonEmpty, "Expected at least one defined argument, but none found.")
+    require(CHFuzzableTypes.nonEmpty, "Expected at least one defined argument, but none found.")
 
-    val argNv1 = Range(0, 10).toSeq.map(_ => Seq(chTypes.last.fuzzingValues.head))
-    val argNv2 = Range(0, 11).toSeq.map(_ => Seq(chTypes.last.fuzzingValues.head))
+    val argNv1 = Range(0, 10).toSeq.map(_ => Seq(CHFuzzableTypes.last.fuzzingValues.head))
+    val argNv2 = Range(0, 11).toSeq.map(_ => Seq(CHFuzzableTypes.last.fuzzingValues.head))
 
-    val fuzzingValuesArgsv1 = buildFuzzingValuesArgs(chTypes.map(_.fuzzingValues) ++ argNv1)
-    val fuzzingValuesArgsv2 = buildFuzzingValuesArgs(chTypes.map(_.fuzzingValues) ++ argNv2)
+    val fuzzingValuesArgsv1 = buildFuzzingValuesArgs(CHFuzzableTypes.map(_.fuzzingValues) ++ argNv1)
+    val fuzzingValuesArgsv2 = buildFuzzingValuesArgs(CHFuzzableTypes.map(_.fuzzingValues) ++ argNv2)
 
     executeInSequenceUntilSuccess(
       (fuzzingValuesArgsv1 ++ fuzzingValuesArgsv2).map(args => s"SELECT $fnName($args)"),

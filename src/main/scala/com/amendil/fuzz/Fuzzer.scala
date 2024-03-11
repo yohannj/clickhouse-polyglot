@@ -10,6 +10,7 @@ object Fuzzer:
   def fuzz(functionName: String)(implicit client: CHClient, ec: ExecutionContext): Future[CHFunctionFuzzResult] =
     val fuzzingFunctionsWithCost: Seq[((CHFunctionFuzzResult) => Future[CHFunctionFuzzResult], Long)] =
       FuzzerSpecialFunctions.fuzzingFunctionWithCost ++
+        FuzzerLambdaFunctions.fuzzingFunctionWithCost ++
         FuzzerNonParametricFunctions.fuzzingFunctionWithCost ++
         FuzzerParametricFunctions.fuzzingFunctionWithCost
 
@@ -21,34 +22,42 @@ object Fuzzer:
     )
 
   /**
-    * @param chAbstractTypeList List of CHAbstractType that will be used to generate the combinations
-    * @return All combinations of CHAbstractType of argCount elements.
+    * @param CHFuzzableAbstractTypeList List of CHFuzzableAbstractType that will be used to generate the combinations
+    * @return All combinations of CHFuzzableAbstractType of argCount elements.
     */
-  private[fuzz] def generateCHAbstractTypeCombinations(
+  private[fuzz] def generateCHFuzzableAbstractTypeCombinations(
       argCount: Int,
-      chAbstractTypeList: Seq[CHAbstractType] = CHAbstractType.values.toSeq
-  ): Seq[Seq[CHAbstractType]] =
-    generateCHAbstractTypeCombinations(argCount = argCount, currentArgs = Nil, chAbstractTypeList = chAbstractTypeList)
+      CHFuzzableAbstractTypeList: Seq[CHFuzzableAbstractType] = CHFuzzableAbstractType.values.toSeq
+  ): Seq[Seq[CHFuzzableAbstractType]] =
+    generateCHFuzzableAbstractTypeCombinations(
+      argCount = argCount,
+      currentArgs = Nil,
+      CHFuzzableAbstractTypeList = CHFuzzableAbstractTypeList
+    )
 
-  private def generateCHAbstractTypeCombinations(
+  private def generateCHFuzzableAbstractTypeCombinations(
       argCount: Int,
-      currentArgs: Seq[CHAbstractType],
-      chAbstractTypeList: Seq[CHAbstractType]
-  ): Seq[Seq[CHAbstractType]] =
+      currentArgs: Seq[CHFuzzableAbstractType],
+      CHFuzzableAbstractTypeList: Seq[CHFuzzableAbstractType]
+  ): Seq[Seq[CHFuzzableAbstractType]] =
     if argCount > 0 then
-      chAbstractTypeList.toSeq.map { abstractType =>
-        generateCHAbstractTypeCombinations(argCount - 1, currentArgs :+ abstractType, chAbstractTypeList)
+      CHFuzzableAbstractTypeList.toSeq.map { abstractType =>
+        generateCHFuzzableAbstractTypeCombinations(
+          argCount - 1,
+          currentArgs :+ abstractType,
+          CHFuzzableAbstractTypeList
+        )
       }.flatten
     else Seq(currentArgs)
 
-  private[fuzz] def generateCHTypeCombinations(
-      abstractTypes: Seq[CHAbstractType],
-      currentArgs: Seq[CHType] = Seq.empty
-  ): Seq[Seq[CHType]] =
+  private[fuzz] def generateCHFuzzableTypeCombinations(
+      abstractTypes: Seq[CHFuzzableAbstractType],
+      currentArgs: Seq[CHFuzzableType] = Seq.empty
+  ): Seq[Seq[CHFuzzableType]] =
     abstractTypes match
       case Seq(head, tail @ _*) =>
-        head.chTypes
-          .map(chType => generateCHTypeCombinations(tail, currentArgs :+ chType))
+        head.CHFuzzableTypes
+          .map(CHFuzzableType => generateCHFuzzableTypeCombinations(tail, currentArgs :+ CHFuzzableType))
           .flatten
       case Seq() => Seq(currentArgs)
 

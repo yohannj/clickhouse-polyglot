@@ -19,6 +19,8 @@ final case class CHFunctionFuzzResult(
     function2s: Seq[Function2] = Nil,
     function3s: Seq[Function3] = Nil,
     function4s: Seq[Function4] = Nil,
+    lambdaFunction0NOpt: Option[LambdaFunction0N] = None,
+    lambdaFunction1NOpt: Option[LambdaFunction1N] = None,
     parametric1Function0Ns: Seq[Parametric1Function0N] = Nil,
     parametric1Function1Ns: Seq[Parametric1Function1N] = Nil,
     parametric1Function1s: Seq[Parametric1Function1] = Nil,
@@ -38,17 +40,19 @@ final case class CHFunctionFuzzResult(
   val functions =
     function0Ns ++ function1Ns ++ function2Ns ++ function3Ns ++
       function0Opt.toSeq ++ function1s ++ function2s ++ function3s ++ function4s ++
-      parametric1Function0Ns ++ parametric1Function1Ns ++ parametric1Function1s ++
-      parametric1Function2s ++ parametric2Function0Ns ++ parametric2Function1Ns ++
-      parametric2Function1s ++ parametric2Function2s ++ parametric3Function0Ns ++
-      parametric3Function1Ns ++ parametric3Function1s ++ parametric3Function2s ++
-      specialFunction0Ns
+      lambdaFunction0NOpt.toSeq ++ lambdaFunction1NOpt.toSeq ++ parametric1Function0Ns ++
+      parametric1Function1Ns ++ parametric1Function1s ++ parametric1Function2s ++
+      parametric2Function0Ns ++ parametric2Function1Ns ++ parametric2Function1s ++
+      parametric2Function2s ++ parametric3Function0Ns ++ parametric3Function1Ns ++
+      parametric3Function1s ++ parametric3Function2s ++ specialFunction0Ns
 
   require(functions.groupBy(_.input).values.filter(_.size != 1).isEmpty)
 
   val atLeastOneSignatureFound: Boolean = functions.nonEmpty
 
   val isSpecialInfiniteFunction: Boolean = specialFunction0Ns.nonEmpty
+
+  val isLambda: Boolean = lambdaFunction0NOpt.nonEmpty || lambdaFunction1NOpt.nonEmpty
 
   val isNonParametric: Boolean =
     function0Ns.nonEmpty || function1Ns.nonEmpty || function2Ns.nonEmpty ||

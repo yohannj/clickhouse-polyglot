@@ -10,7 +10,7 @@ import scala.concurrent.{ExecutionContext, Future}
 object FuzzerParametricFunctions:
 
   // Remove some types that are obviously not parameters
-  private val parametricAbstractType = CHAbstractType.values.toSeq.filterNot { abstractType =>
+  private val parametricAbstractType = CHFuzzableAbstractType.values.toSeq.filterNot { abstractType =>
     abstractType.fuzzingValues.head.contains("::Array(") ||
     abstractType.fuzzingValues.head.contains("::Map(") ||
     abstractType.fuzzingValues.head.contains("::Tuple(")
@@ -20,8 +20,8 @@ object FuzzerParametricFunctions:
       implicit client: CHClient,
       ec: ExecutionContext
   ): Seq[((CHFunctionFuzzResult) => Future[CHFunctionFuzzResult], Long)] =
-    val paramCount = parametricAbstractType.flatMap(_.chTypes).size.toLong
-    val argCount = CHType.values.size.toLong
+    val paramCount = parametricAbstractType.flatMap(_.CHFuzzableTypes).size.toLong
+    val argCount = CHFuzzableType.values.size.toLong
     Seq(
       (fuzzFunction1Or0NWithOneParameter, paramCount * argCount),
       (fuzzFunction2Or1NWithOneParameter, paramCount * argCount * argCount),
@@ -40,7 +40,7 @@ object FuzzerParametricFunctions:
   private def fuzzFunction1Or0NWithOneParameter(
       fn: CHFunctionFuzzResult
   )(implicit client: CHClient, ec: ExecutionContext): Future[CHFunctionFuzzResult] =
-    if fn.isNonParametric || fn.isSpecialInfiniteFunction then Future.successful(fn)
+    if fn.isLambda || fn.isNonParametric || fn.isSpecialInfiniteFunction then Future.successful(fn)
     else
       fuzzParametricFunction(fn.name, paramCount = 1, argCount = 1)
         .flatMap { validFunction1IOs =>
@@ -52,7 +52,11 @@ object FuzzerParametricFunctions:
                   case (Seq(paramType1), Seq(nonParamType1)) => (paramType1, nonParamType1)
                   case _                                     => throw new Exception(s"Expected 1 type, found ${inputTypes.size} types") // FIXME
 
-              testInfiniteArgsFunctions(fn.name, paramCHTypes = inputTypes._1, nonParamCHTypes = inputTypes._2)
+              testInfiniteArgsFunctions(
+                fn.name,
+                paramCHFuzzableTypes = inputTypes._1,
+                nonParamCHFuzzableTypes = inputTypes._2
+              )
                 .map { isInfiniteFunction =>
                   val function: CHFunctionIO.Parametric1Function0N | CHFunctionIO.Parametric1Function1 =
                     if isInfiniteFunction then CHFunctionIO.Parametric1Function0N(paramType1, nonParamType1, outputType)
@@ -73,7 +77,7 @@ object FuzzerParametricFunctions:
   private def fuzzFunction2Or1NWithOneParameter(
       fn: CHFunctionFuzzResult
   )(implicit client: CHClient, ec: ExecutionContext): Future[CHFunctionFuzzResult] =
-    if fn.isNonParametric || fn.isSpecialInfiniteFunction || fn.parametric1Function0Ns.nonEmpty then
+    if fn.isLambda || fn.isNonParametric || fn.isSpecialInfiniteFunction || fn.parametric1Function0Ns.nonEmpty then
       Future.successful(fn)
     else
       fuzzParametricFunction(fn.name, paramCount = 1, argCount = 2)
@@ -87,7 +91,11 @@ object FuzzerParametricFunctions:
                     (paramType1, nonParamType1, nonParamType2)
                   case _ => throw new Exception(s"Expected 2 types, but found ${inputTypes.size} types") // FIXME
 
-              testInfiniteArgsFunctions(fn.name, paramCHTypes = inputTypes._1, nonParamCHTypes = inputTypes._2)
+              testInfiniteArgsFunctions(
+                fn.name,
+                paramCHFuzzableTypes = inputTypes._1,
+                nonParamCHFuzzableTypes = inputTypes._2
+              )
                 .map { isInfiniteFunction =>
                   val function: CHFunctionIO.Parametric1Function1N | CHFunctionIO.Parametric1Function2 =
                     if isInfiniteFunction then
@@ -112,10 +120,10 @@ object FuzzerParametricFunctions:
     if fn.parametric1Function1s.isEmpty then Future.successful(fn)
     else
       val fnSample = fn.parametric1Function1s.head
-      val param1Type = fnSample.paramArg1.asInstanceOf[CHType]
-      val arg1Type = fnSample.arg1.asInstanceOf[CHType]
+      val param1Type = fnSample.paramArg1.asInstanceOf[CHFuzzableType]
+      val arg1Type = fnSample.arg1.asInstanceOf[CHFuzzableType]
 
-      val param2Types = parametricAbstractType.flatMap(_.chTypes)
+      val param2Types = parametricAbstractType.flatMap(_.CHFuzzableTypes)
 
       executeInParallelOnlySuccess(
         param2Types,
@@ -144,11 +152,11 @@ object FuzzerParametricFunctions:
     if fn.parametric2Function1s.isEmpty then Future.successful(fn)
     else
       val fnSample = fn.parametric2Function1s.head
-      val param1Type = fnSample.paramArg1.asInstanceOf[CHType]
-      val param2Type = fnSample.paramArg2.asInstanceOf[CHType]
-      val arg1Type = fnSample.arg1.asInstanceOf[CHType]
+      val param1Type = fnSample.paramArg1.asInstanceOf[CHFuzzableType]
+      val param2Type = fnSample.paramArg2.asInstanceOf[CHFuzzableType]
+      val arg1Type = fnSample.arg1.asInstanceOf[CHFuzzableType]
 
-      val param3Types = parametricAbstractType.flatMap(_.chTypes)
+      val param3Types = parametricAbstractType.flatMap(_.CHFuzzableTypes)
 
       executeInParallelOnlySuccess(
         param3Types,
@@ -182,11 +190,11 @@ object FuzzerParametricFunctions:
     if fn.parametric1Function2s.isEmpty then Future.successful(fn)
     else
       val fnSample = fn.parametric1Function2s.head
-      val param1Type = fnSample.paramArg1.asInstanceOf[CHType]
-      val arg1Type = fnSample.arg1.asInstanceOf[CHType]
-      val arg2Type = fnSample.arg2.asInstanceOf[CHType]
+      val param1Type = fnSample.paramArg1.asInstanceOf[CHFuzzableType]
+      val arg1Type = fnSample.arg1.asInstanceOf[CHFuzzableType]
+      val arg2Type = fnSample.arg2.asInstanceOf[CHFuzzableType]
 
-      val param2Types = parametricAbstractType.flatMap(_.chTypes)
+      val param2Types = parametricAbstractType.flatMap(_.CHFuzzableTypes)
 
       executeInParallelOnlySuccess(
         param2Types,
@@ -220,12 +228,12 @@ object FuzzerParametricFunctions:
     if fn.parametric2Function2s.isEmpty then Future.successful(fn)
     else
       val fnSample = fn.parametric2Function2s.head
-      val param1Type = fnSample.paramArg1.asInstanceOf[CHType]
-      val param2Type = fnSample.paramArg2.asInstanceOf[CHType]
-      val arg1Type = fnSample.arg1.asInstanceOf[CHType]
-      val arg2Type = fnSample.arg2.asInstanceOf[CHType]
+      val param1Type = fnSample.paramArg1.asInstanceOf[CHFuzzableType]
+      val param2Type = fnSample.paramArg2.asInstanceOf[CHFuzzableType]
+      val arg1Type = fnSample.arg1.asInstanceOf[CHFuzzableType]
+      val arg2Type = fnSample.arg2.asInstanceOf[CHFuzzableType]
 
-      val param3Types = parametricAbstractType.flatMap(_.chTypes)
+      val param3Types = parametricAbstractType.flatMap(_.CHFuzzableTypes)
 
       executeInParallelOnlySuccess(
         param3Types,
@@ -262,10 +270,10 @@ object FuzzerParametricFunctions:
     if fn.parametric1Function0Ns.isEmpty then Future.successful(fn)
     else
       val fnSample = fn.parametric1Function0Ns.head
-      val param1Type = fnSample.paramArg1.asInstanceOf[CHType]
-      val argNType = fnSample.argN.asInstanceOf[CHType]
+      val param1Type = fnSample.paramArg1.asInstanceOf[CHFuzzableType]
+      val argNType = fnSample.argN.asInstanceOf[CHFuzzableType]
 
-      val param2Types = parametricAbstractType.flatMap(_.chTypes)
+      val param2Types = parametricAbstractType.flatMap(_.CHFuzzableTypes)
 
       executeInParallelOnlySuccess(
         param2Types,
@@ -296,11 +304,11 @@ object FuzzerParametricFunctions:
     if fn.parametric2Function0Ns.isEmpty then Future.successful(fn)
     else
       val fnSample = fn.parametric2Function0Ns.head
-      val param1Type = fnSample.paramArg1.asInstanceOf[CHType]
-      val param2Type = fnSample.paramArg1.asInstanceOf[CHType]
-      val argNType = fnSample.argN.asInstanceOf[CHType]
+      val param1Type = fnSample.paramArg1.asInstanceOf[CHFuzzableType]
+      val param2Type = fnSample.paramArg1.asInstanceOf[CHFuzzableType]
+      val argNType = fnSample.argN.asInstanceOf[CHFuzzableType]
 
-      val param3Types = parametricAbstractType.flatMap(_.chTypes)
+      val param3Types = parametricAbstractType.flatMap(_.CHFuzzableTypes)
 
       executeInParallelOnlySuccess(
         param3Types,
@@ -339,11 +347,11 @@ object FuzzerParametricFunctions:
     if fn.parametric1Function1Ns.isEmpty then Future.successful(fn)
     else
       val fnSample = fn.parametric1Function1Ns.head
-      val param1Type = fnSample.paramArg1.asInstanceOf[CHType]
-      val arg1Type = fnSample.arg1.asInstanceOf[CHType]
-      val argNType = fnSample.argN.asInstanceOf[CHType]
+      val param1Type = fnSample.paramArg1.asInstanceOf[CHFuzzableType]
+      val arg1Type = fnSample.arg1.asInstanceOf[CHFuzzableType]
+      val argNType = fnSample.argN.asInstanceOf[CHFuzzableType]
 
-      val param2Types = parametricAbstractType.flatMap(_.chTypes)
+      val param2Types = parametricAbstractType.flatMap(_.CHFuzzableTypes)
 
       executeInParallelOnlySuccess(
         param2Types,
@@ -382,12 +390,12 @@ object FuzzerParametricFunctions:
     if fn.parametric2Function1Ns.isEmpty then Future.successful(fn)
     else
       val fnSample = fn.parametric2Function1Ns.head
-      val param1Type = fnSample.paramArg1.asInstanceOf[CHType]
-      val param2Type = fnSample.paramArg1.asInstanceOf[CHType]
-      val arg1Type = fnSample.arg1.asInstanceOf[CHType]
-      val argNType = fnSample.argN.asInstanceOf[CHType]
+      val param1Type = fnSample.paramArg1.asInstanceOf[CHFuzzableType]
+      val param2Type = fnSample.paramArg1.asInstanceOf[CHFuzzableType]
+      val arg1Type = fnSample.arg1.asInstanceOf[CHFuzzableType]
+      val argNType = fnSample.argN.asInstanceOf[CHFuzzableType]
 
-      val param3Types = parametricAbstractType.flatMap(_.chTypes)
+      val param3Types = parametricAbstractType.flatMap(_.CHFuzzableTypes)
 
       executeInParallelOnlySuccess(
         param3Types,
@@ -425,14 +433,17 @@ object FuzzerParametricFunctions:
       fnName: String,
       paramCount: Int,
       argCount: Int
-  )(implicit client: CHClient, ec: ExecutionContext): Future[Seq[((Seq[CHType], Seq[CHType]), String)]] =
-    val validCHAbstractTypeCombinationsF =
+  )(
+      implicit client: CHClient,
+      ec: ExecutionContext
+  ): Future[Seq[((Seq[CHFuzzableType], Seq[CHFuzzableType]), String)]] =
+    val validCHFuzzableAbstractTypeCombinationsF =
       executeInParallelOnlySuccess(
         crossJoin(
-          generateCHAbstractTypeCombinations(paramCount, parametricAbstractType),
-          generateCHAbstractTypeCombinations(argCount)
+          generateCHFuzzableAbstractTypeCombinations(paramCount, parametricAbstractType),
+          generateCHFuzzableAbstractTypeCombinations(argCount)
         ),
-        (paramTypes: Seq[CHAbstractType], nonParamTypes: Seq[CHAbstractType]) => {
+        (paramTypes: Seq[CHFuzzableAbstractType], nonParamTypes: Seq[CHFuzzableAbstractType]) => {
           executeInSequenceUntilSuccess(
             crossJoin(
               buildFuzzingValuesArgs(paramTypes.map(_.fuzzingValues)),
@@ -445,12 +456,12 @@ object FuzzerParametricFunctions:
       ).map(_.flatten)
 
     // Intermediate steps to try to avoid a lot of combinations, if we can filter many args combinations.
-    val validCHAbstractParamWithNonAbstractArgsF = validCHAbstractTypeCombinationsF.flatMap:
-      validCHAbstractTypeCombinations =>
+    val validCHAbstractParamWithNonAbstractArgsF = validCHFuzzableAbstractTypeCombinationsF.flatMap:
+      validCHFuzzableAbstractTypeCombinations =>
         val checksToDo =
-          validCHAbstractTypeCombinations
+          validCHFuzzableAbstractTypeCombinations
             .flatMap { case (paramAbstractTypes, nonParamAbstractTypes) =>
-              generateCHTypeCombinations(nonParamAbstractTypes).map((paramAbstractTypes, _))
+              generateCHFuzzableTypeCombinations(nonParamAbstractTypes).map((paramAbstractTypes, _))
             }
             .flatMap { case (paramAbstractTypes, nonParamTypes) =>
               crossJoin(
@@ -471,7 +482,7 @@ object FuzzerParametricFunctions:
         val checksToDo =
           validCHAbstractParamWithNonAbstractArgs
             .flatMap { case (paramAbstractTypes, nonParamTypes) =>
-              generateCHTypeCombinations(paramAbstractTypes).map((_, nonParamTypes))
+              generateCHFuzzableTypeCombinations(paramAbstractTypes).map((_, nonParamTypes))
             }
             .flatMap { case (paramTypes, nonParamTypes) =>
               crossJoin(
@@ -489,7 +500,7 @@ object FuzzerParametricFunctions:
         )
       }
       .map { results =>
-        results.groupBy(_._1).view.mapValues(_.map(_._2).reduce(CHType.merge)).toSeq
+        results.groupBy(_._1).view.mapValues(_.map(_._2).reduce(CHFuzzableType.merge)).toSeq
       }
 
   /**
@@ -499,17 +510,17 @@ object FuzzerParametricFunctions:
     */
   private def testInfiniteArgsFunctions(
       fnName: String,
-      paramCHTypes: Seq[CHType],
-      nonParamCHTypes: Seq[CHType]
+      paramCHFuzzableTypes: Seq[CHFuzzableType],
+      nonParamCHFuzzableTypes: Seq[CHFuzzableType]
   )(implicit client: CHClient, ec: ExecutionContext): Future[Boolean] =
-    require(nonParamCHTypes.nonEmpty, "Expected at least one defined argument, but none found.")
+    require(nonParamCHFuzzableTypes.nonEmpty, "Expected at least one defined argument, but none found.")
 
-    val argNv1 = Range(0, 10).toSeq.map(_ => Seq(nonParamCHTypes.last.fuzzingValues.head))
-    val argNv2 = Range(0, 11).toSeq.map(_ => Seq(nonParamCHTypes.last.fuzzingValues.head))
+    val argNv1 = Range(0, 10).toSeq.map(_ => Seq(nonParamCHFuzzableTypes.last.fuzzingValues.head))
+    val argNv2 = Range(0, 11).toSeq.map(_ => Seq(nonParamCHFuzzableTypes.last.fuzzingValues.head))
 
-    val fuzzingValuesParams = buildFuzzingValuesArgs(paramCHTypes.map(_.fuzzingValues))
-    val fuzzingValuesArgsv1 = buildFuzzingValuesArgs(nonParamCHTypes.map(_.fuzzingValues) ++ argNv1)
-    val fuzzingValuesArgsv2 = buildFuzzingValuesArgs(nonParamCHTypes.map(_.fuzzingValues) ++ argNv2)
+    val fuzzingValuesParams = buildFuzzingValuesArgs(paramCHFuzzableTypes.map(_.fuzzingValues))
+    val fuzzingValuesArgsv1 = buildFuzzingValuesArgs(nonParamCHFuzzableTypes.map(_.fuzzingValues) ++ argNv1)
+    val fuzzingValuesArgsv2 = buildFuzzingValuesArgs(nonParamCHFuzzableTypes.map(_.fuzzingValues) ++ argNv2)
 
     executeInSequenceUntilSuccess(
       crossJoin(fuzzingValuesParams, fuzzingValuesArgsv1 ++ fuzzingValuesArgsv2).map { case (paramArgs, nonParamArgs) =>

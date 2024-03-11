@@ -1,6 +1,6 @@
 package com.amendil
 
-import com.amendil.entities.{CHAbstractType, CHFunction, CHType}
+import com.amendil.entities.{CHFunction, CHFuzzableAbstractType, CHFuzzableType}
 import com.amendil.fuzz._
 import com.amendil.http.CHClient
 import com.typesafe.scalalogging.Logger
@@ -19,11 +19,11 @@ import scala.util.Try
 
   val runF =
     (for
-      // _ <- ensuringFuzzingValuesAreValid()
+      _ <- ensuringFuzzingValuesAreValid()
 
       chVersion <- getCHVersion()
-      // functionNames <- getCHFunctions()
-      functionNames <- Future.successful(unknownFunctions)
+      functionNames <- getCHFunctions()
+    // functionNames <- Future.successful(unknownFunctions)
     yield {
       assume(Try { chVersion.toDouble }.isSuccess)
 
@@ -70,7 +70,7 @@ import scala.util.Try
 def ensuringFuzzingValuesAreValid()(implicit client: CHClient, ec: ExecutionContext): Future[Unit] =
   Future
     .sequence(
-      (CHType.values.flatMap(_.fuzzingValues) ++ CHAbstractType.values.flatMap(_.fuzzingValues))
+      (CHFuzzableType.values.flatMap(_.fuzzingValues) ++ CHFuzzableAbstractType.values.flatMap(_.fuzzingValues))
         .map(v =>
           client
             .execute(s"SELECT $v")

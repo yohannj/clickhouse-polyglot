@@ -18,9 +18,15 @@ object FuzzerSpecialFunctions:
   private def fuzzInfiniteAnyTypeFunctions(
       fn: CHFunctionFuzzResult
   )(implicit client: CHClient, ec: ExecutionContext): Future[CHFunctionFuzzResult] =
-    val manyCHTypes = Seq(CHType.ArrayDate, CHType.UInt8, CHType.StringType, CHType.DateTime, CHType.IPv4)
-    val exprs1 = manyCHTypes.map(_.fuzzingValues.head).mkString(",")
-    val exprs2 = manyCHTypes.reverse.map(_.fuzzingValues.head).mkString(",")
+    val manyCHFuzzableTypes = Seq(
+      CHFuzzableType.ArrayDate,
+      CHFuzzableType.UInt8,
+      CHFuzzableType.StringType,
+      CHFuzzableType.DateTime,
+      CHFuzzableType.IPv4
+    )
+    val exprs1 = manyCHFuzzableTypes.map(_.fuzzingValues.head).mkString(",")
+    val exprs2 = manyCHFuzzableTypes.reverse.map(_.fuzzingValues.head).mkString(",")
 
     client
       .execute(s"SELECT ${fn.name}($exprs1), ${fn.name}($exprs2)")
