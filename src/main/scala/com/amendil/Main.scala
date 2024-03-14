@@ -1,6 +1,6 @@
 package com.amendil
 
-import com.amendil.entities.{CHFunction, CHFuzzableAbstractType, CHFuzzableType}
+import com.amendil.entities.{CHFunction, CHFunctionFuzzResult, CHFuzzableAbstractType, CHFuzzableType}
 import com.amendil.fuzz._
 import com.amendil.http.CHClient
 import com.typesafe.scalalogging.Logger
@@ -15,15 +15,30 @@ import scala.util.Try
   val logger = Logger("Main")
 
   implicit val ec: ExecutionContext = ExecutionContext.fromExecutorService(Executors.newFixedThreadPool(1))
-  implicit val client: CHClient = CHClient(8123)
+  implicit val client: CHClient = CHClient(Settings.ClickHouse.httpUrl)
+
+  val tmp = Seq(
+    "f".head,
+    "g".head,
+    "j".head,
+    "k".head,
+    "l".head,
+    "m".head,
+    "n".head,
+    "o".head,
+    "p".head,
+    "q".head,
+    "r".head,
+    "s".head
+  )
 
   val runF =
     (for
-      _ <- ensuringFuzzingValuesAreValid()
+      // _ <- ensuringFuzzingValuesAreValid()
 
       chVersion <- getCHVersion()
-      functionNames <- getCHFunctions()
-    // functionNames <- Future.successful(unknownFunctions)
+      // functionNames <- getCHFunctions().map(_.filter(name => tmp.contains(name.head)))
+      functionNames <- Future.successful(unknownFunctions)
     yield {
       assume(Try { chVersion.toDouble }.isSuccess)
 
@@ -40,10 +55,16 @@ import scala.util.Try
               logger.info(s"===============================================================")
             logger.info(functionName)
 
-            Fuzzer.fuzz(functionName).map { fuzzResult =>
-              pw.write(s"${CHFunction.fromCHFunctionFuzzResult(fuzzResult, "x64").asString()}\n")
-              fuzzResult
-            }
+            Fuzzer
+              .fuzz(functionName)
+              .recover { err =>
+                logger.error(s"Failed to fuzz function $functionName: ${err.getMessage()}")
+                CHFunctionFuzzResult(functionName)
+              }
+              .map { fuzzResult =>
+                pw.write(s"${CHFunction.fromCHFunctionFuzzResult(fuzzResult, "x64").asString()}\n")
+                fuzzResult
+              }
         )
         .recover(err =>
           pw.close()

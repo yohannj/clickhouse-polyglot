@@ -499,7 +499,6 @@ enum CHFuzzableAbstractType(val fuzzingValues: Seq[String], val CHFuzzableTypes:
       )
 
   // Special
-  case ClickHouseType extends CHFuzzableAbstractType(Seq("Nullable(String)"), Seq(CHFuzzableType.ClickHouseType))
   case WindowFunctionMode
       extends CHFuzzableAbstractType(
         CHFuzzableType.WindowFunctionMode.fuzzingValues,

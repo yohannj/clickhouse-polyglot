@@ -22,7 +22,8 @@ enum CHFuzzableType(
   case BooleanType
       extends CHFuzzableType(
         "Boolean",
-        Seq("0::UInt8", "1::UInt8")
+        Seq("0::UInt8", "1::UInt8"),
+        aliases = Seq("Bool")
       )
   case Int8
       extends CHFuzzableType(
@@ -205,10 +206,23 @@ enum CHFuzzableType(
         ),
         aliases = Seq(
           "DateTime64(0, 'Asia/Istanbul')",
-          "DateTime64(9, 'Asia/Istanbul')",
+          "DateTime64(1, 'Asia/Istanbul')",
+          "DateTime64(2, 'Asia/Istanbul')",
+          "DateTime64(3, 'Asia/Istanbul')",
+          "DateTime64(4, 'Asia/Istanbul')",
+          "DateTime64(5, 'Asia/Istanbul')",
+          "DateTime64(6, 'Asia/Istanbul')",
+          "DateTime64(7, 'Asia/Istanbul')",
           "DateTime64(8, 'Asia/Istanbul')",
+          "DateTime64(9, 'Asia/Istanbul')",
           "DateTime64(0)",
           "DateTime64(1)",
+          "DateTime64(2)",
+          "DateTime64(3)",
+          "DateTime64(4)",
+          "DateTime64(5)",
+          "DateTime64(6)",
+          "DateTime64(7)",
           "DateTime64(8)",
           "DateTime64(9)"
         )
@@ -556,12 +570,19 @@ enum CHFuzzableType(
   case LowCardinalityNullableDateTime
       extends CHFuzzableType(
         "LowCardinality(Nullable(DateTime))",
-        CHFuzzableType.lowCardinalityFuzzingValues(CHFuzzableType.nullableFuzzingValues(DateTime.fuzzingValues))
+        CHFuzzableType.lowCardinalityFuzzingValues(CHFuzzableType.nullableFuzzingValues(DateTime.fuzzingValues)),
+        aliases = Seq("LowCardinality(Nullable(DateTime('Asia/Istanbul')))")
       )
   case LowCardinalityNullableFixedString
       extends CHFuzzableType(
         "LowCardinality(Nullable(FixedString))",
-        CHFuzzableType.lowCardinalityFuzzingValues(CHFuzzableType.nullableFuzzingValues(FixedString.fuzzingValues))
+        CHFuzzableType.lowCardinalityFuzzingValues(CHFuzzableType.nullableFuzzingValues(FixedString.fuzzingValues)),
+        aliases = Seq(
+          "LowCardinality(Nullable(FixedString(1)))",
+          "LowCardinality(Nullable(FixedString(10)))",
+          "LowCardinality(Nullable(FixedString(255)))",
+          "LowCardinality(Nullable(FixedString(65535)))"
+        )
       )
   case LowCardinalityNullableString
       extends CHFuzzableType(
@@ -705,10 +726,23 @@ enum CHFuzzableType(
         CHFuzzableType.nullableFuzzingValues(DateTime64.fuzzingValues),
         aliases = Seq(
           "Nullable(DateTime64(0, 'Asia/Istanbul'))",
-          "Nullable(DateTime64(9, 'Asia/Istanbul'))",
+          "Nullable(DateTime64(1, 'Asia/Istanbul'))",
+          "Nullable(DateTime64(2, 'Asia/Istanbul'))",
+          "Nullable(DateTime64(3, 'Asia/Istanbul'))",
+          "Nullable(DateTime64(4, 'Asia/Istanbul'))",
+          "Nullable(DateTime64(5, 'Asia/Istanbul'))",
+          "Nullable(DateTime64(6, 'Asia/Istanbul'))",
+          "Nullable(DateTime64(7, 'Asia/Istanbul'))",
           "Nullable(DateTime64(8, 'Asia/Istanbul'))",
+          "Nullable(DateTime64(9, 'Asia/Istanbul'))",
           "Nullable(DateTime64(0))",
           "Nullable(DateTime64(1))",
+          "Nullable(DateTime64(2))",
+          "Nullable(DateTime64(3))",
+          "Nullable(DateTime64(4))",
+          "Nullable(DateTime64(5))",
+          "Nullable(DateTime64(6))",
+          "Nullable(DateTime64(7))",
           "Nullable(DateTime64(8))",
           "Nullable(DateTime64(9))"
         )
@@ -1001,11 +1035,25 @@ enum CHFuzzableType(
         ),
         aliases = Seq(
           "Array(DateTime64(0, 'Asia/Istanbul'))",
-          "Array(DateTime64(9, 'Asia/Istanbul'))",
+          "Array(DateTime64(1, 'Asia/Istanbul'))",
+          "Array(DateTime64(2, 'Asia/Istanbul'))",
+          "Array(DateTime64(3, 'Asia/Istanbul'))",
+          "Array(DateTime64(4, 'Asia/Istanbul'))",
+          "Array(DateTime64(5, 'Asia/Istanbul'))",
+          "Array(DateTime64(6, 'Asia/Istanbul'))",
+          "Array(DateTime64(7, 'Asia/Istanbul'))",
           "Array(DateTime64(8, 'Asia/Istanbul'))",
+          "Array(DateTime64(9, 'Asia/Istanbul'))",
           "Array(DateTime64(0))",
-          "Array(DateTime64(9))",
-          "Array(DateTime64(8))"
+          "Array(DateTime64(1))",
+          "Array(DateTime64(2))",
+          "Array(DateTime64(3))",
+          "Array(DateTime64(4))",
+          "Array(DateTime64(5))",
+          "Array(DateTime64(6))",
+          "Array(DateTime64(7))",
+          "Array(DateTime64(8))",
+          "Array(DateTime64(9))"
         )
       )
   case ArrayIntervalNanosecond
@@ -1083,7 +1131,12 @@ enum CHFuzzableType(
         Seq(
           s"[${FixedString.fuzzingValues.mkString(", ")}]::Array(FixedString(10))"
         ),
-        aliases = Seq("Array(FixedString(1))", "Array(FixedString(10))")
+        aliases = Seq(
+          "Array(FixedString(1))",
+          "Array(FixedString(10))",
+          "Array(FixedString(255))",
+          "Array(FixedString(65535))"
+        )
       )
   case ArrayIPv4 extends CHFuzzableType("Array(IPv4)", Seq(s"[${IPv4.fuzzingValues.mkString(", ")}]::Array(IPv4)"))
   case ArrayIPv6 extends CHFuzzableType("Array(IPv6)", Seq(s"[${IPv6.fuzzingValues.mkString(", ")}]::Array(IPv6)"))
@@ -1537,72 +1590,72 @@ enum CHFuzzableType(
         // XXX Should be a conf?! => Built using `SELECT name FROM system.data_type_families WHERE empty(alias_to) ORDER BY name FORMAT TSV`
         // XXX How to handle parameterized types?
         Seq(
-          "AggregateFunction",
-          "Array",
-          "Bool",
-          "Date",
-          "Date32",
-          "DateTime",
-          "DateTime32",
-          "DateTime64",
-          "Decimal",
-          "Decimal128",
-          "Decimal256",
-          "Decimal32",
-          "Decimal64",
-          "Enum",
-          "Enum16",
-          "Enum8",
-          "FixedString",
-          "Float32",
-          "Float64",
-          "IPv4",
-          "IPv6",
-          "Int128",
-          "Int16",
-          "Int256",
-          "Int32",
-          "Int64",
-          "Int8",
-          "IntervalDay",
-          "IntervalHour",
-          "IntervalMicrosecond",
-          "IntervalMillisecond",
-          "IntervalMinute",
-          "IntervalMonth",
-          "IntervalNanosecond",
-          "IntervalQuarter",
-          "IntervalSecond",
-          "IntervalWeek",
-          "IntervalYear",
-          "JSON",
-          "LowCardinality",
-          "Map",
-          "MultiPolygon",
-          "Nested",
-          "Nothing",
-          "Nullable",
-          "Object",
-          "Point",
-          "Polygon",
-          "Ring",
-          "SimpleAggregateFunction",
-          "String",
-          "Tuple",
-          "UInt128",
-          "UInt16",
-          "UInt256",
-          "UInt32",
-          "UInt64",
-          "UInt8",
-          "UUID",
-          "Variant"
+          "'AggregateFunction'",
+          "'Array'",
+          "'Bool'",
+          "'Date'",
+          "'Date32'",
+          "'DateTime'",
+          "'DateTime32'",
+          "'DateTime64'",
+          "'Decimal'",
+          "'Decimal128'",
+          "'Decimal256'",
+          "'Decimal32'",
+          "'Decimal64'",
+          "'Enum'",
+          "'Enum16'",
+          "'Enum8'",
+          "'FixedString'",
+          "'Float32'",
+          "'Float64'",
+          "'IPv4'",
+          "'IPv6'",
+          "'Int128'",
+          "'Int16'",
+          "'Int256'",
+          "'Int32'",
+          "'Int64'",
+          "'Int8'",
+          "'IntervalDay'",
+          "'IntervalHour'",
+          "'IntervalMicrosecond'",
+          "'IntervalMillisecond'",
+          "'IntervalMinute'",
+          "'IntervalMonth'",
+          "'IntervalNanosecond'",
+          "'IntervalQuarter'",
+          "'IntervalSecond'",
+          "'IntervalWeek'",
+          "'IntervalYear'",
+          "'JSON'",
+          "'LowCardinality'",
+          "'Map'",
+          "'MultiPolygon'",
+          "'Nested'",
+          "'Nothing'",
+          "'Nullable'",
+          "'Object'",
+          "'Point'",
+          "'Polygon'",
+          "'Ring'",
+          "'SimpleAggregateFunction'",
+          "'String'",
+          "'Tuple'",
+          "'UInt128'",
+          "'UInt16'",
+          "'UInt256'",
+          "'UInt32'",
+          "'UInt64'",
+          "'UInt8'",
+          "'UUID'",
+          "'Variant'"
         )
       )
   case WindowFunctionMode
       extends CHFuzzableType(
         "WindowFunctionMode",
-        Seq("strict_deduplication", "strict_increase", "strict_order")
+        Seq("'strict_deduplication'", "'strict_increase'", "'strict_order'")
       )
 
 object CHFuzzableType extends StrictLogging:
@@ -1625,6 +1678,16 @@ object CHFuzzableType extends StrictLogging:
 
       val mergedType =
         if CHFuzzableType1 == CHFuzzableType2 then CHFuzzableType1
+        else if CHFuzzableType1 == BooleanType then
+          CHFuzzableType2 match
+            case UInt8 | UInt16 | UInt32 | UInt64 | UInt128 | UInt256 | Int16 | Int32 | Int64 | Int128 | Int256 =>
+              CHFuzzableType2
+            case _ => throw exceptionIfUnknown
+        else if CHFuzzableType2 == BooleanType then
+          CHFuzzableType1 match
+            case UInt8 | UInt16 | UInt32 | UInt64 | UInt128 | UInt256 | Int16 | Int32 | Int64 | Int128 | Int256 =>
+              CHFuzzableType1
+            case _ => throw exceptionIfUnknown
         else if CHFuzzableType1 == Int8 then
           CHFuzzableType2 match
             case UInt8                                   => Int16

@@ -2,9 +2,14 @@ package com
 
 package object amendil:
   val unknownFunctions: Seq[String] = Seq(
-    // "CAST",
-    "arrayFill",
-    "arrayFilter",
-    "arrayLast",
-    "arrayMap"
+    "randExponential",
+    "exponentialTimeDecayedCount",
+    "exponentialTimeDecayedMax",
+    "exponentialMovingAverage",
+    "exponentialTimeDecayedSum",
+    "exponentialTimeDecayedAvg"
+    // "arrayFill",
+    // "arrayFilter",
+    // "arrayLast",
+    // "arrayMap"
   )

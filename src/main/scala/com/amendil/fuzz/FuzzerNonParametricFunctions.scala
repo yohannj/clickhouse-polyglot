@@ -1,6 +1,7 @@
 package com.amendil.fuzz
 
 import com.amendil.ConcurrencyUtils._
+import com.amendil.Settings
 import com.amendil.entities._
 import com.amendil.fuzz.Fuzzer._
 import com.amendil.http.CHClient
@@ -61,7 +62,7 @@ object FuzzerNonParametricFunctions:
                   function
                 }
             ,
-            maxConcurrency = 40
+            maxConcurrency = Settings.ClickHouse.maxSupportedConcurrency
           ).map { case validFunctions: Seq[CHFunctionIO.Function0N | CHFunctionIO.Function1] =>
             val function0Ns = validFunctions.collect { case e: CHFunctionIO.Function0N => e }
             val function1s = validFunctions.collect { case e: CHFunctionIO.Function1 => e }
@@ -95,7 +96,7 @@ object FuzzerNonParametricFunctions:
                   function
                 }
             ,
-            maxConcurrency = 40
+            maxConcurrency = Settings.ClickHouse.maxSupportedConcurrency
           ).map { case validFunctions: Seq[CHFunctionIO.Function1N | CHFunctionIO.Function2] =>
             val function1Ns = validFunctions.collect { case e: CHFunctionIO.Function1N => e }
             val function2s = validFunctions.collect { case e: CHFunctionIO.Function2 => e }
@@ -130,7 +131,7 @@ object FuzzerNonParametricFunctions:
                   function
                 }
             ,
-            maxConcurrency = 40
+            maxConcurrency = Settings.ClickHouse.maxSupportedConcurrency
           ).map { case validFunctions: Seq[CHFunctionIO.Function2N | CHFunctionIO.Function3] =>
             val function2Ns = validFunctions.collect { case e: CHFunctionIO.Function2N => e }
             val function3s = validFunctions.collect { case e: CHFunctionIO.Function3 => e }
@@ -193,7 +194,7 @@ object FuzzerNonParametricFunctions:
                   function
                 }
             ,
-            maxConcurrency = 40
+            maxConcurrency = Settings.ClickHouse.maxSupportedConcurrency
           ).map { case validFunctions: Seq[CHFunctionIO.Function3N | CHFunctionIO.Function4] =>
             val function3Ns = validFunctions.collect { case e: CHFunctionIO.Function3N => e }
             val function4s = validFunctions.collect { case e: CHFunctionIO.Function4 => e }
@@ -215,7 +216,7 @@ object FuzzerNonParametricFunctions:
             client.execute
           ).map(if _ then Some(abstractTypes) else None)
         },
-        maxConcurrency = 40
+        maxConcurrency = Settings.ClickHouse.maxSupportedConcurrency
       ).map(_.flatten)
 
     validCHFuzzableAbstractTypeCombinationsF.flatMap { validCHFuzzableAbstractTypeCombinations =>
@@ -231,7 +232,7 @@ object FuzzerNonParametricFunctions:
       executeInParallelOnlySuccess(
         checksToDo,
         (CHFuzzableTypesArgs, query) => client.execute(query).map(resp => (CHFuzzableTypesArgs, resp.meta.head.`type`)),
-        maxConcurrency = 40
+        maxConcurrency = Settings.ClickHouse.maxSupportedConcurrency
       ).map { results =>
         results.groupBy(_._1).view.mapValues(_.map(_._2).reduce(CHFuzzableType.merge)).toSeq
       }

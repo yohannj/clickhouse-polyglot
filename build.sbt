@@ -19,14 +19,15 @@ lazy val root = project
     libraryDependencies ++= Seq(
       // Logging
       "com.typesafe.scala-logging" %% "scala-logging" % "3.9.5",
-      "ch.qos.logback" % "logback-classic" % "1.5.0",
+      "ch.qos.logback" % "logback-classic" % "1.5.3",
 
       // Http
-      "com.fasterxml.jackson.module" %% "jackson-module-scala" % "2.16.1",
+      "com.fasterxml.jackson.module" %% "jackson-module-scala" % "2.16.2",
       "com.softwaremill.retry" %% "retry" % "0.3.6",
 
       // Misc
       "org.scala-lang.modules" %% "scala-java8-compat" % "1.0.2",
+      "com.typesafe" % "config" % "1.4.3",
 
       // Test
       "org.scalatest" %% "scalatest-freespec" % "3.2.18" % Test,

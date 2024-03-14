@@ -9,8 +9,7 @@ final case class CHFunction(
     isExperimental: Boolean
 ):
   def asString(): String =
-    if signatures.isEmpty then
-      name
+    if signatures.isEmpty then name
     else
       val signaturesStr =
         signatures

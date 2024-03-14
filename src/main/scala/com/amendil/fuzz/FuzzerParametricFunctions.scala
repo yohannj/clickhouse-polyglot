@@ -1,6 +1,7 @@
 package com.amendil.fuzz
 
 import com.amendil.ConcurrencyUtils._
+import com.amendil.Settings
 import com.amendil.entities._
 import com.amendil.fuzz.Fuzzer._
 import com.amendil.http.CHClient
@@ -65,7 +66,7 @@ object FuzzerParametricFunctions:
                   function
                 }
             ,
-            maxConcurrency = 40
+            maxConcurrency = Settings.ClickHouse.maxSupportedConcurrency
           ).map { case validFunctions: Seq[CHFunctionIO.Parametric1Function0N | CHFunctionIO.Parametric1Function1] =>
             val parametric1Function0Ns = validFunctions.collect { case e: CHFunctionIO.Parametric1Function0N => e }
             val parametric1Function1s = validFunctions.collect { case e: CHFunctionIO.Parametric1Function1 => e }
@@ -105,7 +106,7 @@ object FuzzerParametricFunctions:
                   function
                 }
             ,
-            maxConcurrency = 40
+            maxConcurrency = Settings.ClickHouse.maxSupportedConcurrency
           ).map { case validFunctions: Seq[CHFunctionIO.Parametric1Function1N | CHFunctionIO.Parametric1Function2] =>
             val parametric1Function1Ns = validFunctions.collect { case e: CHFunctionIO.Parametric1Function1N => e }
             val parametric1Function2s = validFunctions.collect { case e: CHFunctionIO.Parametric1Function2 => e }
@@ -134,7 +135,7 @@ object FuzzerParametricFunctions:
             client.execute
           ).map { if _ then Some(param2Type) else None }
         },
-        maxConcurrency = 40
+        maxConcurrency = Settings.ClickHouse.maxSupportedConcurrency
       ).map(_.flatten)
         .map { validParam2Types =>
           val parametric2Function1s =
@@ -172,7 +173,7 @@ object FuzzerParametricFunctions:
             client.execute
           ).map { if _ then Some(param3Type) else None }
         },
-        maxConcurrency = 40
+        maxConcurrency = Settings.ClickHouse.maxSupportedConcurrency
       ).map(_.flatten)
         .map { validParam3Types =>
           val parametric3Function1s =
@@ -210,7 +211,7 @@ object FuzzerParametricFunctions:
             client.execute
           ).map { if _ then Some(param2Type) else None }
         },
-        maxConcurrency = 40
+        maxConcurrency = Settings.ClickHouse.maxSupportedConcurrency
       ).map(_.flatten)
         .map { validParam2Types =>
           val parametric2Function2s =
@@ -252,7 +253,7 @@ object FuzzerParametricFunctions:
             client.execute
           ).map { if _ then Some(param3Type) else None }
         },
-        maxConcurrency = 40
+        maxConcurrency = Settings.ClickHouse.maxSupportedConcurrency
       ).map(_.flatten)
         .map { validParam3Types =>
           val parametric3Function2s =
@@ -286,7 +287,7 @@ object FuzzerParametricFunctions:
             (query1, query2) => client.execute(query1).recoverWith(_ => client.execute(query2))
           ).map { if _ then Some(param2Type) else None }
         },
-        maxConcurrency = 40
+        maxConcurrency = Settings.ClickHouse.maxSupportedConcurrency
       ).map(_.flatten)
         .map { validParam2Types =>
           val parametric2Function0Ns =
@@ -329,7 +330,7 @@ object FuzzerParametricFunctions:
             (query1, query2) => client.execute(query1).recoverWith(_ => client.execute(query2))
           ).map { if _ then Some(param3Type) else None }
         },
-        maxConcurrency = 40
+        maxConcurrency = Settings.ClickHouse.maxSupportedConcurrency
       ).map(_.flatten)
         .map { validParam3Types =>
           val parametric3Function0Ns =
@@ -372,7 +373,7 @@ object FuzzerParametricFunctions:
             (query1, query2) => client.execute(query1).recoverWith(_ => client.execute(query2))
           ).map { if _ then Some(param2Type) else None }
         },
-        maxConcurrency = 40
+        maxConcurrency = Settings.ClickHouse.maxSupportedConcurrency
       ).map(_.flatten)
         .map { validParam2Types =>
           val parametric2Function1Ns =
@@ -417,7 +418,7 @@ object FuzzerParametricFunctions:
             (query1, query2) => client.execute(query1).recoverWith(_ => client.execute(query2))
           ).map { if _ then Some(param3Type) else None }
         },
-        maxConcurrency = 40
+        maxConcurrency = Settings.ClickHouse.maxSupportedConcurrency
       ).map(_.flatten)
         .map { validParam3Types =>
           val parametric3Function1Ns =
@@ -452,7 +453,7 @@ object FuzzerParametricFunctions:
             client.execute
           ).map(if _ then Some((paramTypes, nonParamTypes)) else None)
         },
-        maxConcurrency = 40
+        maxConcurrency = Settings.ClickHouse.maxSupportedConcurrency
       ).map(_.flatten)
 
     // Intermediate steps to try to avoid a lot of combinations, if we can filter many args combinations.
@@ -474,7 +475,7 @@ object FuzzerParametricFunctions:
         executeInParallelOnlySuccess(
           checksToDo,
           (paramTypes, nonParamTypes, query) => client.execute(query).map(resp => (paramTypes, nonParamTypes)),
-          maxConcurrency = 40
+          maxConcurrency = Settings.ClickHouse.maxSupportedConcurrency
         )
 
     validCHAbstractParamWithNonAbstractArgsF
@@ -496,7 +497,7 @@ object FuzzerParametricFunctions:
           checksToDo,
           (paramTypes, nonParamTypes, query) =>
             client.execute(query).map(resp => ((paramTypes, nonParamTypes), resp.meta.head.`type`)),
-          maxConcurrency = 40
+          maxConcurrency = Settings.ClickHouse.maxSupportedConcurrency
         )
       }
       .map { results =>

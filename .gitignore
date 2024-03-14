@@ -1,2 +1,1 @@
-### Python ###
-__pycache__/
+running_clickhouse/host/ch24_2/var/log/clickhouse-server/*

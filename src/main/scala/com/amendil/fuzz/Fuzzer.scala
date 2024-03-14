@@ -8,18 +8,55 @@ import scala.concurrent.{ExecutionContext, Future}
 
 object Fuzzer:
   def fuzz(functionName: String)(implicit client: CHClient, ec: ExecutionContext): Future[CHFunctionFuzzResult] =
-    val fuzzingFunctionsWithCost: Seq[((CHFunctionFuzzResult) => Future[CHFunctionFuzzResult], Long)] =
-      FuzzerSpecialFunctions.fuzzingFunctionWithCost ++
-        FuzzerLambdaFunctions.fuzzingFunctionWithCost ++
-        FuzzerNonParametricFunctions.fuzzingFunctionWithCost ++
-        FuzzerParametricFunctions.fuzzingFunctionWithCost
+    functionName match
+      case "CAST" | "_CAST" | "accurateCast" | "accurateCastOrNull" =>
+        // Cast methods can return any kind of type, depending on the value of a String.
+        // This is an edge case not automatically handled by this fuzzer, and it is not worth it to handle it.
+        Future.successful(
+          CHFunctionFuzzResult(
+            name = functionName,
+            function2s = Seq(CHFunctionIO.Function2(CHAggregatedType.Any, CHFuzzableType.ClickHouseType, "Any"))
+          )
+        )
+      case "accurateCastOrDefault" =>
+        // Cast methods can return any kind of type, depending on the value of a String.
+        // This is an edge case not automatically handled by this fuzzer, and it is not worth it to handle it.
+        Future.successful(
+          CHFunctionFuzzResult(
+            name = functionName,
+            function2s = Seq(CHFunctionIO.Function2(CHAggregatedType.Any, CHFuzzableType.ClickHouseType, "Any")),
+            // FIXME Third argument of the Function3 is not really "Any", but should be of the ClickHouseType chosen
+            function3s = Seq(
+              CHFunctionIO.Function3(CHAggregatedType.Any, CHFuzzableType.ClickHouseType, CHAggregatedType.Any, "Any")
+            )
+          )
+        )
+      case "aexponentialMovingAverage" | "aexponentialTimeDecayedAvg" | "aexponentialTimeDecayedCount" |
+          "aexponentialTimeDecayedMax" | "aexponentialTimeDecayedSum" =>
+        // Fuzzing this function leads to OOM
 
-    val sortedFuzzingFunctions = fuzzingFunctionsWithCost.sortBy(_._2).map(_._1)
+        // TODO Handle these methods.
+        // They support many combinations (lowcardinality, nullable), and output type can be nullable
+        // Reference: https://clickhouse.com/docs/en/sql-reference/aggregate-functions/reference/exponentialmovingaverage
+        // + Introduced window functions exponentialTimeDecayedSum, exponentialTimeDecayedMax, exponentialTimeDecayedCount
+        // and exponentialTimeDecayedAvg which are more effective than exponentialMovingAverage for bigger windows.
+        // Also more use-cases were covered. #29799 (Vladimir Chebotarev).
+        Future.successful(
+          CHFunctionFuzzResult(name = functionName)
+        )
+      case _ =>
+        val fuzzingFunctionsWithCost: Seq[((CHFunctionFuzzResult) => Future[CHFunctionFuzzResult], Long)] =
+          FuzzerSpecialFunctions.fuzzingFunctionWithCost ++
+            FuzzerLambdaFunctions.fuzzingFunctionWithCost ++
+            FuzzerNonParametricFunctions.fuzzingFunctionWithCost ++
+            FuzzerParametricFunctions.fuzzingFunctionWithCost
 
-    executeChain(
-      CHFunctionFuzzResult(name = functionName),
-      sortedFuzzingFunctions
-    )
+        val sortedFuzzingFunctions = fuzzingFunctionsWithCost.sortBy(_._2).map(_._1)
+
+        executeChain(
+          CHFunctionFuzzResult(name = functionName),
+          sortedFuzzingFunctions
+        )
 
   /**
     * @param CHFuzzableAbstractTypeList List of CHFuzzableAbstractType that will be used to generate the combinations
