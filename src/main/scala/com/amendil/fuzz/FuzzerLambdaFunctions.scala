@@ -22,7 +22,7 @@ object FuzzerLambdaFunctions {
     else
       client
         .execute(s"SELECT ${fn.name}(x -> today(), ['s'])")
-        .map { resp =>
+        .map { (resp: CHResponse) =>
           fn.copy(lambdaFunction0NOpt =
             Some(
               CHFunctionIO.LambdaFunction0N(
@@ -36,8 +36,8 @@ object FuzzerLambdaFunctions {
         .recoverWith { _ =>
           client
             .execute(s"SELECT ${fn.name}(x, y -> 1, ['s'], [1])")
-            .map { resp =>
-              val outputType = resp.meta.head.`type`
+            .map { (resp: CHResponse) =>
+              val outputType: String = resp.meta.head.`type`
 
               if outputType == "String" || outputType == "Array(String)" then
                 fn.copy(lambdaFunction1NOpt =

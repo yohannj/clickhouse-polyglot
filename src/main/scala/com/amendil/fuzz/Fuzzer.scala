@@ -31,8 +31,8 @@ object Fuzzer:
             )
           )
         )
-      case "aexponentialMovingAverage" | "aexponentialTimeDecayedAvg" | "aexponentialTimeDecayedCount" |
-          "aexponentialTimeDecayedMax" | "aexponentialTimeDecayedSum" =>
+      case "exponentialMovingAverage" | "exponentialTimeDecayedAvg" | "exponentialTimeDecayedCount" |
+          "exponentialTimeDecayedMax" | "exponentialTimeDecayedSum" =>
         // Fuzzing this function leads to OOM
 
         // TODO Handle these methods.
@@ -45,7 +45,7 @@ object Fuzzer:
           CHFunctionFuzzResult(name = functionName)
         )
       case _ =>
-        val fuzzingFunctionsWithCost: Seq[((CHFunctionFuzzResult) => Future[CHFunctionFuzzResult], Long)] =
+        val fuzzingFunctionsWithCost: Seq[(CHFunctionFuzzResult => Future[CHFunctionFuzzResult], Long)] =
           FuzzerSpecialFunctions.fuzzingFunctionWithCost ++
             FuzzerLambdaFunctions.fuzzingFunctionWithCost ++
             FuzzerNonParametricFunctions.fuzzingFunctionWithCost ++
@@ -103,5 +103,5 @@ object Fuzzer:
       case Seq()   => throw IllegalArgumentException("Tried to fuzz an argument without any value")
       case Seq(el) => el
       case Seq(head, tail @ _*) =>
-        val subChoices = buildFuzzingValuesArgs(tail)
+        val subChoices: Seq[String] = buildFuzzingValuesArgs(tail)
         head.flatMap(el => subChoices.map(subChoice => s"$el, $subChoice"))

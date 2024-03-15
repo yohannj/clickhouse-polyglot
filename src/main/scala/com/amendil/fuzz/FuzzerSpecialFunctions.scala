@@ -18,19 +18,19 @@ object FuzzerSpecialFunctions:
   private def fuzzInfiniteAnyTypeFunctions(
       fn: CHFunctionFuzzResult
   )(implicit client: CHClient, ec: ExecutionContext): Future[CHFunctionFuzzResult] =
-    val manyCHFuzzableTypes = Seq(
+    val manyCHFuzzableTypes: Seq[CHFuzzableType] = Seq(
       CHFuzzableType.ArrayDate,
       CHFuzzableType.UInt8,
       CHFuzzableType.StringType,
       CHFuzzableType.DateTime,
       CHFuzzableType.IPv4
     )
-    val exprs1 = manyCHFuzzableTypes.map(_.fuzzingValues.head).mkString(",")
-    val exprs2 = manyCHFuzzableTypes.reverse.map(_.fuzzingValues.head).mkString(",")
+    val exprs1: String = manyCHFuzzableTypes.map(_.fuzzingValues.head).mkString(",")
+    val exprs2: String = manyCHFuzzableTypes.reverse.map(_.fuzzingValues.head).mkString(",")
 
     client
       .execute(s"SELECT ${fn.name}($exprs1), ${fn.name}($exprs2)")
-      .map { resp =>
+      .map { (resp: CHResponse) =>
         fn.copy(function0Ns = fn.function0Ns :+ CHFunctionIO.Function0N(CHAggregatedType.Any, resp.meta.head.`type`))
       }
       .recover(_ => fn)

@@ -16,7 +16,7 @@ object ConcurrencyUtils:
     val futures = elements
       .grouped(maxConcurrency)
       .toSeq
-      .map { subElements =>
+      .map { (subElements: Seq[T]) =>
         executeInSequence(subElements, el => fn(el))
       }
 
@@ -34,7 +34,7 @@ object ConcurrencyUtils:
     val futures = elements
       .grouped(maxConcurrency)
       .toSeq
-      .map { subElements =>
+      .map { (subElements: Seq[T]) =>
         executeInSequence(
           subElements,
           el => fn(el).map[Option[U]](Some(_)).recover(_ => None)

@@ -7,6 +7,7 @@ import com.typesafe.scalalogging.Logger
 
 import java.io.{File, PrintWriter}
 import java.util.concurrent.Executors
+import scala.collection.mutable.ArraySeq
 import scala.concurrent.{Await, ExecutionContext, Future}
 import scala.concurrent.duration.Duration
 import scala.util.Try
@@ -17,27 +18,12 @@ import scala.util.Try
   implicit val ec: ExecutionContext = ExecutionContext.fromExecutorService(Executors.newFixedThreadPool(1))
   implicit val client: CHClient = CHClient(Settings.ClickHouse.httpUrl)
 
-  val tmp = Seq(
-    "f".head,
-    "g".head,
-    "j".head,
-    "k".head,
-    "l".head,
-    "m".head,
-    "n".head,
-    "o".head,
-    "p".head,
-    "q".head,
-    "r".head,
-    "s".head
-  )
-
   val runF =
     (for
-      // _ <- ensuringFuzzingValuesAreValid()
+      _ <- ensuringFuzzingValuesAreValid()
 
       chVersion <- getCHVersion()
-      // functionNames <- getCHFunctions().map(_.filter(name => tmp.contains(name.head)))
+      // functionNames <- getCHFunctions()
       functionNames <- Future.successful(unknownFunctions)
     yield {
       assume(Try { chVersion.toDouble }.isSuccess)
@@ -45,38 +31,40 @@ import scala.util.Try
       val pw = new PrintWriter(new File(s"res/functions_v${chVersion}.txt.part"))
       val functionCount = functionNames.size
 
-      val functionsFuzzResultsF = ConcurrencyUtils
-        .executeInSequence(
-          functionNames.zipWithIndex,
-          (functionName: String, idx: Int) =>
-            if idx % Math.max(functionCount / 20, 1) == 0 then
-              logger.info(s"===============================================================")
-              logger.info(s"${100 * idx / functionCount}%")
-              logger.info(s"===============================================================")
-            logger.info(functionName)
+      val functionsFuzzResultsF: Future[Seq[CHFunctionFuzzResult]] =
+        ConcurrencyUtils
+          .executeInSequence(
+            functionNames.zipWithIndex,
+            (functionName: String, idx: Int) =>
+              if idx % Math.max(functionCount / 20, 1) == 0 then
+                logger.info(s"===============================================================")
+                logger.info(s"${100 * idx / functionCount}%")
+                logger.info(s"===============================================================")
+              logger.info(functionName)
 
-            Fuzzer
-              .fuzz(functionName)
-              .recover { err =>
-                logger.error(s"Failed to fuzz function $functionName: ${err.getMessage()}")
-                CHFunctionFuzzResult(functionName)
-              }
-              .map { fuzzResult =>
-                pw.write(s"${CHFunction.fromCHFunctionFuzzResult(fuzzResult, "x64").asString()}\n")
-                fuzzResult
-              }
-        )
-        .recover(err =>
-          pw.close()
-          throw err
-        )
-        .map(res =>
-          pw.close()
-          res
-        )
+              Fuzzer
+                .fuzz(functionName)
+                .recover { err =>
+                  logger.error(s"Failed to fuzz function $functionName: ${err.getMessage()}")
+                  CHFunctionFuzzResult(functionName)
+                }
+                .map { (fuzzResult: CHFunctionFuzzResult) =>
+                  pw.write(s"${CHFunction.fromCHFunctionFuzzResult(fuzzResult, "x64").asString()}\n")
+                  fuzzResult
+                }
+          )
+          .recover(err =>
+            pw.close()
+            throw err
+          )
+          .map(res =>
+            pw.close()
+            res
+          )
 
-      functionsFuzzResultsF.map { functionsFuzzResults =>
-        val functionsWithoutASignature = functionsFuzzResults.filterNot(_.atLeastOneSignatureFound).map(_.name)
+      functionsFuzzResultsF.map { (functionsFuzzResults: Seq[CHFunctionFuzzResult]) =>
+        val functionsWithoutASignature: Seq[String] =
+          functionsFuzzResults.filterNot(_.atLeastOneSignatureFound).map(_.name)
 
         logger.info(
           s"Rate of functions with a signature found: ${functionCount - functionsWithoutASignature.size}/$functionCount"
@@ -99,7 +87,7 @@ def ensuringFuzzingValuesAreValid()(implicit client: CHClient, ec: ExecutionCont
             .recover(err => Some(s"$v: ${err.getMessage}"))
         )
     )
-    .map { results =>
+    .map { (results: ArraySeq[Option[String]]) =>
       val errors = results.flatten
       if errors.nonEmpty then throw Exception(s"Invalid fuzzing value founds.\n${errors.mkString("\n")}")
     }

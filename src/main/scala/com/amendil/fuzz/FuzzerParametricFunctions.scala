@@ -11,10 +11,11 @@ import scala.concurrent.{ExecutionContext, Future}
 object FuzzerParametricFunctions:
 
   // Remove some types that are obviously not parameters
-  private val parametricAbstractType = CHFuzzableAbstractType.values.toSeq.filterNot { abstractType =>
-    abstractType.fuzzingValues.head.contains("::Array(") ||
-    abstractType.fuzzingValues.head.contains("::Map(") ||
-    abstractType.fuzzingValues.head.contains("::Tuple(")
+  private val parametricAbstractType: Seq[CHFuzzableAbstractType] = CHFuzzableAbstractType.values.toSeq.filterNot {
+    abstractType =>
+      abstractType.fuzzingValues.head.contains("::Array(") ||
+      abstractType.fuzzingValues.head.contains("::Map(") ||
+      abstractType.fuzzingValues.head.contains("::Tuple(")
   }
 
   private[fuzz] def fuzzingFunctionWithCost(
@@ -44,7 +45,7 @@ object FuzzerParametricFunctions:
     if fn.isLambda || fn.isNonParametric || fn.isSpecialInfiniteFunction then Future.successful(fn)
     else
       fuzzParametricFunction(fn.name, paramCount = 1, argCount = 1)
-        .flatMap { validFunction1IOs =>
+        .flatMap { (validFunction1IOs: Seq[((ParametricArguments, NonParametricArguments), OutputType)]) =>
           executeInParallel(
             validFunction1IOs,
             (inputTypes, outputType) =>
@@ -82,7 +83,7 @@ object FuzzerParametricFunctions:
       Future.successful(fn)
     else
       fuzzParametricFunction(fn.name, paramCount = 1, argCount = 2)
-        .flatMap { validFunction2IOs =>
+        .flatMap { (validFunction2IOs: Seq[((ParametricArguments, NonParametricArguments), OutputType)]) =>
           executeInParallel(
             validFunction2IOs,
             (inputTypes, outputType) =>
@@ -430,6 +431,9 @@ object FuzzerParametricFunctions:
           fn.copy(parametric3Function1Ns = parametric3Function1Ns)
         }
 
+  private type ParametricArguments = Seq[CHFuzzableType]
+  private type NonParametricArguments = Seq[CHFuzzableType]
+  private type OutputType = String
   private def fuzzParametricFunction(
       fnName: String,
       paramCount: Int,
@@ -437,7 +441,7 @@ object FuzzerParametricFunctions:
   )(
       implicit client: CHClient,
       ec: ExecutionContext
-  ): Future[Seq[((Seq[CHFuzzableType], Seq[CHFuzzableType]), String)]] =
+  ): Future[Seq[((ParametricArguments, NonParametricArguments), OutputType)]] =
     val validCHFuzzableAbstractTypeCombinationsF =
       executeInParallelOnlySuccess(
         crossJoin(

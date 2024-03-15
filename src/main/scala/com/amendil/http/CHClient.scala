@@ -51,7 +51,7 @@ class CHClient(url: String)(implicit ec: ExecutionContext):
         }
       )
 
-    clickHouseHttpResponseF.flatMap { httpResponse =>
+    clickHouseHttpResponseF.flatMap { (httpResponse: HttpResponse[InputStream]) =>
       if httpResponse.statusCode() == HttpURLConnection.HTTP_OK then
         Future.successful(jsonMapper.readValue(httpResponse.body(), classOf[CHResponse]))
       else

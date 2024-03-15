@@ -17,7 +17,7 @@ object Retry {
   )(implicit ec: ExecutionContext): Future[T] =
     toScala { asyncCall() }.flatMap { res =>
       if shouldRetry(res) then
-        val waitTimeMs = (Math.min(previousWaitTimeMs * 1.15, 60000) + random.nextInt(200)).toLong
+        val waitTimeMs: Long = (Math.min(previousWaitTimeMs * 1.15, 60000) + random.nextInt(200)).toLong
         val p = Promise[T]()
         scheduledExecutor.schedule(
           () => p.completeWith(retryWithExponentialBackoff(asyncCall, shouldRetry, attempt + 1, waitTimeMs)),

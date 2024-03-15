@@ -1661,10 +1661,12 @@ enum CHFuzzableType(
 object CHFuzzableType extends StrictLogging:
 
   def getByName(name: String): CHFuzzableType =
-    findByName(name).getOrElse:
-      val errMsg = s"Unable to determine CHFuzzableType for $name"
-      logger.debug(errMsg)
-      throw new IllegalArgumentException(errMsg)
+    findByName(name) match
+      case Some(fuzzableType) => fuzzableType
+      case None =>
+        val errMsg = s"Unable to determine CHFuzzableType for $name"
+        logger.debug(errMsg)
+        throw new IllegalArgumentException(errMsg)
 
   def findByName(name: String): Option[CHFuzzableType] =
     CHFuzzableType.values.find(t => t.name.equals(name) || t.aliases.contains(name))
@@ -1673,149 +1675,149 @@ object CHFuzzableType extends StrictLogging:
     val exceptionIfUnknown = new IllegalArgumentException(s"Unable to determine higher type for $type1 and $type2")
     if type1 == type2 then type1 // Expects both type to be identical, should be the most obvious use case
     else
-      val CHFuzzableType1 = CHFuzzableType.getByName(type1)
-      val CHFuzzableType2 = CHFuzzableType.getByName(type2)
+      val chFuzzableType1 = CHFuzzableType.getByName(type1)
+      val chFuzzableType2 = CHFuzzableType.getByName(type2)
 
-      val mergedType =
-        if CHFuzzableType1 == CHFuzzableType2 then CHFuzzableType1
-        else if CHFuzzableType1 == BooleanType then
-          CHFuzzableType2 match
+      val mergedType: CHType =
+        if chFuzzableType1 == chFuzzableType2 then chFuzzableType1
+        else if chFuzzableType1 == BooleanType then
+          chFuzzableType2 match
             case UInt8 | UInt16 | UInt32 | UInt64 | UInt128 | UInt256 | Int16 | Int32 | Int64 | Int128 | Int256 =>
-              CHFuzzableType2
+              chFuzzableType2
             case _ => throw exceptionIfUnknown
-        else if CHFuzzableType2 == BooleanType then
-          CHFuzzableType1 match
+        else if chFuzzableType2 == BooleanType then
+          chFuzzableType1 match
             case UInt8 | UInt16 | UInt32 | UInt64 | UInt128 | UInt256 | Int16 | Int32 | Int64 | Int128 | Int256 =>
-              CHFuzzableType1
+              chFuzzableType1
             case _ => throw exceptionIfUnknown
-        else if CHFuzzableType1 == Int8 then
-          CHFuzzableType2 match
+        else if chFuzzableType1 == Int8 then
+          chFuzzableType2 match
             case UInt8                                   => Int16
             case UInt16                                  => Int32
             case UInt32                                  => Int64
             case UInt64                                  => Int128
             case UInt128 | UInt256                       => Int256
-            case Int16 | Int32 | Int64 | Int128 | Int256 => CHFuzzableType2
+            case Int16 | Int32 | Int64 | Int128 | Int256 => chFuzzableType2
             case _                                       => throw exceptionIfUnknown
-        else if CHFuzzableType2 == Int8 then
-          CHFuzzableType1 match
+        else if chFuzzableType2 == Int8 then
+          chFuzzableType1 match
             case UInt8                                   => Int16
             case UInt16                                  => Int32
             case UInt32                                  => Int64
             case UInt64                                  => Int128
             case UInt128 | UInt256                       => Int256
-            case Int16 | Int32 | Int64 | Int128 | Int256 => CHFuzzableType1
+            case Int16 | Int32 | Int64 | Int128 | Int256 => chFuzzableType1
             case _                                       => throw exceptionIfUnknown
-        else if CHFuzzableType1 == Int16 then
-          CHFuzzableType2 match
+        else if chFuzzableType1 == Int16 then
+          chFuzzableType2 match
             case UInt8                           => Int16
             case UInt16                          => Int32
             case UInt32                          => Int64
             case UInt64                          => Int128
             case UInt128 | UInt256               => Int256
-            case Int32 | Int64 | Int128 | Int256 => CHFuzzableType2
+            case Int32 | Int64 | Int128 | Int256 => chFuzzableType2
             case _                               => throw exceptionIfUnknown
-        else if CHFuzzableType2 == Int16 then
-          CHFuzzableType1 match
+        else if chFuzzableType2 == Int16 then
+          chFuzzableType1 match
             case UInt8                           => Int16
             case UInt16                          => Int32
             case UInt32                          => Int64
             case UInt64                          => Int128
             case UInt128 | UInt256               => Int256
-            case Int32 | Int64 | Int128 | Int256 => CHFuzzableType1
+            case Int32 | Int64 | Int128 | Int256 => chFuzzableType1
             case _                               => throw exceptionIfUnknown
-        else if CHFuzzableType1 == Int32 then
-          CHFuzzableType2 match
+        else if chFuzzableType1 == Int32 then
+          chFuzzableType2 match
             case UInt8 | UInt16          => Int32
             case UInt32                  => Int64
             case UInt64                  => Int128
             case UInt128 | UInt256       => Int256
-            case Int64 | Int128 | Int256 => CHFuzzableType2
+            case Int64 | Int128 | Int256 => chFuzzableType2
             case _                       => throw exceptionIfUnknown
-        else if CHFuzzableType2 == Int32 then
-          CHFuzzableType1 match
+        else if chFuzzableType2 == Int32 then
+          chFuzzableType1 match
             case UInt8 | UInt16          => Int32
             case UInt32                  => Int64
             case UInt64                  => Int128
             case UInt128 | UInt256       => Int256
-            case Int64 | Int128 | Int256 => CHFuzzableType1
+            case Int64 | Int128 | Int256 => chFuzzableType1
             case _                       => throw exceptionIfUnknown
-        else if CHFuzzableType1 == Int64 then
-          CHFuzzableType2 match
+        else if chFuzzableType1 == Int64 then
+          chFuzzableType2 match
             case UInt8 | UInt16 | UInt32 => Int64
             case UInt64                  => Int128
             case UInt128 | UInt256       => Int256
-            case Int128 | Int256         => CHFuzzableType2
+            case Int128 | Int256         => chFuzzableType2
             case _                       => throw exceptionIfUnknown
-        else if CHFuzzableType2 == Int64 then
-          CHFuzzableType1 match
+        else if chFuzzableType2 == Int64 then
+          chFuzzableType1 match
             case UInt8 | UInt16 | UInt32 => Int64
             case UInt64                  => Int128
             case UInt128 | UInt256       => Int256
-            case Int128 | Int256         => CHFuzzableType1
+            case Int128 | Int256         => chFuzzableType1
             case _                       => throw exceptionIfUnknown
-        else if CHFuzzableType1 == Int128 then
-          CHFuzzableType2 match
+        else if chFuzzableType1 == Int128 then
+          chFuzzableType2 match
             case UInt8 | UInt16 | UInt32 | UInt64 => Int128
             case UInt128 | UInt256                => Int256
             case Int256                           => Int256
             case _                                => throw exceptionIfUnknown
-        else if CHFuzzableType2 == Int128 then
-          CHFuzzableType1 match
+        else if chFuzzableType2 == Int128 then
+          chFuzzableType1 match
             case UInt8 | UInt16 | UInt32 | UInt64 => Int128
             case UInt128 | UInt256                => Int256
             case Int256                           => Int256
             case _                                => throw exceptionIfUnknown
-        else if CHFuzzableType1 == Int256 then Int256
-        else if CHFuzzableType2 == Int256 then Int256
+        else if chFuzzableType1 == Int256 then Int256
+        else if chFuzzableType2 == Int256 then Int256
         // From now on, neither type1 nor type2 can be a signed integer
-        else if CHFuzzableType1 == UInt8 then
-          CHFuzzableType2 match
-            case UInt16 | UInt32 | UInt64 | UInt128 | UInt256 => CHFuzzableType2
+        else if chFuzzableType1 == UInt8 then
+          chFuzzableType2 match
+            case UInt16 | UInt32 | UInt64 | UInt128 | UInt256 => chFuzzableType2
             case _                                            => throw exceptionIfUnknown
-        else if CHFuzzableType2 == UInt8 then
-          CHFuzzableType1 match
-            case UInt16 | UInt32 | UInt64 | UInt128 | UInt256 => CHFuzzableType1
+        else if chFuzzableType2 == UInt8 then
+          chFuzzableType1 match
+            case UInt16 | UInt32 | UInt64 | UInt128 | UInt256 => chFuzzableType1
             case _                                            => throw exceptionIfUnknown
-        else if CHFuzzableType1 == UInt16 then
-          CHFuzzableType2 match
-            case UInt32 | UInt64 | UInt128 | UInt256 => CHFuzzableType2
+        else if chFuzzableType1 == UInt16 then
+          chFuzzableType2 match
+            case UInt32 | UInt64 | UInt128 | UInt256 => chFuzzableType2
             case _                                   => throw exceptionIfUnknown
-        else if CHFuzzableType2 == UInt16 then
-          CHFuzzableType1 match
-            case UInt32 | UInt64 | UInt128 | UInt256 => CHFuzzableType1
+        else if chFuzzableType2 == UInt16 then
+          chFuzzableType1 match
+            case UInt32 | UInt64 | UInt128 | UInt256 => chFuzzableType1
             case _                                   => throw exceptionIfUnknown
-        else if CHFuzzableType1 == UInt32 then
-          CHFuzzableType2 match
-            case UInt64 | UInt128 | UInt256 => CHFuzzableType2
+        else if chFuzzableType1 == UInt32 then
+          chFuzzableType2 match
+            case UInt64 | UInt128 | UInt256 => chFuzzableType2
             case _                          => throw exceptionIfUnknown
-        else if CHFuzzableType2 == UInt32 then
-          CHFuzzableType1 match
-            case UInt64 | UInt128 | UInt256 => CHFuzzableType1
+        else if chFuzzableType2 == UInt32 then
+          chFuzzableType1 match
+            case UInt64 | UInt128 | UInt256 => chFuzzableType1
             case _                          => throw exceptionIfUnknown
-        else if CHFuzzableType1 == UInt64 then
-          CHFuzzableType2 match
-            case UInt128 | UInt256 => CHFuzzableType2
+        else if chFuzzableType1 == UInt64 then
+          chFuzzableType2 match
+            case UInt128 | UInt256 => chFuzzableType2
             case _                 => throw exceptionIfUnknown
-        else if CHFuzzableType2 == UInt64 then
-          CHFuzzableType1 match
-            case UInt128 | UInt256 => CHFuzzableType1
+        else if chFuzzableType2 == UInt64 then
+          chFuzzableType1 match
+            case UInt128 | UInt256 => chFuzzableType1
             case _                 => throw exceptionIfUnknown
-        else if CHFuzzableType1 == UInt128 then
-          CHFuzzableType2 match
-            case UInt256 => CHFuzzableType2
+        else if chFuzzableType1 == UInt128 then
+          chFuzzableType2 match
+            case UInt256 => chFuzzableType2
             case _       => throw exceptionIfUnknown
-        else if CHFuzzableType2 == UInt128 then
-          CHFuzzableType1 match
-            case UInt256 => CHFuzzableType1
+        else if chFuzzableType2 == UInt128 then
+          chFuzzableType1 match
+            case UInt256 => chFuzzableType1
             case _       => throw exceptionIfUnknown
         // From now on, neither type1 nor type2 can be an unsigned integer
-        else if CHFuzzableType1 == Float32 then
-          CHFuzzableType2 match
+        else if chFuzzableType1 == Float32 then
+          chFuzzableType2 match
             case Float64 => Float64
             case _       => throw exceptionIfUnknown
-        else if CHFuzzableType2 == Float32 then
-          CHFuzzableType1 match
+        else if chFuzzableType2 == Float32 then
+          chFuzzableType1 match
             case Float64 => Float64
             case _       => throw exceptionIfUnknown
         // From now on, neither type1 nor type2 can be a float number
