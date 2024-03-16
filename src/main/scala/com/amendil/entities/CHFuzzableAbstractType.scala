@@ -499,6 +499,11 @@ enum CHFuzzableAbstractType(val fuzzingValues: Seq[String], val CHFuzzableTypes:
       )
 
   // Special
+  case SequencePattern
+      extends CHFuzzableAbstractType(
+        CHFuzzableType.SequencePattern.fuzzingValues,
+        Seq(CHFuzzableType.SequencePattern)
+      )
   case WindowFunctionMode
       extends CHFuzzableAbstractType(
         CHFuzzableType.WindowFunctionMode.fuzzingValues,

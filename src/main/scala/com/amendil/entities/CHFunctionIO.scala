@@ -71,6 +71,12 @@ object CHFunctionIO:
     override val parameters = Seq(paramArg1)
     override val arguments = Seq(arg1, argN)
 
+  case class Parametric1Function2N(paramArg1: CHType, arg1: CHType, arg2: CHType, argN: CHType, output: String)
+      extends CHFunctionNIO:
+    val kind = "parametric1Function2N"
+    override val parameters = Seq(paramArg1)
+    override val arguments = Seq(arg1, arg2, argN)
+
   case class Parametric1Function1(paramArg1: CHType, arg1: CHType, output: String) extends CHFunctionIO:
     val kind = "parametric1Function1"
     override val parameters = Seq(paramArg1)
@@ -80,6 +86,12 @@ object CHFunctionIO:
     val kind = "parametric1Function2"
     override val parameters = Seq(paramArg1)
     override val arguments = Seq(arg1, arg2)
+
+  case class Parametric1Function3(paramArg1: CHType, arg1: CHType, arg2: CHType, arg3: CHType, output: String)
+      extends CHFunctionIO:
+    val kind = "parametric1Function3"
+    override val parameters = Seq(paramArg1)
+    override val arguments = Seq(arg1, arg2, arg3)
 
   case class Parametric2Function0N(paramArg1: CHType, paramArg2: CHType, argN: CHType, output: String)
       extends CHFunctionNIO:
@@ -98,6 +110,31 @@ object CHFunctionIO:
     override val parameters = Seq(paramArg1, paramArg2)
     override val arguments = Seq(arg1, argN)
 
+  case class Parametric2Function2N(
+      paramArg1: CHType,
+      paramArg2: CHType,
+      arg1: CHType,
+      arg2: CHType,
+      argN: CHType,
+      output: String
+  ) extends CHFunctionNIO:
+    val kind = "parametric2Function2N"
+    override val parameters = Seq(paramArg1, paramArg2)
+    override val arguments = Seq(arg1, arg2, argN)
+
+  case class Parametric2Function3N(
+      paramArg1: CHType,
+      paramArg2: CHType,
+      arg1: CHType,
+      arg2: CHType,
+      arg3: CHType,
+      argN: CHType,
+      output: String
+  ) extends CHFunctionNIO:
+    val kind = "parametric2Function3N"
+    override val parameters = Seq(paramArg1, paramArg2)
+    override val arguments = Seq(arg1, arg2, arg3, argN)
+
   case class Parametric2Function1(paramArg1: CHType, paramArg2: CHType, arg1: CHType, output: String)
       extends CHFunctionIO:
     val kind = "parametric2Function1"
@@ -114,6 +151,18 @@ object CHFunctionIO:
     val kind = "parametric2Function2"
     override val parameters = Seq(paramArg1, paramArg2)
     override val arguments = Seq(arg1, arg2)
+
+  case class Parametric2Function3(
+      paramArg1: CHType,
+      paramArg2: CHType,
+      arg1: CHType,
+      arg2: CHType,
+      arg3: CHType,
+      output: String
+  ) extends CHFunctionIO:
+    val kind = "parametric2Function3"
+    override val parameters = Seq(paramArg1, paramArg2)
+    override val arguments = Seq(arg1, arg2, arg3)
 
   case class Parametric3Function0N(
       paramArg1: CHType,
@@ -138,6 +187,19 @@ object CHFunctionIO:
     override val parameters = Seq(paramArg1, paramArg2, paramArg3)
     override val arguments = Seq(arg1, argN)
 
+  case class Parametric3Function2N(
+      paramArg1: CHType,
+      paramArg2: CHType,
+      paramArg3: CHType,
+      arg1: CHType,
+      arg2: CHType,
+      argN: CHType,
+      output: String
+  ) extends CHFunctionNIO:
+    val kind = "parametric3Function2N"
+    override val parameters = Seq(paramArg1, paramArg2, paramArg3)
+    override val arguments = Seq(arg1, arg2, argN)
+
   case class Parametric3Function1(
       paramArg1: CHType,
       paramArg2: CHType,
@@ -160,6 +222,19 @@ object CHFunctionIO:
     val kind = "parametric3Function2"
     override val parameters = Seq(paramArg1, paramArg2, paramArg3)
     override val arguments = Seq(arg1, arg2)
+
+  case class Parametric3Function3(
+      paramArg1: CHType,
+      paramArg2: CHType,
+      paramArg3: CHType,
+      arg1: CHType,
+      arg2: CHType,
+      arg3: CHType,
+      output: String
+  ) extends CHFunctionIO:
+    val kind = "parametric3Function3"
+    override val parameters = Seq(paramArg1, paramArg2, paramArg3)
+    override val arguments = Seq(arg1, arg2, arg3)
 
   case class Parametric4Function0N(
       paramArg1: CHType,
@@ -186,6 +261,20 @@ object CHFunctionIO:
     override val parameters = Seq(paramArg1, paramArg2, paramArg3, paramArg4)
     override val arguments = Seq(arg1, argN)
 
+  case class Parametric4Function2N(
+      paramArg1: CHType,
+      paramArg2: CHType,
+      paramArg3: CHType,
+      paramArg4: CHType,
+      arg1: CHType,
+      arg2: CHType,
+      argN: CHType,
+      output: String
+  ) extends CHFunctionNIO:
+    val kind = "parametric4Function2N"
+    override val parameters = Seq(paramArg1, paramArg2, paramArg3, paramArg4)
+    override val arguments = Seq(arg1, arg2, argN)
+
   case class Parametric4Function1(
       paramArg1: CHType,
       paramArg2: CHType,
@@ -210,6 +299,20 @@ object CHFunctionIO:
     val kind = "parametric4Function2"
     override val parameters = Seq(paramArg1, paramArg2, paramArg3, paramArg4)
     override val arguments = Seq(arg1, arg2)
+
+  case class Parametric4Function3(
+      paramArg1: CHType,
+      paramArg2: CHType,
+      paramArg3: CHType,
+      paramArg4: CHType,
+      arg1: CHType,
+      arg2: CHType,
+      arg3: CHType,
+      output: String
+  ) extends CHFunctionIO:
+    val kind = "parametric4Function3"
+    override val parameters = Seq(paramArg1, paramArg2, paramArg3, paramArg4)
+    override val arguments = Seq(arg1, arg2, arg3)
 
   case class Parametric5Function0N(
       paramArg1: CHType,
@@ -238,6 +341,21 @@ object CHFunctionIO:
     override val parameters = Seq(paramArg1, paramArg2, paramArg3, paramArg4, paramArg5)
     override val arguments = Seq(arg1, argN)
 
+  case class Parametric5Function2N(
+      paramArg1: CHType,
+      paramArg2: CHType,
+      paramArg3: CHType,
+      paramArg4: CHType,
+      paramArg5: CHType,
+      arg1: CHType,
+      arg2: CHType,
+      argN: CHType,
+      output: String
+  ) extends CHFunctionNIO:
+    val kind = "parametric5Function2N"
+    override val parameters = Seq(paramArg1, paramArg2, paramArg3, paramArg4, paramArg5)
+    override val arguments = Seq(arg1, arg2, argN)
+
   case class Parametric5Function1(
       paramArg1: CHType,
       paramArg2: CHType,
@@ -264,3 +382,18 @@ object CHFunctionIO:
     val kind = "parametric5Function2"
     override val parameters = Seq(paramArg1, paramArg2, paramArg3, paramArg4, paramArg5)
     override val arguments = Seq(arg1, arg2)
+
+  case class Parametric5Function3(
+      paramArg1: CHType,
+      paramArg2: CHType,
+      paramArg3: CHType,
+      paramArg4: CHType,
+      paramArg5: CHType,
+      arg1: CHType,
+      arg2: CHType,
+      arg3: CHType,
+      output: String
+  ) extends CHFunctionIO:
+    val kind = "parametric5Function3"
+    override val parameters = Seq(paramArg1, paramArg2, paramArg3, paramArg4, paramArg5)
+    override val arguments = Seq(arg1, arg2, arg3)

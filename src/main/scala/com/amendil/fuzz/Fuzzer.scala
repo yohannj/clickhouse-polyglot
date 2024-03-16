@@ -7,6 +7,8 @@ import com.amendil.http.CHClient
 import scala.concurrent.{ExecutionContext, Future}
 
 object Fuzzer:
+
+  // TODO It would be nice to test the hardcoded functions somehow
   def fuzz(functionName: String)(implicit client: CHClient, ec: ExecutionContext): Future[CHFunctionFuzzResult] =
     functionName match
       case "CAST" | "_CAST" | "accurateCast" | "accurateCastOrNull" =>
@@ -31,19 +33,62 @@ object Fuzzer:
             )
           )
         )
-      case "aexponentialMovingAverage" | "exponentialTimeDecayedAvg" | "exponentialTimeDecayedCount" |
-          "exponentialTimeDecayedMax" | "exponentialTimeDecayedSum" =>
-        // Fuzzing this function leads to OOM
+      case "sequenceNextNode" =>
+        // This method has many parameters and arguments. It's not worth to fuzz it.
+        import CHFuzzableType._
+        import CHSpecialType._
 
-        // TODO Handle these methods.
-        // They support many combinations (lowcardinality, nullable), and output type can be nullable
-        // Reference: https://clickhouse.com/docs/en/sql-reference/aggregate-functions/reference/exponentialmovingaverage
-        // + Introduced window functions exponentialTimeDecayedSum, exponentialTimeDecayedMax, exponentialTimeDecayedCount
-        // and exponentialTimeDecayedAvg which are more effective than exponentialMovingAverage for bigger windows.
-        // Also more use-cases were covered. #29799 (Vladimir Chebotarev).
+        // format: off
         Future.successful(
-          CHFunctionFuzzResult(name = functionName)
+          CHFunctionFuzzResult(
+            name = functionName,
+            specialParametric2Function2Ns =
+              for
+                (direction, base) <- 
+                  Seq(
+                    (SequenceDirectionForward, SequenceBaseHead),
+                    (SequenceDirectionBackward, SequenceBaseTail)
+                  )
+
+                timestamp <-
+                  Seq(
+                    BooleanType, UInt8, UInt16, UInt32, UInt64, Date, DateTime, LowCardinalityBoolean,
+                    LowCardinalityUInt8, LowCardinalityUInt16, LowCardinalityUInt32, LowCardinalityUInt64,
+                    LowCardinalityDate, LowCardinalityDateTime, LowCardinalityNullableBoolean, LowCardinalityNullableUInt8,
+                    LowCardinalityNullableUInt16, LowCardinalityNullableUInt32, LowCardinalityNullableUInt64,
+                    LowCardinalityNullableDate, LowCardinalityNullableDateTime, NullableBoolean, NullableUInt8,
+                    NullableUInt16, NullableUInt32, NullableUInt64, NullableDate, NullableDateTime
+                  )
+
+              yield {
+                CHFunctionIO.Parametric2Function2N(direction, base, timestamp, StringType, BooleanType, "Nullable(String)")
+              },
+            specialParametric2Function3Ns =
+              for
+                (direction, base) <- 
+                  Seq(
+                    (SequenceDirectionForward, SequenceBaseFirstMatch),
+                    (SequenceDirectionForward, SequenceBaseLastMatch),
+                    (SequenceDirectionBackward, SequenceBaseFirstMatch),
+                    (SequenceDirectionBackward, SequenceBaseLastMatch)
+                  )
+
+                timestamp <-
+                  Seq(
+                    BooleanType, UInt8, UInt16, UInt32, UInt64, Date, DateTime, LowCardinalityBoolean,
+                    LowCardinalityUInt8, LowCardinalityUInt16, LowCardinalityUInt32, LowCardinalityUInt64,
+                    LowCardinalityDate, LowCardinalityDateTime, LowCardinalityNullableBoolean, LowCardinalityNullableUInt8,
+                    LowCardinalityNullableUInt16, LowCardinalityNullableUInt32, LowCardinalityNullableUInt64,
+                    LowCardinalityNullableDate, LowCardinalityNullableDateTime, NullableBoolean, NullableUInt8,
+                    NullableUInt16, NullableUInt32, NullableUInt64, NullableDate, NullableDateTime
+                  )
+
+              yield {
+                CHFunctionIO.Parametric2Function3N(direction, base, timestamp, StringType, BooleanType, BooleanType, "Nullable(String)")
+              }
+          )
         )
+        // format: on
       case _ =>
         val fuzzingFunctionsWithCost: Seq[(CHFunctionFuzzResult => Future[CHFunctionFuzzResult], Long)] =
           FuzzerSpecialFunctions.fuzzingFunctionWithCost ++

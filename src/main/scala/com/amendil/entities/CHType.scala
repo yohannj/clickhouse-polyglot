@@ -9,6 +9,13 @@ enum CHSpecialType(val name: String) extends CHType:
   case GenericType(typeName: String) extends CHSpecialType(typeName)
   case LambdaNType(outputType: String) extends CHSpecialType(s"LambdaN($outputType)")
 
+  case SequenceBaseFirstMatch extends CHSpecialType("SequenceBaseFirstMatch") // "'first_match'"
+  case SequenceBaseHead extends CHSpecialType("SequenceBaseHead") // "'head'"
+  case SequenceBaseLastMatch extends CHSpecialType("SequenceBaseLastMatch") // "'last_match'"
+  case SequenceBaseTail extends CHSpecialType("SequenceBaseTail") // "'tail'"
+  case SequenceDirectionForward extends CHSpecialType("SequenceDirectionForward") // "'forward'"
+  case SequenceDirectionBackward extends CHSpecialType("SequenceDirectionBackward") // "'backward'"
+
 enum CHAggregatedType(val name: String) extends CHType:
   case Any extends CHAggregatedType("Any")
 
@@ -1651,6 +1658,11 @@ enum CHFuzzableType(
           "'UUID'",
           "'Variant'"
         )
+      )
+  case SequencePattern
+      extends CHFuzzableType(
+        "SequencePattern",
+        Seq("'(?1)'")
       )
   case WindowFunctionMode
       extends CHFuzzableType(
