@@ -2,10 +2,11 @@ package com
 
 package object amendil:
   val unknownFunctions: Seq[String] = Seq(
+    "windowFunnel"
     // "randExponential",
     // "exponentialTimeDecayedCount",
     // "exponentialTimeDecayedMax",
-    "exponentialMovingAverage"
+    // "exponentialMovingAverage",
     // "exponentialTimeDecayedSum",
     // "exponentialTimeDecayedAvg"
     // "arrayFill",

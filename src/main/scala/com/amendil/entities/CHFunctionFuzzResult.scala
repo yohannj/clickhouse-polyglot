@@ -33,6 +33,14 @@ final case class CHFunctionFuzzResult(
     parametric3Function1Ns: Seq[Parametric3Function1N] = Nil,
     parametric3Function1s: Seq[Parametric3Function1] = Nil,
     parametric3Function2s: Seq[Parametric3Function2] = Nil,
+    parametric4Function0Ns: Seq[Parametric4Function0N] = Nil,
+    parametric4Function1Ns: Seq[Parametric4Function1N] = Nil,
+    parametric4Function1s: Seq[Parametric4Function1] = Nil,
+    parametric4Function2s: Seq[Parametric4Function2] = Nil,
+    parametric5Function0Ns: Seq[Parametric5Function0N] = Nil,
+    parametric5Function1Ns: Seq[Parametric5Function1N] = Nil,
+    parametric5Function1s: Seq[Parametric5Function1] = Nil,
+    parametric5Function2s: Seq[Parametric5Function2] = Nil,
     specialFunction0Ns: Seq[Function0N] = Nil
 ):
   // Helps working with all those functions by providing a single variable
@@ -44,10 +52,13 @@ final case class CHFunctionFuzzResult(
       parametric1Function1Ns ++ parametric1Function1s ++ parametric1Function2s ++
       parametric2Function0Ns ++ parametric2Function1Ns ++ parametric2Function1s ++
       parametric2Function2s ++ parametric3Function0Ns ++ parametric3Function1Ns ++
-      parametric3Function1s ++ parametric3Function2s ++ specialFunction0Ns
+      parametric3Function1s ++ parametric3Function2s ++ parametric4Function0Ns ++
+      parametric4Function1Ns ++ parametric4Function1s ++ parametric4Function2s ++
+      parametric5Function0Ns ++ parametric5Function1Ns ++ parametric5Function1s ++
+      parametric5Function2s ++ specialFunction0Ns
 
   require(
-    functions.groupBy(_.input).values.filter(_.size != 1).isEmpty,
+    functions.groupBy(f => (f.parameters, f.arguments)).values.filter(_.size != 1).isEmpty,
     s"Function $name has multiple time the same signature"
   )
 
@@ -66,4 +77,7 @@ final case class CHFunctionFuzzResult(
     parametric1Function0Ns.nonEmpty || parametric1Function1Ns.nonEmpty || parametric1Function1s.nonEmpty ||
       parametric1Function2s.nonEmpty || parametric2Function0Ns.nonEmpty || parametric2Function1Ns.nonEmpty ||
       parametric2Function1s.nonEmpty || parametric2Function2s.nonEmpty || parametric3Function0Ns.nonEmpty ||
-      parametric3Function1Ns.nonEmpty || parametric3Function1s.nonEmpty || parametric3Function2s.nonEmpty
+      parametric3Function1Ns.nonEmpty || parametric3Function1s.nonEmpty || parametric3Function2s.nonEmpty ||
+      parametric4Function0Ns.nonEmpty || parametric4Function1Ns.nonEmpty || parametric4Function1s.nonEmpty ||
+      parametric4Function2s.nonEmpty || parametric5Function0Ns.nonEmpty || parametric5Function1Ns.nonEmpty ||
+      parametric5Function1s.nonEmpty || parametric5Function2s.nonEmpty
