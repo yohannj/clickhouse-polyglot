@@ -136,7 +136,7 @@ object ConcurrencyUtils:
     */
   def executeInSequenceUntilSuccess[T](elements: Seq[T], fn: (T) => Future[_])(
       implicit ec: ExecutionContext
-  ): Future[Boolean] =
+  ): Future[Unit] =
     elements match
-      case Seq(head, tail @ _*) => fn(head).map(_ => true).recoverWith(_ => executeInSequenceUntilSuccess(tail, fn))
-      case _                    => Future.successful(false)
+      case Seq(head, tail @ _*) => fn(head).map(_ => (): Unit).recoverWith(_ => executeInSequenceUntilSuccess(tail, fn))
+      case _                    => Future.failed(new Exception("Executed all elements, but none worked"))

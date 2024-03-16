@@ -7,6 +7,7 @@ import com.amendil.fuzz.Fuzzer._
 import com.amendil.http.CHClient
 import com.typesafe.scalalogging.StrictLogging
 
+import scala.annotation.targetName
 import scala.concurrent.{ExecutionContext, Future}
 
 object FuzzerParametricFunctions extends StrictLogging:
@@ -46,37 +47,24 @@ object FuzzerParametricFunctions extends StrictLogging:
     logger.debug("fuzzFunction1Or0NWithOneParameter")
     if fn.isLambda || fn.isNonParametric || fn.isSpecialInfiniteFunction then Future.successful(fn)
     else
-      fuzzParametricFunction(fn.name, paramCount = 1, argCount = 1)
-        .flatMap { (validFunction1IOs: Seq[((ParametricArguments, NonParametricArguments), OutputType)]) =>
-          executeInParallel(
-            validFunction1IOs,
-            (inputTypes, outputType) =>
-              val (paramType1, nonParamType1) =
-                inputTypes match
-                  case (Seq(paramType1), Seq(nonParamType1)) => (paramType1, nonParamType1)
-                  case _                                     => throw new Exception(s"Expected 1 type, found ${inputTypes.size} types") // FIXME
+      for
+        functions: Seq[(ParametricFunctionInput, OutputType)] <-
+          fuzzParametricFunction(fn.name, paramCount = 1, argCount = 1)
+        fnHasInfiniteArgs: Boolean <-
+          if functions.isEmpty then Future.successful(true) else testInfiniteArgsFunctions(fn.name, functions.head._1)
+      yield {
+        def toFn[T <: CHFunctionIO](
+            io: (ParametricFunctionInput, OutputType),
+            constructor: (CHFuzzableType, CHFuzzableType, String) => T
+        ): T =
+          io._1 match
+            case (Seq(param1), Seq(arg1)) => constructor(param1, arg1, io._2)
+            case _                        => throw new Exception(s"Expected 1 type, found ${io.size} types") // FIXME
 
-              testInfiniteArgsFunctions(
-                fn.name,
-                paramCHFuzzableTypes = inputTypes._1,
-                nonParamCHFuzzableTypes = inputTypes._2
-              )
-                .map { isInfiniteFunction =>
-                  val function: CHFunctionIO.Parametric1Function0N | CHFunctionIO.Parametric1Function1 =
-                    if isInfiniteFunction then CHFunctionIO.Parametric1Function0N(paramType1, nonParamType1, outputType)
-                    else CHFunctionIO.Parametric1Function1(paramType1, nonParamType1, outputType)
-
-                  function
-                }
-            ,
-            maxConcurrency = Settings.ClickHouse.maxSupportedConcurrency
-          ).map { case validFunctions: Seq[CHFunctionIO.Parametric1Function0N | CHFunctionIO.Parametric1Function1] =>
-            val parametric1Function0Ns = validFunctions.collect { case e: CHFunctionIO.Parametric1Function0N => e }
-            val parametric1Function1s = validFunctions.collect { case e: CHFunctionIO.Parametric1Function1 => e }
-
-            fn.copy(parametric1Function0Ns = parametric1Function0Ns, parametric1Function1s = parametric1Function1s)
-          }
-        }
+        if fnHasInfiniteArgs then
+          fn.copy(parametric1Function0Ns = functions.map(toFn(_, CHFunctionIO.Parametric1Function0N.apply)))
+        else fn.copy(parametric1Function1s = functions.map(toFn(_, CHFunctionIO.Parametric1Function1.apply)))
+      }
 
   private def fuzzFunction2Or1NWithOneParameter(
       fn: CHFunctionFuzzResult
@@ -85,43 +73,27 @@ object FuzzerParametricFunctions extends StrictLogging:
     if fn.isLambda || fn.isNonParametric || fn.isSpecialInfiniteFunction || fn.parametric1Function0Ns.nonEmpty then
       Future.successful(fn)
     else
-      fuzzParametricFunction(fn.name, paramCount = 1, argCount = 2)
-        .flatMap { (validFunction2IOs: Seq[((ParametricArguments, NonParametricArguments), OutputType)]) =>
-          logger.debug(s"Found ${validFunction2IOs.size} valid function2")
-
-          // XXX Optimize strongly this part!!!!!
-          executeInParallel(
-            validFunction2IOs,
-            (inputTypes, outputType) =>
-              val (paramType1, nonParamType1, nonParamType2) =
-                inputTypes match
-                  case (Seq(paramType1), Seq(nonParamType1, nonParamType2)) =>
-                    (paramType1, nonParamType1, nonParamType2)
-                  case _ => throw new Exception(s"Expected 2 types, but found ${inputTypes.size} types") // FIXME
-
-              testInfiniteArgsFunctions(
-                fn.name,
-                paramCHFuzzableTypes = inputTypes._1,
-                nonParamCHFuzzableTypes = inputTypes._2
+      for
+        functions: Seq[(ParametricFunctionInput, OutputType)] <-
+          fuzzParametricFunction(fn.name, paramCount = 1, argCount = 2)
+        fnHasInfiniteArgs: Boolean <-
+          if functions.isEmpty then Future.successful(true) else testInfiniteArgsFunctions(fn.name, functions.head._1)
+      yield {
+        def toFn[T <: CHFunctionIO](
+            io: (ParametricFunctionInput, OutputType),
+            constructor: (CHFuzzableType, CHFuzzableType, CHFuzzableType, String) => T
+        ): T =
+          io._1 match
+            case (Seq(param1), Seq(arg1, arg2)) => constructor(param1, arg1, arg2, io._2)
+            case _ =>
+              throw new Exception(
+                s"Expected 1 parameter and 2 arguments, but found ${io._1.parameters.size} parameters and ${io._1.arguments.size} arguments"
               )
-                .map { isInfiniteFunction =>
-                  val function: CHFunctionIO.Parametric1Function1N | CHFunctionIO.Parametric1Function2 =
-                    if isInfiniteFunction then
-                      CHFunctionIO.Parametric1Function1N(paramType1, nonParamType1, nonParamType2, outputType)
-                    else CHFunctionIO.Parametric1Function2(paramType1, nonParamType1, nonParamType2, outputType)
 
-                  function
-                }
-            ,
-            maxConcurrency = Settings.ClickHouse.maxSupportedConcurrency
-          ).map { case validFunctions: Seq[CHFunctionIO.Parametric1Function1N | CHFunctionIO.Parametric1Function2] =>
-            logger.debug(s"Found ${validFunctions.size} valid function2Or1NWithOneParameter")
-            val parametric1Function1Ns = validFunctions.collect { case e: CHFunctionIO.Parametric1Function1N => e }
-            val parametric1Function2s = validFunctions.collect { case e: CHFunctionIO.Parametric1Function2 => e }
-
-            fn.copy(parametric1Function1Ns = parametric1Function1Ns, parametric1Function2s = parametric1Function2s)
-          }
-        }
+        if fnHasInfiniteArgs then
+          fn.copy(parametric1Function1Ns = functions.map(toFn(_, CHFunctionIO.Parametric1Function1N.apply)))
+        else fn.copy(parametric1Function2s = functions.map(toFn(_, CHFunctionIO.Parametric1Function2.apply)))
+      }
 
   /**
     * For all parametric function with 1 argument and 1 parameter previously found,
@@ -152,19 +124,18 @@ object FuzzerParametricFunctions extends StrictLogging:
             crossJoin(param1Type.fuzzingValues, param2Type.fuzzingValues, arg1Type.fuzzingValues)
               .map { case (param1, param2, arg1) => s"SELECT ${fn.name}($param1, $param2)($arg1)" },
             client.execute
-          ).map { if _ then Some(param2Type) else None }
+          ).map(_ => param2Type)
         },
         maxConcurrency = Settings.ClickHouse.maxSupportedConcurrency
-      ).map(_.flatten)
-        .map { (validParam2Types: Seq[CHFuzzableType]) =>
-          val parametric2Function1s =
-            for
-              param2Type <- validParam2Types
-              f <- fn.parametric1Function1s
-            yield CHFunctionIO.Parametric2Function1(f.paramArg1, param2Type, f.arg1, f.output)
+      ).map { (validParam2Types: Seq[CHFuzzableType]) =>
+        val parametric2Function1s =
+          for
+            param2Type <- validParam2Types
+            f <- fn.parametric1Function1s
+          yield CHFunctionIO.Parametric2Function1(f.paramArg1, param2Type, f.arg1, f.output)
 
-          fn.copy(parametric2Function1s = parametric2Function1s)
-        }
+        fn.copy(parametric2Function1s = parametric2Function1s)
+      }
 
   /**
     * For all parametric function with 1 argument and 2 parameters previously found,
@@ -201,19 +172,18 @@ object FuzzerParametricFunctions extends StrictLogging:
             )
               .map { case (param1, param2, param3, arg1) => s"SELECT ${fn.name}($param1, $param2, $param3)($arg1)" },
             client.execute
-          ).map { if _ then Some(param3Type) else None }
+          ).map(_ => param3Type)
         },
         maxConcurrency = Settings.ClickHouse.maxSupportedConcurrency
-      ).map(_.flatten)
-        .map { validParam3Types =>
-          val parametric3Function1s =
-            for
-              param3Type <- validParam3Types
-              f <- fn.parametric2Function1s
-            yield CHFunctionIO.Parametric3Function1(f.paramArg1, f.paramArg2, param3Type, f.arg1, f.output)
+      ).map { validParam3Types =>
+        val parametric3Function1s =
+          for
+            param3Type <- validParam3Types
+            f <- fn.parametric2Function1s
+          yield CHFunctionIO.Parametric3Function1(f.paramArg1, f.paramArg2, param3Type, f.arg1, f.output)
 
-          fn.copy(parametric3Function1s = parametric3Function1s)
-        }
+        fn.copy(parametric3Function1s = parametric3Function1s)
+      }
 
   /**
     * For all parametric function with 2 arguments and 1 parameter previously found,
@@ -250,19 +220,18 @@ object FuzzerParametricFunctions extends StrictLogging:
             )
               .map { case (param1, param2, arg1, arg2) => s"SELECT ${fn.name}($param1, $param2)($arg1, $arg2)" },
             client.execute
-          ).map { if _ then Some(param2Type) else None }
+          ).map(_ => param2Type)
         },
         maxConcurrency = Settings.ClickHouse.maxSupportedConcurrency
-      ).map(_.flatten)
-        .map { validParam2Types =>
-          val parametric2Function2s =
-            for
-              param2Type <- validParam2Types
-              f <- fn.parametric1Function2s
-            yield CHFunctionIO.Parametric2Function2(f.paramArg1, param2Type, f.arg1, f.arg2, f.output)
+      ).map { validParam2Types =>
+        val parametric2Function2s =
+          for
+            param2Type <- validParam2Types
+            f <- fn.parametric1Function2s
+          yield CHFunctionIO.Parametric2Function2(f.paramArg1, param2Type, f.arg1, f.arg2, f.output)
 
-          fn.copy(parametric2Function2s = parametric2Function2s)
-        }
+        fn.copy(parametric2Function2s = parametric2Function2s)
+      }
 
   /**
     * For all parametric function with 2 arguments and 2 parameters previously found,
@@ -303,19 +272,18 @@ object FuzzerParametricFunctions extends StrictLogging:
                 s"SELECT ${fn.name}($param1, $param2, $param3)($arg1, $arg2)"
               },
             client.execute
-          ).map { if _ then Some(param3Type) else None }
+          ).map(_ => param3Type)
         },
         maxConcurrency = Settings.ClickHouse.maxSupportedConcurrency
-      ).map(_.flatten)
-        .map { validParam3Types =>
-          val parametric3Function2s =
-            for
-              param3Type <- validParam3Types
-              f <- fn.parametric2Function2s
-            yield CHFunctionIO.Parametric3Function2(f.paramArg1, f.paramArg2, param3Type, f.arg1, f.arg2, f.output)
+      ).map { validParam3Types =>
+        val parametric3Function2s =
+          for
+            param3Type <- validParam3Types
+            f <- fn.parametric2Function2s
+          yield CHFunctionIO.Parametric3Function2(f.paramArg1, f.paramArg2, param3Type, f.arg1, f.arg2, f.output)
 
-          fn.copy(parametric3Function2s = parametric3Function2s)
-        }
+        fn.copy(parametric3Function2s = parametric3Function2s)
+      }
 
   /**
     * For all parametric function with 0N arguments and 1 parameter previously found,
@@ -348,19 +316,18 @@ object FuzzerParametricFunctions extends StrictLogging:
                 (s"SELECT ${fn.name}($param1, $param2)($argN)", s"SELECT ${fn.name}($param1, $param2)($argN, $argN)")
               },
             (query1, query2) => client.execute(query1).recoverWith(_ => client.execute(query2))
-          ).map { if _ then Some(param2Type) else None }
+          ).map(_ => param2Type)
         },
         maxConcurrency = Settings.ClickHouse.maxSupportedConcurrency
-      ).map(_.flatten)
-        .map { validParam2Types =>
-          val parametric2Function0Ns =
-            for
-              param2Type <- validParam2Types
-              f <- fn.parametric1Function0Ns
-            yield CHFunctionIO.Parametric2Function0N(f.paramArg1, param2Type, f.argN, f.output)
+      ).map { validParam2Types =>
+        val parametric2Function0Ns =
+          for
+            param2Type <- validParam2Types
+            f <- fn.parametric1Function0Ns
+          yield CHFunctionIO.Parametric2Function0N(f.paramArg1, param2Type, f.argN, f.output)
 
-          fn.copy(parametric2Function0Ns = parametric2Function0Ns)
-        }
+        fn.copy(parametric2Function0Ns = parametric2Function0Ns)
+      }
 
   /**
     * For all parametric function with 0N arguments and 2 parameters previously found,
@@ -402,19 +369,18 @@ object FuzzerParametricFunctions extends StrictLogging:
                 )
               },
             (query1, query2) => client.execute(query1).recoverWith(_ => client.execute(query2))
-          ).map { if _ then Some(param3Type) else None }
+          ).map(_ => param3Type)
         },
         maxConcurrency = Settings.ClickHouse.maxSupportedConcurrency
-      ).map(_.flatten)
-        .map { validParam3Types =>
-          val parametric3Function0Ns =
-            for
-              param3Type <- validParam3Types
-              f <- fn.parametric2Function0Ns
-            yield CHFunctionIO.Parametric3Function0N(f.paramArg1, f.paramArg2, param3Type, f.argN, f.output)
+      ).map { validParam3Types =>
+        val parametric3Function0Ns =
+          for
+            param3Type <- validParam3Types
+            f <- fn.parametric2Function0Ns
+          yield CHFunctionIO.Parametric3Function0N(f.paramArg1, f.paramArg2, param3Type, f.argN, f.output)
 
-          fn.copy(parametric3Function0Ns = parametric3Function0Ns)
-        }
+        fn.copy(parametric3Function0Ns = parametric3Function0Ns)
+      }
 
   /**
     * For all parametric function with 1N arguments and 1 parameter previously found,
@@ -456,19 +422,18 @@ object FuzzerParametricFunctions extends StrictLogging:
                 )
               },
             (query1, query2) => client.execute(query1).recoverWith(_ => client.execute(query2))
-          ).map { if _ then Some(param2Type) else None }
+          ).map(_ => param2Type)
         },
         maxConcurrency = Settings.ClickHouse.maxSupportedConcurrency
-      ).map(_.flatten)
-        .map { validParam2Types =>
-          val parametric2Function1Ns =
-            for
-              param2Type <- validParam2Types
-              f <- fn.parametric1Function1Ns
-            yield CHFunctionIO.Parametric2Function1N(f.paramArg1, param2Type, f.arg1, f.argN, f.output)
+      ).map { validParam2Types =>
+        val parametric2Function1Ns =
+          for
+            param2Type <- validParam2Types
+            f <- fn.parametric1Function1Ns
+          yield CHFunctionIO.Parametric2Function1N(f.paramArg1, param2Type, f.arg1, f.argN, f.output)
 
-          fn.copy(parametric2Function1Ns = parametric2Function1Ns)
-        }
+        fn.copy(parametric2Function1Ns = parametric2Function1Ns)
+      }
 
   /**
     * For all parametric function with 1N arguments and 2 parameters previously found,
@@ -512,27 +477,18 @@ object FuzzerParametricFunctions extends StrictLogging:
                 )
               },
             (query1, query2) => client.execute(query1).recoverWith(_ => client.execute(query2))
-          ).map { if _ then Some(param3Type) else None }
+          ).map(_ => param3Type)
         },
         maxConcurrency = Settings.ClickHouse.maxSupportedConcurrency
-      ).map(_.flatten)
-        .map { validParam3Types =>
-          val parametric3Function1Ns =
-            for
-              param3Type <- validParam3Types
-              f <- fn.parametric2Function1Ns
-            yield CHFunctionIO.Parametric3Function1N(f.paramArg1, f.paramArg2, param3Type, f.arg1, f.argN, f.output)
+      ).map { validParam3Types =>
+        val parametric3Function1Ns =
+          for
+            param3Type <- validParam3Types
+            f <- fn.parametric2Function1Ns
+          yield CHFunctionIO.Parametric3Function1N(f.paramArg1, f.paramArg2, param3Type, f.arg1, f.argN, f.output)
 
-          fn.copy(parametric3Function1Ns = parametric3Function1Ns)
-        }
-
-  private type ParametricArguments = Seq[CHFuzzableType]
-  private type NonParametricArguments = Seq[CHFuzzableType]
-  private type OutputType = String
-  opaque type ParametricFunctionAbstractInput = (Seq[CHFuzzableAbstractType], Seq[CHFuzzableAbstractType])
-  extension (in: ParametricFunctionAbstractInput)
-    def parameters: Seq[CHFuzzableAbstractType] = in._1
-    def arguments: Seq[CHFuzzableAbstractType] = in._2
+        fn.copy(parametric3Function1Ns = parametric3Function1Ns)
+      }
 
   private def fuzzParametricFunction(
       fnName: String,
@@ -541,7 +497,7 @@ object FuzzerParametricFunctions extends StrictLogging:
   )(
       implicit client: CHClient,
       ec: ExecutionContext
-  ): Future[Seq[((ParametricArguments, NonParametricArguments), OutputType)]] =
+  ): Future[Seq[(ParametricFunctionInput, OutputType)]] =
     // Build all combinations of parametric fonction input having paramCount parameters and argCount arguments
     // Those combinations are described using AbstractTypes!
     // They are all used to query ClickHouse and we are retrieving here only the ones that succeeded.
@@ -558,10 +514,10 @@ object FuzzerParametricFunctions extends StrictLogging:
               buildFuzzingValuesArgs(nonParamTypes.map(_.fuzzingValues))
             ).map { case (paramArgs, nonParamArgs) => s"SELECT $fnName($paramArgs)($nonParamArgs)" },
             client.execute
-          ).map(if _ then Some((paramTypes, nonParamTypes)) else None)
+          ).map(_ => (paramTypes, nonParamTypes))
         },
         maxConcurrency = Settings.ClickHouse.maxSupportedConcurrency
-      ).map(_.flatten)
+      )
 
     validCHFuzzableAbstractTypeCombinationsF.flatMap:
       (validCHFuzzableAbstractTypeCombinations: Seq[ParametricFunctionAbstractInput]) =>
@@ -579,9 +535,8 @@ object FuzzerParametricFunctions extends StrictLogging:
             s"While fuzzing $fnName with $paramCount parameters and $argCount arguments," +
               s" found some combinations of parameters that does not support the same combinations of arguments."
           )
-          logger.error("Bar")
 
-          val argumentsAndSqlQuery: Seq[(NonParametricArguments, String)] =
+          val argumentsAndSqlQuery: Seq[(NonParametricArguments, Seq[String])] =
             validCHFuzzableAbstractTypeCombinations
               .groupBy(_.parameters)
               .values
@@ -590,14 +545,15 @@ object FuzzerParametricFunctions extends StrictLogging:
                 generateCHFuzzableTypeCombinations(input.arguments)
                   .map((input.parameters, _))
               }
-              .flatMap { case (paramAbstractTypes, nonParamTypes) =>
-                crossJoin(
+              .map { case (paramAbstractTypes, nonParamTypes) =>
+                val queries = crossJoin(
                   buildFuzzingValuesArgs(paramAbstractTypes.map(_.fuzzingValues)),
                   buildFuzzingValuesArgs(nonParamTypes.map(_.fuzzingValues))
                 ).map { case (paramArgs, nonParamArgs) => s"SELECT $fnName($paramArgs)($nonParamArgs)" }
-                  .map(query => (nonParamTypes, query))
+
+                (nonParamTypes, queries)
               }
-          val parametersAndSqlQuery: Seq[(ParametricArguments, String)] =
+          val parametersAndSqlQuery: Seq[(ParametricArguments, Seq[String])] =
             validCHFuzzableAbstractTypeCombinations
               .groupBy(_.arguments)
               .values
@@ -606,29 +562,32 @@ object FuzzerParametricFunctions extends StrictLogging:
                 generateCHFuzzableTypeCombinations(input.parameters)
                   .map((_, input.arguments))
               }
-              .flatMap { case (paramTypes, nonParamAbstractTypes) =>
-                crossJoin(
+              .map { case (paramTypes, nonParamAbstractTypes) =>
+                val queries = crossJoin(
                   buildFuzzingValuesArgs(paramTypes.map(_.fuzzingValues)),
                   buildFuzzingValuesArgs(nonParamAbstractTypes.map(_.fuzzingValues))
                 ).map { case (paramArgs, nonParamArgs) => s"SELECT $fnName($paramArgs)($nonParamArgs)" }
-                  .map(query => (paramTypes, query))
+
+                (paramTypes, queries)
               }
 
           for
             outputTypeByArguments: Map[NonParametricArguments, OutputType] <-
               executeInParallelOnlySuccess(
                 argumentsAndSqlQuery,
-                (nonParamTypes, query) => client.execute(query).map(resp => (nonParamTypes, resp.meta.head.`type`)),
+                (nonParamTypes, queries) =>
+                  executeInSequenceOnlySuccess(queries, client.execute).map(resp =>
+                    (nonParamTypes, resp.map(_.meta.head.`type`).reduce(CHFuzzableType.merge))
+                  ),
                 maxConcurrency = Settings.ClickHouse.maxSupportedConcurrency
               ).map(_.toMap)
             validParameters: Seq[ParametricArguments] <-
               executeInParallelOnlySuccess(
                 parametersAndSqlQuery,
-                (paramTypes, query) => client.execute(query).map(_ => paramTypes),
+                (paramTypes, queries) => executeInSequenceUntilSuccess(queries, client.execute).map(_ => paramTypes),
                 maxConcurrency = Settings.ClickHouse.maxSupportedConcurrency
               )
           yield {
-            logger.debug("FOOBAR")
             for
               parameters <- validParameters
               (arguments, outputType) <- outputTypeByArguments.toSeq
@@ -644,114 +603,35 @@ object FuzzerParametricFunctions extends StrictLogging:
     */
   private def testInfiniteArgsFunctions(
       fnName: String,
-      paramCHFuzzableTypes: Seq[CHFuzzableType],
-      nonParamCHFuzzableTypes: Seq[CHFuzzableType]
+      inputTypes: ParametricFunctionInput
   )(implicit client: CHClient, ec: ExecutionContext): Future[Boolean] =
-    require(nonParamCHFuzzableTypes.nonEmpty, "Expected at least one defined argument, but none found.")
+    val arguments: NonParametricArguments = inputTypes.arguments
+    require(arguments.nonEmpty, "Expected at least one defined argument, but none found.")
 
-    val argNv1 = Range(0, 10).toSeq.map(_ => Seq(nonParamCHFuzzableTypes.last.fuzzingValues.head))
-    val argNv2 = Range(0, 11).toSeq.map(_ => Seq(nonParamCHFuzzableTypes.last.fuzzingValues.head))
+    val argNv1 = Range(0, 10).toSeq.map(_ => Seq(arguments.last.fuzzingValues.head))
+    val argNv2 = Range(0, 11).toSeq.map(_ => Seq(arguments.last.fuzzingValues.head))
 
-    val fuzzingValuesParams = buildFuzzingValuesArgs(paramCHFuzzableTypes.map(_.fuzzingValues))
-    val fuzzingValuesArgsv1 = buildFuzzingValuesArgs(nonParamCHFuzzableTypes.map(_.fuzzingValues) ++ argNv1)
-    val fuzzingValuesArgsv2 = buildFuzzingValuesArgs(nonParamCHFuzzableTypes.map(_.fuzzingValues) ++ argNv2)
+    val fuzzingValuesParams = buildFuzzingValuesArgs(inputTypes.parameters.map(_.fuzzingValues))
+    val fuzzingValuesArgsV1 = buildFuzzingValuesArgs(arguments.map(_.fuzzingValues) ++ argNv1)
+    val fuzzingValuesArgsV2 = buildFuzzingValuesArgs(arguments.map(_.fuzzingValues) ++ argNv2)
 
     executeInSequenceUntilSuccess(
-      crossJoin(fuzzingValuesParams, fuzzingValuesArgsv1 ++ fuzzingValuesArgsv2).map { case (paramArgs, nonParamArgs) =>
-        s"SELECT $fnName($paramArgs)($nonParamArgs)"
+      crossJoin(fuzzingValuesParams, fuzzingValuesArgsV1 ++ fuzzingValuesArgsV2).map { case (params, args) =>
+        s"SELECT $fnName($params)($args)"
       },
       client.execute
-    )
+    ).map(_ => true).recover(_ => false)
 
-  /**
-    * If s1 contains "A" and "B" and s2 contains "C" and "D", combinations are considered to be:
-    * (A, C)
-    * (A, D)
-    * (B, C)
-    * (B, D)
-    *
-    * @param s1 List of elements
-    * @param s2 List of elements
-    * @return all combinations of elements between s1 and s2
-    */
-  private def crossJoin[T, U](s1: Seq[T], s2: Seq[U]): Seq[(T, U)] =
-    for
-      e1 <- s1
-      e2 <- s2
-    yield { (e1, e2) }
+  private type ParametricArguments = Seq[CHFuzzableType]
+  private type NonParametricArguments = Seq[CHFuzzableType]
+  private type OutputType = String
 
-  /**
-    * If s1 contains "A" and "B", s2 contains "C" and "D", s3 contains "E",
-    * combinations are considered to be:
-    * (A, C, E)
-    * (A, D, E)
-    * (B, C, E)
-    * (B, D, E)
-    *
-    * @param s1 List of elements
-    * @param s2 List of elements
-    * @param s3 List of elements
-    * @return all combinations of elements between s1, s2 and s3
-    */
-  private def crossJoin[T, U, V](s1: Seq[T], s2: Seq[U], s3: Seq[V]): Seq[(T, U, V)] =
-    for
-      e1 <- s1
-      e2 <- s2
-      e3 <- s3
-    yield { (e1, e2, e3) }
+  opaque type ParametricFunctionInput = (Seq[CHFuzzableType], Seq[CHFuzzableType])
+  extension (in: ParametricFunctionInput)
+    @targetName("ParametricFunctionInput_parameters") def parameters: Seq[CHFuzzableType] = in._1
+    @targetName("ParametricFunctionInput_arguments") def arguments: Seq[CHFuzzableType] = in._2
 
-  /**
-    * If s1 contains "A" and "B", s2 contains "C" and "D", s3 contains "E", s4 contains "F"
-    * combinations are considered to be:
-    * (A, C, E, F)
-    * (A, D, E, F)
-    * (B, C, E, F)
-    * (B, D, E, F)
-    *
-    * @param s1 List of elements
-    * @param s2 List of elements
-    * @param s3 List of elements
-    * @param s4 List of elements
-    * @return all combinations of elements between s1, s2, s3 and s4
-    */
-  private def crossJoin[T, U, V, W](s1: Seq[T], s2: Seq[U], s3: Seq[V], s4: Seq[W]): Seq[(T, U, V, W)] =
-    for
-      e1 <- s1
-      e2 <- s2
-      e3 <- s3
-      e4 <- s4
-    yield { (e1, e2, e3, e4) }
-
-  /**
-    * If s1 contains "A" and "B", s2 contains "C" and "D", s3 contains "E", s4 contains "F",
-    * s5 contains "G" and "H", combinations are considered to be:
-    * (A, C, E, F, G)
-    * (A, C, E, F, H)
-    * (A, D, E, F, G)
-    * (A, D, E, F, H)
-    * (B, C, E, F, G)
-    * (B, C, E, F, H)
-    * (B, D, E, F, G)
-    * (B, D, E, F, H)
-    *
-    * @param s1 List of elements
-    * @param s2 List of elements
-    * @param s3 List of elements
-    * @param s4 List of elements
-    * @param s5 List of elements
-    * @return all combinations of elements between s1, s2, s3, s4 and s5
-    */
-  private def crossJoin[T, U, V, W, X](
-      s1: Seq[T],
-      s2: Seq[U],
-      s3: Seq[V],
-      s4: Seq[W],
-      s5: Seq[X]
-  ): Seq[(T, U, V, W, X)] =
-    for
-      e1 <- s1
-      e2 <- s2
-      e3 <- s3
-      e4 <- s4
-      e5 <- s5
-    yield { (e1, e2, e3, e4, e5) }
+  opaque type ParametricFunctionAbstractInput = (Seq[CHFuzzableAbstractType], Seq[CHFuzzableAbstractType])
+  extension (in: ParametricFunctionAbstractInput)
+    @targetName("ParametricFunctionAbstractInput_parameters") def parameters: Seq[CHFuzzableAbstractType] = in._1
+    @targetName("ParametricFunctionAbstractInput_arguments") def arguments: Seq[CHFuzzableAbstractType] = in._2

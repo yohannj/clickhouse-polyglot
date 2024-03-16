@@ -197,10 +197,10 @@ object FuzzerNonParametricFunctions extends StrictLogging:
           executeInSequenceUntilSuccess(
             buildFuzzingValuesArgs(abstractTypes.map(_.fuzzingValues)).map(args => s"SELECT $fnName($args)"),
             client.execute
-          ).map(if _ then Some(abstractTypes) else None)
+          ).map(_ => abstractTypes)
         },
         maxConcurrency = Settings.ClickHouse.maxSupportedConcurrency
-      ).map(_.flatten)
+      )
 
     validCHFuzzableAbstractTypeCombinationsF.flatMap { validCHFuzzableAbstractTypeCombinations =>
       val checksToDo =
@@ -242,4 +242,4 @@ object FuzzerNonParametricFunctions extends StrictLogging:
     executeInSequenceUntilSuccess(
       (fuzzingValuesArgsv1 ++ fuzzingValuesArgsv2).map(args => s"SELECT $fnName($args)"),
       client.execute
-    )
+    ).map(_ => true).recover(_ => false)

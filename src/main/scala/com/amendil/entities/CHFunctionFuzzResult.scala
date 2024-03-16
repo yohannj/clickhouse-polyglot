@@ -46,7 +46,10 @@ final case class CHFunctionFuzzResult(
       parametric2Function2s ++ parametric3Function0Ns ++ parametric3Function1Ns ++
       parametric3Function1s ++ parametric3Function2s ++ specialFunction0Ns
 
-  require(functions.groupBy(_.input).values.filter(_.size != 1).isEmpty)
+  require(
+    functions.groupBy(_.input).values.filter(_.size != 1).isEmpty,
+    s"Function $name has multiple time the same signature"
+  )
 
   val atLeastOneSignatureFound: Boolean = functions.nonEmpty
 
