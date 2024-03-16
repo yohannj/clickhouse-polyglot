@@ -20,7 +20,7 @@ import scala.util.Try
 
   val runF =
     (for
-      _ <- ensuringFuzzingValuesAreValid()
+      // _ <- ensuringFuzzingValuesAreValid()
 
       chVersion <- getCHVersion()
       // functionNames <- getCHFunctions()

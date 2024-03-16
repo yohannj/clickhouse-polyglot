@@ -31,7 +31,7 @@ object Fuzzer:
             )
           )
         )
-      case "exponentialMovingAverage" | "exponentialTimeDecayedAvg" | "exponentialTimeDecayedCount" |
+      case "aexponentialMovingAverage" | "exponentialTimeDecayedAvg" | "exponentialTimeDecayedCount" |
           "exponentialTimeDecayedMax" | "exponentialTimeDecayedSum" =>
         // Fuzzing this function leads to OOM
 

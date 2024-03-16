@@ -5,10 +5,11 @@ import com.amendil.Settings
 import com.amendil.entities._
 import com.amendil.fuzz.Fuzzer._
 import com.amendil.http.CHClient
+import com.typesafe.scalalogging.StrictLogging
 
 import scala.concurrent.{ExecutionContext, Future}
 
-object FuzzerNonParametricFunctions:
+object FuzzerNonParametricFunctions extends StrictLogging:
   private[fuzz] def fuzzingFunctionWithCost(
       implicit client: CHClient,
       ec: ExecutionContext
@@ -28,6 +29,7 @@ object FuzzerNonParametricFunctions:
   private def fuzzFunction0(
       fn: CHFunctionFuzzResult
   )(implicit client: CHClient, ec: ExecutionContext): Future[CHFunctionFuzzResult] =
+    logger.debug("fuzzFunction0")
     if fn.isLambda then Future.successful(fn)
     else
       client
@@ -41,6 +43,7 @@ object FuzzerNonParametricFunctions:
   private def fuzzFunction1Or0N(
       fn: CHFunctionFuzzResult
   )(implicit client: CHClient, ec: ExecutionContext): Future[CHFunctionFuzzResult] =
+    logger.debug("fuzzFunction1Or0N")
     if fn.isParametric || fn.isSpecialInfiniteFunction then Future.successful(fn)
     else
       fuzzFiniteArgsFunctions(fn.name, argCount = 1)
@@ -74,6 +77,7 @@ object FuzzerNonParametricFunctions:
   private def fuzzFunction2Or1N(
       fn: CHFunctionFuzzResult
   )(implicit client: CHClient, ec: ExecutionContext): Future[CHFunctionFuzzResult] =
+    logger.debug("fuzzFunction2Or1N")
     if fn.isLambda || fn.isParametric || fn.isSpecialInfiniteFunction || fn.function0Ns.nonEmpty then
       Future.successful(fn)
     else
@@ -108,6 +112,7 @@ object FuzzerNonParametricFunctions:
   private def fuzzFunction3Or2N(
       fn: CHFunctionFuzzResult
   )(implicit client: CHClient, ec: ExecutionContext): Future[CHFunctionFuzzResult] =
+    logger.debug("fuzzFunction3Or2N")
     if fn.isLambda || fn.isParametric || fn.isSpecialInfiniteFunction || fn.function0Ns.nonEmpty || fn.function1Ns.nonEmpty ||
       (fn.function1s.filterNot(_.arg1.name.startsWith("Tuple")).nonEmpty && fn.function2s.isEmpty)
     then Future.successful(fn)
@@ -143,6 +148,7 @@ object FuzzerNonParametricFunctions:
   private def fuzzFunction4Or3N(
       fn: CHFunctionFuzzResult
   )(implicit client: CHClient, ec: ExecutionContext): Future[CHFunctionFuzzResult] =
+    logger.debug("fuzzFunction4Or3N")
     if fn.isLambda || fn.isParametric || fn.isSpecialInfiniteFunction || fn.function0Ns.nonEmpty || fn.function1Ns.nonEmpty ||
       fn.function2Ns.nonEmpty || (fn.function1s
         .filterNot(_.arg1.name.startsWith("Tuple"))

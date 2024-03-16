@@ -2,10 +2,11 @@ package com.amendil.fuzz
 
 import com.amendil.entities._
 import com.amendil.http.CHClient
+import com.typesafe.scalalogging.StrictLogging
 
 import scala.concurrent.{ExecutionContext, Future}
 
-object FuzzerLambdaFunctions {
+object FuzzerLambdaFunctions extends StrictLogging:
 
   private[fuzz] def fuzzingFunctionWithCost(
       implicit client: CHClient,
@@ -18,6 +19,7 @@ object FuzzerLambdaFunctions {
   private def fuzzLambdaFunction(
       fn: CHFunctionFuzzResult
   )(implicit client: CHClient, ec: ExecutionContext): Future[CHFunctionFuzzResult] =
+    logger.debug("fuzzLambdaFunction")
     if fn.isParametric || fn.isSpecialInfiniteFunction then Future.successful(fn)
     else
       client
@@ -63,4 +65,3 @@ object FuzzerLambdaFunctions {
             }
         }
         .recover(_ => fn)
-}

@@ -2,10 +2,11 @@ package com.amendil.fuzz
 
 import com.amendil.entities._
 import com.amendil.http.CHClient
+import com.typesafe.scalalogging.StrictLogging
 
 import scala.concurrent.{ExecutionContext, Future}
 
-object FuzzerSpecialFunctions:
+object FuzzerSpecialFunctions extends StrictLogging:
 
   private[fuzz] def fuzzingFunctionWithCost(
       implicit client: CHClient,
@@ -18,6 +19,7 @@ object FuzzerSpecialFunctions:
   private def fuzzInfiniteAnyTypeFunctions(
       fn: CHFunctionFuzzResult
   )(implicit client: CHClient, ec: ExecutionContext): Future[CHFunctionFuzzResult] =
+    logger.debug("fuzzInfiniteAnyTypeFunctions")
     val manyCHFuzzableTypes: Seq[CHFuzzableType] = Seq(
       CHFuzzableType.ArrayDate,
       CHFuzzableType.UInt8,
