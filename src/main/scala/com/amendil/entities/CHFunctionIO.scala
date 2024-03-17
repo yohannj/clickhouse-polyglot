@@ -11,7 +11,8 @@ sealed trait CHFunctionIO:
     val parametersStr = parameters.map(_.name).mkString(", ")
     val argumentsStr = arguments.map(_.name).mkString(", ") + (if hasInfiniteArgument then "..." else "")
 
-    s"($parametersStr)($argumentsStr) => $output".stripMargin
+    if parametersStr.nonEmpty then s"($parametersStr)($argumentsStr) => $output".stripMargin
+    else s"($argumentsStr) => $output".stripMargin
 
 sealed trait CHFunctionNIO extends CHFunctionIO:
   override def hasInfiniteArgument: Boolean = true
