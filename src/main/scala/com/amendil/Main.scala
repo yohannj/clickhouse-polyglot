@@ -20,11 +20,11 @@ import scala.util.Try
 
   val runF =
     (for
-      // _ <- ensuringFuzzingValuesAreValid()
+      _ <- ensuringFuzzingValuesAreValid()
 
       chVersion <- getCHVersion()
-      // functionNames <- getCHFunctions()
-      functionNames <- Future.successful(unknownFunctions)
+      functionNames <- getCHFunctions()
+    // functionNames <- Future.successful(unknownFunctions)
     yield {
       assume(Try { chVersion.toDouble }.isSuccess)
 
@@ -49,6 +49,8 @@ import scala.util.Try
                   CHFunctionFuzzResult(functionName)
                 }
                 .map { (fuzzResult: CHFunctionFuzzResult) =>
+                  if !fuzzResult.atLeastOneSignatureFound then
+                    logger.error(s"No signatures found for method $functionName")
                   pw.write(s"${CHFunction.fromCHFunctionFuzzResult(fuzzResult, "x64").asString()}\n")
                   fuzzResult
                 }
