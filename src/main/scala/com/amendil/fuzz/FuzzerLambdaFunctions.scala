@@ -16,12 +16,17 @@ object FuzzerLambdaFunctions extends StrictLogging:
       (fuzzLambdaFunction, 1L)
     )
 
+  /**
+    * Detect functions that uses a lambda as their first argument.
+    * Further arguments of those functions can only be arrays.
+    */
   private def fuzzLambdaFunction(
       fn: CHFunctionFuzzResult
   )(implicit client: CHClient, ec: ExecutionContext): Future[CHFunctionFuzzResult] =
     logger.debug("fuzzLambdaFunction")
     if fn.isParametric || fn.isSpecialInfiniteFunction then Future.successful(fn)
     else
+      // Checks for functions which lambda return types is neither a Boolean nor the type of the first Array
       client
         .execute(s"SELECT ${fn.name}(x -> today(), ['s'])")
         .map { (resp: CHResponse) =>
@@ -36,12 +41,14 @@ object FuzzerLambdaFunctions extends StrictLogging:
           )
         }
         .recoverWith { _ =>
+          // Checks for functions which lambda return types is a Boolean
           client
             .execute(s"SELECT ${fn.name}(x, y -> 1, ['s'], [1])")
             .map { (resp: CHResponse) =>
               val outputType: String = resp.meta.head.`type`
 
               if outputType == "String" || outputType == "Array(String)" then
+                // Return type is the type of the first Array, so a generic type!
                 fn.copy(lambdaFunction1NOpt =
                   Some(
                     CHFunctionIO.LambdaFunction1N(
@@ -53,6 +60,7 @@ object FuzzerLambdaFunctions extends StrictLogging:
                   )
                 )
               else
+                // Return type is unrelated to the type of the first Array so we keep it as is!
                 fn.copy(lambdaFunction0NOpt =
                   Some(
                     CHFunctionIO.LambdaFunction0N(

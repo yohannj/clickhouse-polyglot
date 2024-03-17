@@ -24,6 +24,15 @@ class CHClient(url: String)(implicit ec: ExecutionContext):
       .version(Version.HTTP_1_1)
       .build()
 
+  /**
+    * Query ClickHouse on its HTTP interface.
+    *
+    * Some settings are added to allow experimental features and suspicious behaviors.
+    * An additional setting is added to avoid logging the call into ClickHouse's `system.query_log` table.
+    *
+    * @param query Select query to send to ClickHouse
+    * @return A Future containing the result of the query.
+    */
   def execute(query: String): Future[CHResponse] =
     execute(
       HttpRequest
@@ -31,6 +40,7 @@ class CHClient(url: String)(implicit ec: ExecutionContext):
         .uri(new URI(s"$url"))
         .POST(
           HttpRequest.BodyPublishers.ofString(
+            // JSONCompact is an efficient format (small network footprint + quick to parse)
             s"$query SETTINGS ${CHClient.settings} FORMAT JSONCompact;"
           )
         )
@@ -45,15 +55,18 @@ class CHClient(url: String)(implicit ec: ExecutionContext):
         shouldRetry = r => {
           if r.statusCode() == HttpURLConnection.HTTP_OK then false
           else
+            // When there is an error, sometime it's because too many queries are being sent by ClickHouse.
+            // As the query may be invalid, we must retry the call!
             val message = new String(r.body().readAllBytes(), StandardCharsets.UTF_8)
             val shouldRetry = message.contains("Too many simultaneous queries.")
             shouldRetry
         },
-        maxNumberOfAttempts = Int.MaxValue // Never stops querying ClickHouse
+        maxNumberOfAttempts = Int.MaxValue // Never stops querying ClickHouse, we need 100% accuracy
       )
 
     clickHouseHttpResponseF.flatMap { (httpResponse: HttpResponse[InputStream]) =>
       if httpResponse.statusCode() == HttpURLConnection.HTTP_OK then
+        // ClickHouse's result format is based on the `FORMAT` clause in the query.
         Future.successful(jsonMapper.readValue(httpResponse.body(), classOf[CHResponse]))
       else
         val message = new String(httpResponse.body().readAllBytes(), StandardCharsets.UTF_8)

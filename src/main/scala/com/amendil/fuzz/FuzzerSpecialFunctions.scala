@@ -16,6 +16,13 @@ object FuzzerSpecialFunctions extends StrictLogging:
       (fuzzInfiniteAnyTypeFunctions, 1)
     )
 
+  /**
+    * Detect functions that taking any number of arguments, each using potentially different types.
+    * E.g. tuple('foo', 42, now()) and tuple(today(), 'bar', 1, 2, 42) are both valid signatures for `tuple` method
+    *
+    * This is not necessarily ideal in regards to the output type.
+    * E.g. For `tuple`, we might want to know the number of elements in the return tuple (same as in input, with same types)
+    */
   private def fuzzInfiniteAnyTypeFunctions(
       fn: CHFunctionFuzzResult
   )(implicit client: CHClient, ec: ExecutionContext): Future[CHFunctionFuzzResult] =
@@ -33,6 +40,6 @@ object FuzzerSpecialFunctions extends StrictLogging:
     client
       .execute(s"SELECT ${fn.name}($exprs1), ${fn.name}($exprs2)")
       .map { (resp: CHResponse) =>
-        fn.copy(function0Ns = fn.function0Ns :+ CHFunctionIO.Function0N(CHAggregatedType.Any, resp.meta.head.`type`))
+        fn.copy(specialFunction0Ns = Seq(CHFunctionIO.Function0N(CHAggregatedType.Any, resp.meta.head.`type`)))
       }
       .recover(_ => fn)
