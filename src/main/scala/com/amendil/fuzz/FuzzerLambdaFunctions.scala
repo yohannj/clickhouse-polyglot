@@ -9,7 +9,7 @@ import scala.concurrent.{ExecutionContext, Future}
 object FuzzerLambdaFunctions extends StrictLogging:
 
   private[fuzz] def fuzzingFunctionWithCost(
-      implicit client: CHClient,
+      using client: CHClient,
       ec: ExecutionContext
   ): Seq[((CHFunctionFuzzResult) => Future[CHFunctionFuzzResult], Long)] =
     Seq(
@@ -22,7 +22,7 @@ object FuzzerLambdaFunctions extends StrictLogging:
     */
   private def fuzzLambdaFunction(
       fn: CHFunctionFuzzResult
-  )(implicit client: CHClient, ec: ExecutionContext): Future[CHFunctionFuzzResult] =
+  )(using client: CHClient, ec: ExecutionContext): Future[CHFunctionFuzzResult] =
     logger.debug("fuzzLambdaFunction")
     if fn.isParametric || fn.isSpecialInfiniteFunction then Future.successful(fn)
     else

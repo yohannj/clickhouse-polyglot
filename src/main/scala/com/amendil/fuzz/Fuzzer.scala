@@ -9,7 +9,7 @@ import scala.concurrent.{ExecutionContext, Future}
 object Fuzzer:
 
   // TODO It would be nice to test the hardcoded functions somehow
-  def fuzz(functionName: String)(implicit client: CHClient, ec: ExecutionContext): Future[CHFunctionFuzzResult] =
+  def fuzz(functionName: String)(using client: CHClient, ec: ExecutionContext): Future[CHFunctionFuzzResult] =
     functionName match
       case "CAST" | "_CAST" | "accurateCast" | "accurateCastOrNull" =>
         // Cast methods can return any kind of type, depending on the value of a String.

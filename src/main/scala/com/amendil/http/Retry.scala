@@ -35,7 +35,7 @@ object Retry {
       maxNumberOfAttempts: Int,
       attempt: Int = 0,
       previousWaitTimeMs: Long = 0L
-  )(implicit ec: ExecutionContext): Future[T] =
+  )(using ec: ExecutionContext): Future[T] =
     toScala { asyncCall() }.flatMap { res =>
       if shouldRetry(res) && attempt >= maxNumberOfAttempts then
         val waitTimeMs: Long = (Math.min(previousWaitTimeMs * 1.15, 59800) + random.nextInt(200)).toLong

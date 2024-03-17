@@ -13,7 +13,7 @@ import java.nio.charset.StandardCharsets
 import java.time.Duration
 import scala.concurrent.{ExecutionContext, Future}
 
-class CHClient(url: String)(implicit ec: ExecutionContext):
+class CHClient(url: String)(using ec: ExecutionContext):
 
   private val jsonMapper = JsonMapper.builder().addModule(DefaultScalaModule).build()
 

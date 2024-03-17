@@ -11,7 +11,7 @@ import scala.concurrent.{ExecutionContext, Future}
 
 object FuzzerNonParametricFunctions extends StrictLogging:
   private[fuzz] def fuzzingFunctionWithCost(
-      implicit client: CHClient,
+      using client: CHClient,
       ec: ExecutionContext
   ): Seq[((CHFunctionFuzzResult) => Future[CHFunctionFuzzResult], Long)] =
     val elemCount: Long = CHFuzzableType.values.size
@@ -28,7 +28,7 @@ object FuzzerNonParametricFunctions extends StrictLogging:
 
   private def fuzzFunction0(
       fn: CHFunctionFuzzResult
-  )(implicit client: CHClient, ec: ExecutionContext): Future[CHFunctionFuzzResult] =
+  )(using client: CHClient, ec: ExecutionContext): Future[CHFunctionFuzzResult] =
     logger.debug("fuzzFunction0")
     if fn.isLambda then Future.successful(fn)
     else
@@ -42,7 +42,7 @@ object FuzzerNonParametricFunctions extends StrictLogging:
 
   private def fuzzFunction1Or0N(
       fn: CHFunctionFuzzResult
-  )(implicit client: CHClient, ec: ExecutionContext): Future[CHFunctionFuzzResult] =
+  )(using client: CHClient, ec: ExecutionContext): Future[CHFunctionFuzzResult] =
     logger.debug("fuzzFunction1Or0N")
     if fn.isParametric || fn.isSpecialInfiniteFunction then Future.successful(fn)
     else
@@ -76,7 +76,7 @@ object FuzzerNonParametricFunctions extends StrictLogging:
 
   private def fuzzFunction2Or1N(
       fn: CHFunctionFuzzResult
-  )(implicit client: CHClient, ec: ExecutionContext): Future[CHFunctionFuzzResult] =
+  )(using client: CHClient, ec: ExecutionContext): Future[CHFunctionFuzzResult] =
     logger.debug("fuzzFunction2Or1N")
     if fn.isLambda || fn.isParametric || fn.isSpecialInfiniteFunction || fn.function0Ns.nonEmpty then
       Future.successful(fn)
@@ -111,7 +111,7 @@ object FuzzerNonParametricFunctions extends StrictLogging:
 
   private def fuzzFunction3Or2N(
       fn: CHFunctionFuzzResult
-  )(implicit client: CHClient, ec: ExecutionContext): Future[CHFunctionFuzzResult] =
+  )(using client: CHClient, ec: ExecutionContext): Future[CHFunctionFuzzResult] =
     logger.debug("fuzzFunction3Or2N")
     if fn.isLambda || fn.isParametric || fn.isSpecialInfiniteFunction || fn.function0Ns.nonEmpty || fn.function1Ns.nonEmpty ||
       (fn.function1s.filterNot(_.arg1.name.startsWith("Tuple")).nonEmpty && fn.function2s.isEmpty)
@@ -147,7 +147,7 @@ object FuzzerNonParametricFunctions extends StrictLogging:
 
   private def fuzzFunction4Or3N(
       fn: CHFunctionFuzzResult
-  )(implicit client: CHClient, ec: ExecutionContext): Future[CHFunctionFuzzResult] =
+  )(using client: CHClient, ec: ExecutionContext): Future[CHFunctionFuzzResult] =
     logger.debug("fuzzFunction4Or3N")
     if fn.isLambda || fn.isParametric || fn.isSpecialInfiniteFunction || fn.function0Ns.nonEmpty || fn.function1Ns.nonEmpty ||
       fn.function2Ns.nonEmpty || (fn.function1s
@@ -189,7 +189,7 @@ object FuzzerNonParametricFunctions extends StrictLogging:
   private def fuzzFiniteArgsFunctions(
       fnName: String,
       argCount: Int
-  )(implicit client: CHClient, ec: ExecutionContext): Future[Seq[(InputTypes, OutputType)]] =
+  )(using client: CHClient, ec: ExecutionContext): Future[Seq[(InputTypes, OutputType)]] =
     val validCHFuzzableAbstractTypeCombinationsF =
       executeInParallelOnlySuccess(
         generateCHFuzzableAbstractTypeCombinations(argCount),
@@ -230,7 +230,7 @@ object FuzzerNonParametricFunctions extends StrictLogging:
   private def testInfiniteArgsFunctions(
       fnName: String,
       CHFuzzableTypes: Seq[CHFuzzableType]
-  )(implicit client: CHClient, ec: ExecutionContext): Future[Boolean] =
+  )(using client: CHClient, ec: ExecutionContext): Future[Boolean] =
     require(CHFuzzableTypes.nonEmpty, "Expected at least one defined argument, but none found.")
 
     val argNv1: Seq[Seq[String]] = Range(0, 10).toSeq.map(_ => Seq(CHFuzzableTypes.last.fuzzingValues.head))

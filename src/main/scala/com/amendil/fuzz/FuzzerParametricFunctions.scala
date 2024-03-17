@@ -35,7 +35,7 @@ object FuzzerParametricFunctions extends StrictLogging:
   }
 
   private[fuzz] def fuzzingFunctionWithCost(
-      implicit client: CHClient,
+      using client: CHClient,
       ec: ExecutionContext
   ): Seq[((CHFunctionFuzzResult) => Future[CHFunctionFuzzResult], Long)] =
     val paramCount = parametricAbstractType.flatMap(_.CHFuzzableTypes).size.toLong
@@ -76,7 +76,7 @@ object FuzzerParametricFunctions extends StrictLogging:
 
   private def fuzzFunction1Or0NWithOneParameter(
       fn: CHFunctionFuzzResult
-  )(implicit client: CHClient, ec: ExecutionContext): Future[CHFunctionFuzzResult] =
+  )(using client: CHClient, ec: ExecutionContext): Future[CHFunctionFuzzResult] =
     logger.debug("fuzzFunction1Or0NWithOneParameter")
     if fn.isLambda || fn.isNonParametric || fn.isSpecialInfiniteFunction then Future.successful(fn)
     else
@@ -104,7 +104,7 @@ object FuzzerParametricFunctions extends StrictLogging:
 
   private def fuzzFunction2Or1NWithOneParameter(
       fn: CHFunctionFuzzResult
-  )(implicit client: CHClient, ec: ExecutionContext): Future[CHFunctionFuzzResult] =
+  )(using client: CHClient, ec: ExecutionContext): Future[CHFunctionFuzzResult] =
     logger.debug("fuzzFunction2Or1NWithOneParameter")
     if fn.isLambda || fn.isNonParametric || fn.isSpecialInfiniteFunction || fn.parametric1Function0Ns.nonEmpty then
       Future.successful(fn)
@@ -133,7 +133,7 @@ object FuzzerParametricFunctions extends StrictLogging:
 
   private def fuzzFunction3Or2NWithOneParameter(
       fn: CHFunctionFuzzResult
-  )(implicit client: CHClient, ec: ExecutionContext): Future[CHFunctionFuzzResult] =
+  )(using client: CHClient, ec: ExecutionContext): Future[CHFunctionFuzzResult] =
     logger.debug("fuzzFunction3Or2NWithOneParameter")
     if fn.isLambda || fn.isNonParametric || fn.isSpecialInfiniteFunction ||
       fn.parametric1Function0Ns.nonEmpty || fn.parametric1Function1Ns.nonEmpty
@@ -163,7 +163,7 @@ object FuzzerParametricFunctions extends StrictLogging:
 
   private def fuzzFunction1WithTwoParameters(
       fn: CHFunctionFuzzResult
-  )(implicit client: CHClient, ec: ExecutionContext): Future[CHFunctionFuzzResult] =
+  )(using client: CHClient, ec: ExecutionContext): Future[CHFunctionFuzzResult] =
     logger.debug("fuzzFunction1WithTwoParameters")
     fuzzAddOneParameter(
       fn.name,
@@ -174,7 +174,7 @@ object FuzzerParametricFunctions extends StrictLogging:
 
   private def fuzzFunction1WithThreeParameters(
       fn: CHFunctionFuzzResult
-  )(implicit client: CHClient, ec: ExecutionContext): Future[CHFunctionFuzzResult] =
+  )(using client: CHClient, ec: ExecutionContext): Future[CHFunctionFuzzResult] =
     logger.debug("fuzzFunction1WithThreeParameters")
     fuzzAddOneParameter(
       fn.name,
@@ -185,7 +185,7 @@ object FuzzerParametricFunctions extends StrictLogging:
 
   private def fuzzFunction1WithFourParameters(
       fn: CHFunctionFuzzResult
-  )(implicit client: CHClient, ec: ExecutionContext): Future[CHFunctionFuzzResult] =
+  )(using client: CHClient, ec: ExecutionContext): Future[CHFunctionFuzzResult] =
     logger.debug("fuzzFunction1WithFourParameters")
     fuzzAddOneParameter(
       fn.name,
@@ -196,7 +196,7 @@ object FuzzerParametricFunctions extends StrictLogging:
 
   private def fuzzFunction1WithFiveParameters(
       fn: CHFunctionFuzzResult
-  )(implicit client: CHClient, ec: ExecutionContext): Future[CHFunctionFuzzResult] =
+  )(using client: CHClient, ec: ExecutionContext): Future[CHFunctionFuzzResult] =
     logger.debug("fuzzFunction1WithFiveParameters")
     fuzzAddOneParameter(
       fn.name,
@@ -207,7 +207,7 @@ object FuzzerParametricFunctions extends StrictLogging:
 
   private def fuzzFunction2WithTwoParameters(
       fn: CHFunctionFuzzResult
-  )(implicit client: CHClient, ec: ExecutionContext): Future[CHFunctionFuzzResult] =
+  )(using client: CHClient, ec: ExecutionContext): Future[CHFunctionFuzzResult] =
     logger.debug("fuzzFunction2WithTwoParameters")
     fuzzAddOneParameter(
       fn.name,
@@ -218,7 +218,7 @@ object FuzzerParametricFunctions extends StrictLogging:
 
   private def fuzzFunction2WithThreeParameters(
       fn: CHFunctionFuzzResult
-  )(implicit client: CHClient, ec: ExecutionContext): Future[CHFunctionFuzzResult] =
+  )(using client: CHClient, ec: ExecutionContext): Future[CHFunctionFuzzResult] =
     logger.debug("fuzzFunction2WithThreeParameters")
     fuzzAddOneParameter(
       fn.name,
@@ -229,7 +229,7 @@ object FuzzerParametricFunctions extends StrictLogging:
 
   private def fuzzFunction2WithFourParameters(
       fn: CHFunctionFuzzResult
-  )(implicit client: CHClient, ec: ExecutionContext): Future[CHFunctionFuzzResult] =
+  )(using client: CHClient, ec: ExecutionContext): Future[CHFunctionFuzzResult] =
     logger.debug("fuzzFunction2WithFourParameters")
     fuzzAddOneParameter(
       fn.name,
@@ -240,7 +240,7 @@ object FuzzerParametricFunctions extends StrictLogging:
 
   private def fuzzFunction2WithFiveParameters(
       fn: CHFunctionFuzzResult
-  )(implicit client: CHClient, ec: ExecutionContext): Future[CHFunctionFuzzResult] =
+  )(using client: CHClient, ec: ExecutionContext): Future[CHFunctionFuzzResult] =
     logger.debug("fuzzFunction2WithFiveParameters")
     fuzzAddOneParameter(
       fn.name,
@@ -260,7 +260,7 @@ object FuzzerParametricFunctions extends StrictLogging:
 
   private def fuzzFunction3WithTwoParameters(
       fn: CHFunctionFuzzResult
-  )(implicit client: CHClient, ec: ExecutionContext): Future[CHFunctionFuzzResult] =
+  )(using client: CHClient, ec: ExecutionContext): Future[CHFunctionFuzzResult] =
     logger.debug("fuzzFunction3WithTwoParameters")
     fuzzAddOneParameter(
       fn.name,
@@ -271,7 +271,7 @@ object FuzzerParametricFunctions extends StrictLogging:
 
   private def fuzzFunction3WithThreeParameters(
       fn: CHFunctionFuzzResult
-  )(implicit client: CHClient, ec: ExecutionContext): Future[CHFunctionFuzzResult] =
+  )(using client: CHClient, ec: ExecutionContext): Future[CHFunctionFuzzResult] =
     logger.debug("fuzzFunction3WithThreeParameters")
     fuzzAddOneParameter(
       fn.name,
@@ -282,7 +282,7 @@ object FuzzerParametricFunctions extends StrictLogging:
 
   private def fuzzFunction3WithFourParameters(
       fn: CHFunctionFuzzResult
-  )(implicit client: CHClient, ec: ExecutionContext): Future[CHFunctionFuzzResult] =
+  )(using client: CHClient, ec: ExecutionContext): Future[CHFunctionFuzzResult] =
     logger.debug("fuzzFunction3WithFourParameters")
     fuzzAddOneParameter(
       fn.name,
@@ -302,7 +302,7 @@ object FuzzerParametricFunctions extends StrictLogging:
 
   private def fuzzFunction3WithFiveParameters(
       fn: CHFunctionFuzzResult
-  )(implicit client: CHClient, ec: ExecutionContext): Future[CHFunctionFuzzResult] =
+  )(using client: CHClient, ec: ExecutionContext): Future[CHFunctionFuzzResult] =
     logger.debug("fuzzFunction3WithFiveParameters")
     fuzzAddOneParameter(
       fn.name,
@@ -323,7 +323,7 @@ object FuzzerParametricFunctions extends StrictLogging:
 
   private def fuzzFunction0NWithTwoParameters(
       fn: CHFunctionFuzzResult
-  )(implicit client: CHClient, ec: ExecutionContext): Future[CHFunctionFuzzResult] =
+  )(using client: CHClient, ec: ExecutionContext): Future[CHFunctionFuzzResult] =
     logger.debug("fuzzFunction0NWithTwoParameters")
     fuzzAddOneParameter(
       fn.name,
@@ -334,7 +334,7 @@ object FuzzerParametricFunctions extends StrictLogging:
 
   private def fuzzFunction0NWithThreeParameters(
       fn: CHFunctionFuzzResult
-  )(implicit client: CHClient, ec: ExecutionContext): Future[CHFunctionFuzzResult] =
+  )(using client: CHClient, ec: ExecutionContext): Future[CHFunctionFuzzResult] =
     logger.debug("fuzzFunction0NWithThreeParameters")
     fuzzAddOneParameter(
       fn.name,
@@ -345,7 +345,7 @@ object FuzzerParametricFunctions extends StrictLogging:
 
   private def fuzzFunction0NWithFourParameters(
       fn: CHFunctionFuzzResult
-  )(implicit client: CHClient, ec: ExecutionContext): Future[CHFunctionFuzzResult] =
+  )(using client: CHClient, ec: ExecutionContext): Future[CHFunctionFuzzResult] =
     logger.debug("fuzzFunction0NWithFourParameters")
     fuzzAddOneParameter(
       fn.name,
@@ -356,7 +356,7 @@ object FuzzerParametricFunctions extends StrictLogging:
 
   private def fuzzFunction0NWithFiveParameters(
       fn: CHFunctionFuzzResult
-  )(implicit client: CHClient, ec: ExecutionContext): Future[CHFunctionFuzzResult] =
+  )(using client: CHClient, ec: ExecutionContext): Future[CHFunctionFuzzResult] =
     logger.debug("fuzzFunction0NWithFiveParameters")
     fuzzAddOneParameter(
       fn.name,
@@ -367,7 +367,7 @@ object FuzzerParametricFunctions extends StrictLogging:
 
   private def fuzzFunction1NWithTwoParameters(
       fn: CHFunctionFuzzResult
-  )(implicit client: CHClient, ec: ExecutionContext): Future[CHFunctionFuzzResult] =
+  )(using client: CHClient, ec: ExecutionContext): Future[CHFunctionFuzzResult] =
     logger.debug("fuzzFunction1NWithTwoParameters")
     fuzzAddOneParameter(
       fn.name,
@@ -378,7 +378,7 @@ object FuzzerParametricFunctions extends StrictLogging:
 
   private def fuzzFunction1NWithThreeParameters(
       fn: CHFunctionFuzzResult
-  )(implicit client: CHClient, ec: ExecutionContext): Future[CHFunctionFuzzResult] =
+  )(using client: CHClient, ec: ExecutionContext): Future[CHFunctionFuzzResult] =
     logger.debug("fuzzFunction1NWithThreeParameters")
     fuzzAddOneParameter(
       fn.name,
@@ -389,7 +389,7 @@ object FuzzerParametricFunctions extends StrictLogging:
 
   private def fuzzFunction1NWithFourParameters(
       fn: CHFunctionFuzzResult
-  )(implicit client: CHClient, ec: ExecutionContext): Future[CHFunctionFuzzResult] =
+  )(using client: CHClient, ec: ExecutionContext): Future[CHFunctionFuzzResult] =
     logger.debug("fuzzFunction1NWithFourParameters")
     fuzzAddOneParameter(
       fn.name,
@@ -400,7 +400,7 @@ object FuzzerParametricFunctions extends StrictLogging:
 
   private def fuzzFunction1NWithFiveParameters(
       fn: CHFunctionFuzzResult
-  )(implicit client: CHClient, ec: ExecutionContext): Future[CHFunctionFuzzResult] =
+  )(using client: CHClient, ec: ExecutionContext): Future[CHFunctionFuzzResult] =
     logger.debug("fuzzFunction1NWithFiveParameters")
     fuzzAddOneParameter(
       fn.name,
@@ -420,7 +420,7 @@ object FuzzerParametricFunctions extends StrictLogging:
 
   private def fuzzFunction2NWithTwoParameters(
       fn: CHFunctionFuzzResult
-  )(implicit client: CHClient, ec: ExecutionContext): Future[CHFunctionFuzzResult] =
+  )(using client: CHClient, ec: ExecutionContext): Future[CHFunctionFuzzResult] =
     logger.debug("fuzzFunction2NWithTwoParameters")
     fuzzAddOneParameter(
       fn.name,
@@ -431,7 +431,7 @@ object FuzzerParametricFunctions extends StrictLogging:
 
   private def fuzzFunction2NWithThreeParameters(
       fn: CHFunctionFuzzResult
-  )(implicit client: CHClient, ec: ExecutionContext): Future[CHFunctionFuzzResult] =
+  )(using client: CHClient, ec: ExecutionContext): Future[CHFunctionFuzzResult] =
     logger.debug("fuzzFunction2NWithThreeParameters")
     fuzzAddOneParameter(
       fn.name,
@@ -442,7 +442,7 @@ object FuzzerParametricFunctions extends StrictLogging:
 
   private def fuzzFunction2NWithFourParameters(
       fn: CHFunctionFuzzResult
-  )(implicit client: CHClient, ec: ExecutionContext): Future[CHFunctionFuzzResult] =
+  )(using client: CHClient, ec: ExecutionContext): Future[CHFunctionFuzzResult] =
     logger.debug("fuzzFunction2NWithFourParameters")
     fuzzAddOneParameter(
       fn.name,
@@ -462,7 +462,7 @@ object FuzzerParametricFunctions extends StrictLogging:
 
   private def fuzzFunction2NWithFiveParameters(
       fn: CHFunctionFuzzResult
-  )(implicit client: CHClient, ec: ExecutionContext): Future[CHFunctionFuzzResult] =
+  )(using client: CHClient, ec: ExecutionContext): Future[CHFunctionFuzzResult] =
     logger.debug("fuzzFunction2NWithFiveParameters")
     fuzzAddOneParameter(
       fn.name,
@@ -492,7 +492,7 @@ object FuzzerParametricFunctions extends StrictLogging:
       paramCount: Int,
       argCount: Int
   )(
-      implicit client: CHClient,
+      using client: CHClient,
       ec: ExecutionContext
   ): Future[Seq[(ParametricFunctionInput, OutputType)]] =
     // Build all combinations of parametric fonction input having paramCount parameters and argCount arguments
@@ -611,7 +611,7 @@ object FuzzerParametricFunctions extends StrictLogging:
       fnName: String,
       fnBaseFunctions: Seq[T],
       fnConstructor: (T, CHFuzzableType) => U
-  )(implicit client: CHClient, ec: ExecutionContext): Future[Seq[U]] =
+  )(using client: CHClient, ec: ExecutionContext): Future[Seq[U]] =
     if fnBaseFunctions.isEmpty then Future.successful(Nil)
     else
       val sampleFunction = fnBaseFunctions.head
@@ -645,7 +645,7 @@ object FuzzerParametricFunctions extends StrictLogging:
   private def testInfiniteArgsFunctions(
       fnName: String,
       inputTypes: ParametricFunctionInput
-  )(implicit client: CHClient, ec: ExecutionContext): Future[Boolean] =
+  )(using client: CHClient, ec: ExecutionContext): Future[Boolean] =
     val arguments: NonParametricArguments = inputTypes.arguments
     require(arguments.nonEmpty, "Expected at least one defined argument, but none found.")
 
@@ -669,7 +669,7 @@ object FuzzerParametricFunctions extends StrictLogging:
       fnName: String,
       currentParameters: ParametricArguments,
       arguments: NonParametricArguments
-  )(implicit client: CHClient, ec: ExecutionContext): Future[Seq[CHFuzzableType]] =
+  )(using client: CHClient, ec: ExecutionContext): Future[Seq[CHFuzzableType]] =
     val additionalParamTypes = parametricAbstractType.flatMap(_.CHFuzzableTypes)
     executeInParallelOnlySuccess(
       additionalParamTypes,

@@ -15,8 +15,8 @@ import scala.util.Try
 @main def app: Unit =
   val logger = Logger("Main")
 
-  implicit val ec: ExecutionContext = ExecutionContext.fromExecutorService(Executors.newFixedThreadPool(1))
-  implicit val client: CHClient = CHClient(Settings.ClickHouse.httpUrl)
+  given ExecutionContext = ExecutionContext.fromExecutorService(Executors.newFixedThreadPool(1))
+  given CHClient = CHClient(Settings.ClickHouse.httpUrl)
 
   val runF =
     (for
@@ -78,7 +78,7 @@ import scala.util.Try
 
   Await.result(runF, Duration.Inf)
 
-def ensuringFuzzingValuesAreValid()(implicit client: CHClient, ec: ExecutionContext): Future[Unit] =
+def ensuringFuzzingValuesAreValid()(using client: CHClient, ec: ExecutionContext): Future[Unit] =
   Future
     .sequence(
       (CHFuzzableType.values.flatMap(_.fuzzingValues) ++ CHFuzzableAbstractType.values.flatMap(_.fuzzingValues))
@@ -94,12 +94,12 @@ def ensuringFuzzingValuesAreValid()(implicit client: CHClient, ec: ExecutionCont
       if errors.nonEmpty then throw Exception(s"Invalid fuzzing value founds.\n${errors.mkString("\n")}")
     }
 
-def getCHFunctions()(implicit client: CHClient, ec: ExecutionContext): Future[Seq[String]] =
+def getCHFunctions()(using client: CHClient, ec: ExecutionContext): Future[Seq[String]] =
   client
     .execute("SELECT name, is_aggregate FROM system.functions")
     .map(_.data.map(_.head.asInstanceOf[String]).sorted)
 
-def getCHVersion()(implicit client: CHClient, ec: ExecutionContext): Future[String] =
+def getCHVersion()(using client: CHClient, ec: ExecutionContext): Future[String] =
   client
     .execute("SELECT extract(version(), '^\\d+\\.\\d+') as version")
     .map(_.data.head.head.asInstanceOf[String])
