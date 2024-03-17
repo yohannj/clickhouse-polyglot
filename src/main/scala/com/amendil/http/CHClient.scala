@@ -48,7 +48,8 @@ class CHClient(url: String)(implicit ec: ExecutionContext):
             val message = new String(r.body().readAllBytes(), StandardCharsets.UTF_8)
             val shouldRetry = message.contains("Too many simultaneous queries.")
             shouldRetry
-        }
+        },
+        maxNumberOfAttempts = Int.MaxValue // Never stops querying ClickHouse
       )
 
     clickHouseHttpResponseF.flatMap { (httpResponse: HttpResponse[InputStream]) =>
