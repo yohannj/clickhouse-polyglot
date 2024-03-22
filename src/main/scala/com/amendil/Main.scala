@@ -23,8 +23,8 @@ import scala.util.Try
       _ <- ensuringFuzzingValuesAreValid()
 
       chVersion <- getCHVersion()
-      functionNames <- getCHFunctions()
-    // functionNames <- Future.successful(unknownFunctions)
+      // functionNames <- getCHFunctions()
+      functionNames <- Future.successful(unknownFunctions)
     yield {
       assume(Try { chVersion.toDouble }.isSuccess)
 
@@ -42,18 +42,20 @@ import scala.util.Try
                 logger.info(s"===============================================================")
               logger.info(functionName)
 
-              Fuzzer
-                .fuzz(functionName)
-                .recover { err =>
-                  logger.error(s"Failed to fuzz function $functionName: ${err.getMessage()}")
-                  CHFunctionFuzzResult(functionName)
-                }
-                .map { (fuzzResult: CHFunctionFuzzResult) =>
-                  if !fuzzResult.atLeastOneSignatureFound then
-                    logger.error(s"No signatures found for method $functionName")
-                  pw.write(s"${CHFunction.fromCHFunctionFuzzResult(fuzzResult, "x64").asString()}\n")
-                  fuzzResult
-                }
+              if !functionName.toLowerCase.contains("json") then
+                Fuzzer
+                  .fuzz(functionName)
+                  .recover { err =>
+                    logger.error(s"Failed to fuzz function $functionName: ${err.getMessage()}")
+                    CHFunctionFuzzResult(functionName)
+                  }
+                  .map { (fuzzResult: CHFunctionFuzzResult) =>
+                    if !fuzzResult.atLeastOneSignatureFound then
+                      logger.error(s"No signatures found for method $functionName")
+                    pw.write(s"${CHFunction.fromCHFunctionFuzzResult(fuzzResult, "x64").asString()}\n")
+                    fuzzResult
+                  }
+              else Future.successful(CHFunctionFuzzResult(name = functionName))
           )
           .recover(err =>
             pw.close()

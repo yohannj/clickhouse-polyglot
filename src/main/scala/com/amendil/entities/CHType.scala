@@ -359,11 +359,12 @@ enum CHFuzzableType(
           "'116.106.34.242'::IPv6"
         )
       )
-  case Json
-      extends CHFuzzableType(
-        "JSON",
-        Seq("""'{"a": 1, "b": { "c": "foo", "d": [1, 2, 3] }, "c": null}'::JSON""")
-      )
+  // Json is an experimental and obsolete type
+  // case Json
+  //     extends CHFuzzableType(
+  //       "JSON",
+  //       Seq("""'{"a": 1, "b": { "c": "foo", "d": [1, 2, 3] }, "c": null}'::JSON""")
+  //     )
   case StringType
       extends CHFuzzableType(
         "String",
@@ -1147,13 +1148,14 @@ enum CHFuzzableType(
       )
   case ArrayIPv4 extends CHFuzzableType("Array(IPv4)", Seq(s"[${IPv4.fuzzingValues.mkString(", ")}]::Array(IPv4)"))
   case ArrayIPv6 extends CHFuzzableType("Array(IPv6)", Seq(s"[${IPv6.fuzzingValues.mkString(", ")}]::Array(IPv6)"))
-  case ArrayJson
-      extends CHFuzzableType(
-        "Array(JSON)",
-        Seq(
-          s"[${Json.fuzzingValues.mkString(", ")}]::Array(JSON)"
-        )
-      )
+  // Json is an experimental and obsolete type
+  // case ArrayJson
+  //     extends CHFuzzableType(
+  //       "Array(JSON)",
+  //       Seq(
+  //         s"[${Json.fuzzingValues.mkString(", ")}]::Array(JSON)"
+  //       )
+  //     )
   case ArrayString
       extends CHFuzzableType(
         "Array(String)",
@@ -1551,11 +1553,12 @@ enum CHFuzzableType(
       )
   case Tuple1IPv4 extends CHFuzzableType("Tuple(IPv4)", Seq(s"tuple(${IPv4.fuzzingValues.head})::Tuple(IPv4)"))
   case Tuple1IPv6 extends CHFuzzableType("Tuple(IPv6)", Seq(s"tuple(${IPv6.fuzzingValues.head})::Tuple(IPv6)"))
-  case Tuple1Json
-      extends CHFuzzableType(
-        "Tuple(JSON)",
-        Seq(s"tuple(${Json.fuzzingValues.head})::Tuple(JSON)")
-      )
+  // Json is an experimental and obsolete type
+  // case Tuple1Json
+  //     extends CHFuzzableType(
+  //       "Tuple(JSON)",
+  //       Seq(s"tuple(${Json.fuzzingValues.head})::Tuple(JSON)")
+  //     )
   // case Tuple1Nothing extends CHFuzzableType("Tuple(Nullable(Nothing))", Seq("tuple(null)::Tuple(Nullable(Nothing))"))
   case Tuple1String
       extends CHFuzzableType(
