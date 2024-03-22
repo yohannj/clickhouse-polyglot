@@ -143,51 +143,95 @@ object FuzzerNonParametricFunctions extends StrictLogging:
       fnName: String,
       argCount: Int
   )(using client: CHClient, ec: ExecutionContext): Future[Seq[(InputTypes, OutputType)]] =
-    // Build all combinations of fonction input having argCount arguments
-    // Those combinations are described using AbstractTypes!
-    // They are all used to query ClickHouse and we are retrieving here only the ones that succeeded.
-    val validCHFuzzableAbstractTypeCombinationsF =
-      executeInParallelOnlySuccess(
-        generateCHFuzzableAbstractTypeCombinations(argCount),
-        (abstractTypes: Seq[CHFuzzableAbstractType]) => {
-          executeInSequenceUntilSuccess(
-            buildFuzzingValuesArgs(abstractTypes.map(_.fuzzingValues)).map(args => s"SELECT $fnName($args)"),
-            client.execute
-          ).map(_ => abstractTypes)
-        },
-        maxConcurrency = Settings.ClickHouse.maxSupportedConcurrency
-      )
+    for {
+      // Build all combinations of fonction input having argCount arguments
+      // Those combinations are described using AbstractTypes!
+      // They are all used to query ClickHouse and we are retrieving here only the ones that succeeded.
+      abstractInputCombinations: Seq[Seq[CHFuzzableAbstractType]] <-
+        executeInParallelOnlySuccess(
+          generateCHFuzzableAbstractTypeCombinations(argCount),
+          (abstractTypes: Seq[CHFuzzableAbstractType]) => {
+            executeInSequenceUntilSuccess(
+              buildFuzzingValuesArgs(abstractTypes.map(_.fuzzingValues)).map(args => s"SELECT $fnName($args)"),
+              client.execute
+            ).map(_ => abstractTypes)
+          },
+          maxConcurrency = Settings.ClickHouse.maxSupportedConcurrency
+        )
 
-    // Expand abstract types to retrieve all types combinations and their output
-    validCHFuzzableAbstractTypeCombinationsF.flatMap { validCHFuzzableAbstractTypeCombinations =>
-      for {
-        inputSignatures <-
-          fuzzAbstractTypeToType(
-            fnName,
-            validCHFuzzableAbstractTypeCombinations.map(abstractInput => (abstractInput, Seq.empty[CHFuzzableType]))
-          )
+      abstractInputCombinationsWithValidFuzzableTypes: Seq[Seq[(CHFuzzableAbstractType, Seq[CHFuzzableType])]] <-
+        filterFuzzableTypePerArgument(fnName, abstractInputCombinations)
 
-        res <-
-          executeInParallelOnlySuccess(
-            inputSignatures,
-            inputTypes =>
-              val queries =
-                buildFuzzingValuesArgs(inputTypes.map(_.fuzzingValues)).map(args => s"SELECT $fnName($args)")
+      // Expand abstract types to retrieve all types combinations and their output
+      inputSignatures <-
+        fuzzAbstractTypeToType(
+          fnName,
+          abstractInputCombinationsWithValidFuzzableTypes.map((_, Seq.empty[CHFuzzableType]))
+        )
 
-              executeInSequenceOnlySuccess(queries, client.execute).map(resp =>
-                (inputTypes, resp.map(_.meta.head.`type`).reduce(CHFuzzableType.merge))
-              )
-            ,
-            maxConcurrency = Settings.ClickHouse.maxSupportedConcurrency
-          )
-      } yield {
-        res
-      }
+      res <-
+        executeInParallelOnlySuccess(
+          inputSignatures,
+          inputTypes =>
+            val queries =
+              buildFuzzingValuesArgs(inputTypes.map(_.fuzzingValues)).map(args => s"SELECT $fnName($args)")
+
+            executeInSequenceOnlySuccess(queries, client.execute).map(resp =>
+              (inputTypes, resp.map(_.meta.head.`type`).reduce(CHFuzzableType.merge))
+            )
+          ,
+          maxConcurrency = Settings.ClickHouse.maxSupportedConcurrency
+        )
+    } yield {
+      res
     }
+
+  /**
+    * For each abstract input, this method checks for each argument which non-abstract type are valid.
+    */
+  private def filterFuzzableTypePerArgument(
+      fnName: String,
+      abstractInputs: Seq[Seq[CHFuzzableAbstractType]]
+  )(using client: CHClient, ec: ExecutionContext): Future[Seq[Seq[(CHFuzzableAbstractType, Seq[CHFuzzableType])]]] =
+    if abstractInputs.nonEmpty then
+      if abstractInputs.head.size == 1 then
+        Future.successful(
+          abstractInputs.map(_.map(abstractType => (abstractType, abstractType.chFuzzableTypes)))
+        )
+      else
+        executeInParallel( // For each abstract input
+          abstractInputs,
+          (abstractInput: Seq[CHFuzzableAbstractType]) =>
+            executeInSequence( // For each argument (identified by its index)
+              Range.apply(0, abstractInput.size),
+              (idx: Int) =>
+                val indexedInput = abstractInput.zipWithIndex
+                val fuzzingValuesBeforeColumn = indexedInput.filter(_._2 < idx).map(_._1.fuzzingValues)
+                val currentArgumentAbstractType = indexedInput.find(_._2 == idx).get._1
+                val fuzzingValuesAfterColumn = indexedInput.filter(_._2 > idx).map(_._1.fuzzingValues)
+
+                executeInSequenceOnlySuccess( // For each possible type of the current argument
+                  currentArgumentAbstractType.chFuzzableTypes,
+                  (fuzzableType: CHFuzzableType) =>
+                    val queries =
+                      buildFuzzingValuesArgs(
+                        (fuzzingValuesBeforeColumn :+ fuzzableType.fuzzingValues) ++ fuzzingValuesAfterColumn
+                      ).map(args => s"SELECT $fnName($args)")
+
+                    executeInSequenceUntilSuccess( // Check if any value of the current possible type is valid
+                      queries,
+                      client.execute
+                    ).map(_ => fuzzableType)
+                ).map(filteredFuzzableType => (currentArgumentAbstractType, filteredFuzzableType))
+            ),
+          maxConcurrency = Settings.ClickHouse.maxSupportedConcurrency
+        )
+    else Future.successful(Nil)
 
   /**
     * For each signature, it will expand one abstract argument into fuzzable types and
     * call ClickHouse to confirm that signature is valid.
+    * i.e. Move one arg at a time from AbstractType to Type.
     *
     * The idea is to prune signatures as early as possible, even though it leads to more calls to ClickHouse.
     * Worst case, the added call will be quite insignificant compared to all the calls that needs to be made anyway.
@@ -197,20 +241,19 @@ object FuzzerNonParametricFunctions extends StrictLogging:
     */
   private def fuzzAbstractTypeToType(
       fnName: String,
-      signatures: Seq[(Seq[CHFuzzableAbstractType], Seq[CHFuzzableType])]
+      signatures: Seq[(Seq[(CHFuzzableAbstractType, Seq[CHFuzzableType])], Seq[CHFuzzableType])]
   )(using client: CHClient, ec: ExecutionContext): Future[Seq[Seq[CHFuzzableType]]] =
     if signatures.nonEmpty && signatures.head._1.nonEmpty then
-
       val newSignatures = signatures.flatMap { case (abstractTypes, types) =>
         val newAbstractTypes = abstractTypes.reverse.tail.reverse // Remove last element
 
-        abstractTypes.last.chFuzzableTypes.map(t => (newAbstractTypes, t +: types))
+        abstractTypes.last._2.map(t => (newAbstractTypes, t +: types))
       }
       executeInParallelOnlySuccess(
         newSignatures,
         signature =>
           val queries = buildFuzzingValuesArgs(
-            signature._1.map(_.fuzzingValues) ++ signature._2.map(_.fuzzingValues)
+            signature._1.map(_._1.fuzzingValues) ++ signature._2.map(_.fuzzingValues)
           ).map(args => s"SELECT $fnName($args)")
 
           executeInSequenceUntilSuccess(queries, client.execute).map(_ => signature)
