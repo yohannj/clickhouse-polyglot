@@ -1,7 +1,8 @@
 package com
 
 package object amendil:
-  val unknownFunctions: Seq[String] = Seq(
+  val unknownFunctions: Seq[String] = Seq("if")
+  val unknownFunctions2: Seq[String] = Seq(
     "DATE_DIFF",
     "DATE_TRUNC",
     "FROM_BASE64",

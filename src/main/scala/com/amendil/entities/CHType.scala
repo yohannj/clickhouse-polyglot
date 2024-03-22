@@ -141,7 +141,7 @@ enum CHFuzzableType(
           "9999999999::Decimal",
           "999999999999999999::Decimal"
         ),
-        aliases = Seq("Decimal(18, 0)", "Decimal(18, 18)", "Decimal(10, 0)")
+        aliases = Seq("Decimal(18, 0)", "Decimal(18, 9)", "Decimal(18, 18)", "Decimal(10, 0)")
       )
   case Decimal128
       extends CHFuzzableType(
@@ -171,7 +171,15 @@ enum CHFuzzableType(
           "9999999999999999999999999999999999999999::Decimal(40)",
           "9999999999999999999999999999999999999999999999999999999999999999999999999999::Decimal(40)"
         ),
-        aliases = Seq("Decimal(39, 38)", "Decimal(40, 0)", "Decimal(76, 0)", "Decimal(76, 38)", "Decimal(76, 76)")
+        aliases = Seq(
+          "Decimal(39, 38)",
+          "Decimal(40, 0)",
+          "Decimal(76, 0)",
+          "Decimal(76, 9)",
+          "Decimal(76, 18)",
+          "Decimal(76, 38)",
+          "Decimal(76, 76)"
+        )
       )
 
   // Date
@@ -685,7 +693,12 @@ enum CHFuzzableType(
       extends CHFuzzableType(
         "Nullable(Decimal64)",
         CHFuzzableType.nullableFuzzingValues(Decimal64.fuzzingValues),
-        aliases = Seq("Nullable(Decimal(18, 0))", "Nullable(Decimal(18, 18))", "Nullable(Decimal(10, 0))")
+        aliases = Seq(
+          "Nullable(Decimal(18, 0))",
+          "Nullable(Decimal(18, 9))",
+          "Nullable(Decimal(18, 18))",
+          "Nullable(Decimal(10, 0))"
+        )
       )
   case NullableDecimal128
       extends CHFuzzableType(
@@ -706,6 +719,8 @@ enum CHFuzzableType(
           "Nullable(Decimal(39, 38))",
           "Nullable(Decimal(40, 0))",
           "Nullable(Decimal(76, 0))",
+          "Nullable(Decimal(76, 9))",
+          "Nullable(Decimal(76, 18))",
           "Nullable(Decimal(76, 38))",
           "Nullable(Decimal(76, 76))"
         )

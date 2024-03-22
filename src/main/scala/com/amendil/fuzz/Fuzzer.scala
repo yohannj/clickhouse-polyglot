@@ -138,8 +138,8 @@ object Fuzzer:
   ): Seq[Seq[CHFuzzableType]] =
     abstractTypes match
       case Seq(head, tail @ _*) =>
-        head.CHFuzzableTypes
-          .map(CHFuzzableType => generateCHFuzzableTypeCombinations(tail, currentArgs :+ CHFuzzableType))
+        head.chFuzzableTypes
+          .map(chFuzzableType => generateCHFuzzableTypeCombinations(tail, currentArgs :+ chFuzzableType))
           .flatten
       case Seq() => Seq(currentArgs)
 

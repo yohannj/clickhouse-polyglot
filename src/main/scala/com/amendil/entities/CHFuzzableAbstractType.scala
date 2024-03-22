@@ -1,6 +1,6 @@
 package com.amendil.entities
 
-enum CHFuzzableAbstractType(val fuzzingValues: Seq[String], val CHFuzzableTypes: Seq[CHFuzzableType]):
+enum CHFuzzableAbstractType(val fuzzingValues: Seq[String], val chFuzzableTypes: Seq[CHFuzzableType]):
   // Numbers
   case Numbers
       extends CHFuzzableAbstractType(

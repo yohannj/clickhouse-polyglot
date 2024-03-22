@@ -38,7 +38,7 @@ object FuzzerParametricFunctions extends StrictLogging:
       using client: CHClient,
       ec: ExecutionContext
   ): Seq[((CHFunctionFuzzResult) => Future[CHFunctionFuzzResult], Long)] =
-    val paramCount = parametricAbstractType.flatMap(_.CHFuzzableTypes).size.toLong
+    val paramCount = parametricAbstractType.flatMap(_.chFuzzableTypes).size.toLong
     val argCount = CHFuzzableType.values.size.toLong
     Seq(
       (fuzzFunction1Or0NWithOneParameter, paramCount * argCount),
@@ -670,7 +670,7 @@ object FuzzerParametricFunctions extends StrictLogging:
       currentParameters: ParametricArguments,
       arguments: NonParametricArguments
   )(using client: CHClient, ec: ExecutionContext): Future[Seq[CHFuzzableType]] =
-    val additionalParamTypes = parametricAbstractType.flatMap(_.CHFuzzableTypes)
+    val additionalParamTypes = parametricAbstractType.flatMap(_.chFuzzableTypes)
     executeInParallelOnlySuccess(
       additionalParamTypes,
       additionalParamType => {
