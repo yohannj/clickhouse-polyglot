@@ -22,8 +22,7 @@ lazy val root = project
       "ch.qos.logback" % "logback-classic" % "1.5.3",
 
       // Http
-      "com.fasterxml.jackson.module" %% "jackson-module-scala" % "2.16.2",
-      "com.softwaremill.retry" %% "retry" % "0.3.6",
+      "com.fasterxml.jackson.module" %% "jackson-module-scala" % "2.17.0",
 
       // Misc
       "org.scala-lang.modules" %% "scala-java8-compat" % "1.0.2",
