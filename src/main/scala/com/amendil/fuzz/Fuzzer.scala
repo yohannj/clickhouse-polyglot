@@ -134,7 +134,7 @@ object Fuzzer:
 
   private[fuzz] def generateCHFuzzableTypeCombinations(
       abstractTypes: Seq[CHFuzzableAbstractType],
-      currentArgs: Seq[CHFuzzableType] = Seq.empty
+      currentArgs: Seq[CHFuzzableType] = Nil
   ): Seq[Seq[CHFuzzableType]] =
     abstractTypes match
       case Seq(head, tail @ _*) =>

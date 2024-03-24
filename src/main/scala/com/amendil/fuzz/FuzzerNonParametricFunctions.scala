@@ -33,9 +33,9 @@ object FuzzerNonParametricFunctions extends StrictLogging:
     if fn.isLambda then Future.successful(fn)
     else
       client
-        .execute(s"SELECT ${fn.name}()")
+        .execute(s"SELECT toTypeName(${fn.name}())")
         .map((resp: CHResponse) =>
-          val outputType: String = resp.meta.head.`type`
+          val outputType: String = resp.data.head.head.asInstanceOf[String]
           fn.copy(function0Opt = Some(CHFunctionIO.Function0(outputType)))
         )
         .recover(_ => fn)
@@ -152,8 +152,10 @@ object FuzzerNonParametricFunctions extends StrictLogging:
           generateCHFuzzableAbstractTypeCombinations(argCount),
           (abstractTypes: Seq[CHFuzzableAbstractType]) => {
             executeInSequenceUntilSuccess(
-              buildFuzzingValuesArgs(abstractTypes.map(_.fuzzingValues)).map(args => s"SELECT $fnName($args)"),
-              client.execute
+              buildFuzzingValuesArgs(abstractTypes.map(_.fuzzingValues)).map(args =>
+                s"SELECT toTypeName($fnName($args))"
+              ),
+              client.executeNoResult
             ).map(_ => abstractTypes)
           },
           maxConcurrency = Settings.ClickHouse.maxSupportedConcurrency
@@ -174,10 +176,10 @@ object FuzzerNonParametricFunctions extends StrictLogging:
           inputSignatures,
           inputTypes =>
             val queries =
-              buildFuzzingValuesArgs(inputTypes.map(_.fuzzingValues)).map(args => s"SELECT $fnName($args)")
+              buildFuzzingValuesArgs(inputTypes.map(_.fuzzingValues)).map(args => s"SELECT toTypeName($fnName($args))")
 
-            executeInSequenceOnlySuccess(queries, client.execute).map(resp =>
-              (inputTypes, resp.map(_.meta.head.`type`).reduce(CHFuzzableType.merge))
+            executeInSequenceOnlySuccess(queries, client.execute(_).map(_.data.head.head.asInstanceOf[String])).map(
+              outputTypes => (inputTypes, outputTypes.reduce(CHFuzzableType.merge))
             )
           ,
           maxConcurrency = Settings.ClickHouse.maxSupportedConcurrency
@@ -216,11 +218,11 @@ object FuzzerNonParametricFunctions extends StrictLogging:
                     val queries =
                       buildFuzzingValuesArgs(
                         (fuzzingValuesBeforeColumn :+ fuzzableType.fuzzingValues) ++ fuzzingValuesAfterColumn
-                      ).map(args => s"SELECT $fnName($args)")
+                      ).map(args => s"SELECT toTypeName($fnName($args))")
 
                     executeInSequenceUntilSuccess( // Check if any value of the current possible type is valid
                       queries,
-                      client.execute
+                      client.executeNoResult
                     ).map(_ => fuzzableType)
                 ).map(filteredFuzzableType => (currentArgumentAbstractType, filteredFuzzableType))
             ),
@@ -254,9 +256,9 @@ object FuzzerNonParametricFunctions extends StrictLogging:
         signature =>
           val queries = buildFuzzingValuesArgs(
             signature._1.map(_._1.fuzzingValues) ++ signature._2.map(_.fuzzingValues)
-          ).map(args => s"SELECT $fnName($args)")
+          ).map(args => s"SELECT toTypeName($fnName($args))")
 
-          executeInSequenceUntilSuccess(queries, client.execute).map(_ => signature)
+          executeInSequenceUntilSuccess(queries, client.executeNoResult).map(_ => signature)
         ,
         maxConcurrency = Settings.ClickHouse.maxSupportedConcurrency
       ).flatMap(fuzzAbstractTypeToType(fnName, _))
@@ -282,8 +284,8 @@ object FuzzerNonParametricFunctions extends StrictLogging:
     val fuzzingValuesArgsV2 = buildFuzzingValuesArgs(arguments.map(_.fuzzingValues) ++ argNv2)
 
     executeInSequenceUntilSuccess(
-      (fuzzingValuesArgsV1 ++ fuzzingValuesArgsV2).map { args => s"SELECT $fnName($args)" },
-      client.execute
+      (fuzzingValuesArgsV1 ++ fuzzingValuesArgsV2).map { args => s"SELECT toTypeName($fnName($args))" },
+      client.executeNoResult
     ).map(_ => true).recover(_ => false)
 
   private type InputTypes = Seq[CHFuzzableType]

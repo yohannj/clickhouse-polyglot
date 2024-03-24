@@ -1,7 +1,25 @@
 package com
 
 package object amendil:
-  val unknownFunctions: Seq[String] = Seq("if")
+  val unknownFunctions: Seq[String] = Seq(
+    "quantilesBFloat16Weighted",
+    "quantilesDeterministic",
+    "quantilesExact",
+    "quantilesExactHigh",
+    "quantilesExactInclusive",
+    "quantilesExactLow",
+    "quantilesInterpolatedWeighted",
+    "quantilesTDigest",
+    "quantilesTDigestWeighted",
+    "quantilesTiming",
+    "quantilesTimingWeighted"
+  )
+  val oomFunctions: Seq[String] = Seq(
+    "quantilesBFloat16Weighted",
+    "quantilesInterpolatedWeighted",
+    "quantilesTDigestWeighted",
+    "quantilesTimingWeighted"
+  )
   val unknownFunctions2: Seq[String] = Seq(
     "DATE_DIFF",
     "DATE_TRUNC",

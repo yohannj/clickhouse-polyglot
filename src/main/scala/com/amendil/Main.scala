@@ -86,7 +86,7 @@ def ensuringFuzzingValuesAreValid()(using client: CHClient, ec: ExecutionContext
       (CHFuzzableType.values.flatMap(_.fuzzingValues) ++ CHFuzzableAbstractType.values.flatMap(_.fuzzingValues))
         .map(v =>
           client
-            .execute(s"SELECT $v")
+            .executeNoResult(s"SELECT $v")
             .map(_ => None)
             .recover(err => Some(s"$v: ${err.getMessage}"))
         )

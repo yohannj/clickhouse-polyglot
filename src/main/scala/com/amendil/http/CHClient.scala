@@ -48,6 +48,29 @@ class CHClient(url: String)(using ec: ExecutionContext):
         .build()
     )
 
+  /**
+    * Query ClickHouse on its HTTP interface.
+    *
+    * Some settings are added to allow experimental features and suspicious behaviors.
+    * An additional setting is added to avoid logging the call into ClickHouse's `system.query_log` table.
+    *
+    * @param query Select query to send to ClickHouse
+    * @return Future.successful when ClickHouse executed successfully the query, Future.failure otherwise.
+    */
+  def executeNoResult(query: String): Future[Unit] =
+    executeNoResult(
+      HttpRequest
+        .newBuilder()
+        .uri(new URI(s"$url"))
+        .POST(
+          HttpRequest.BodyPublishers.ofString(
+            s"$query SETTINGS ${CHClient.settings};"
+          )
+        )
+        .setHeader("Content-Type", "application/x-www-form-urlencoded")
+        .build()
+    )
+
   private def execute(req: HttpRequest, attempt: Int = 0, previousWaitTime: Long = 0L): Future[CHResponse] =
     val clickHouseHttpResponseF: Future[HttpResponse[InputStream]] =
       Retry.retryWithExponentialBackoff(
@@ -72,6 +95,28 @@ class CHClient(url: String)(using ec: ExecutionContext):
         val message = new String(httpResponse.body().readAllBytes(), StandardCharsets.UTF_8)
         Future.failed(new Exception(s"ClickHouse query failed: $message"))
     }
+
+  private def executeNoResult(req: HttpRequest, attempt: Int = 0, previousWaitTime: Long = 0L): Future[Unit] =
+    Retry
+      .retryWithExponentialBackoff(
+        () => client.sendAsync(req, BodyHandlers.ofInputStream()),
+        shouldRetry = r => {
+          if r.statusCode() == HttpURLConnection.HTTP_OK then false
+          else
+            // When there is an error, sometime it's because too many queries are being sent by ClickHouse.
+            // As the query may be invalid, we must retry the call!
+            val message = new String(r.body().readAllBytes(), StandardCharsets.UTF_8)
+            val shouldRetry = message.contains("Too many simultaneous queries.")
+            shouldRetry
+        },
+        maxNumberOfAttempts = Int.MaxValue // Never stops querying ClickHouse, we need 100% accuracy
+      )
+      .map { httpResponse =>
+        if httpResponse.statusCode() == HttpURLConnection.HTTP_OK then (): Unit
+        else
+          val message = new String(httpResponse.body().readAllBytes(), StandardCharsets.UTF_8)
+          throw new Exception(s"ClickHouse query failed: $message")
+      }
 
 object CHClient:
   private val settings: String = Seq(

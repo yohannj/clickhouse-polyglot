@@ -1,5 +1,6 @@
 package com.amendil
 
+import scala.collection.mutable.ListBuffer
 import scala.concurrent.{ExecutionContext, Future}
 
 object ConcurrencyUtils:
@@ -104,9 +105,15 @@ object ConcurrencyUtils:
     * @return A sequence of the same size as the provided elements
     */
   def executeInSequence[T, U](elements: Seq[T], fn: (T) => Future[U])(using ec: ExecutionContext): Future[Seq[U]] =
+    executeInSequence(ListBuffer.from(elements), fn).map(_.toSeq)
+
+  def executeInSequence[T, U](elements: ListBuffer[T], fn: (T) => Future[U])(
+      using ec: ExecutionContext
+  ): Future[ListBuffer[U]] =
     elements match
-      case Seq(head, tail @ _*) => fn(head).flatMap(res => executeInSequence(tail, fn).map(l => res +: l))
-      case _                    => Future.successful(Seq.empty)
+      case buffer if buffer.nonEmpty =>
+        fn(buffer.head).flatMap(res => executeInSequence(buffer.tail, fn).map(_.prepend(res)))
+      case _ => Future.successful(ListBuffer.empty)
 
   /**
     * Executes all calls sequentially.
@@ -126,7 +133,7 @@ object ConcurrencyUtils:
         fn(head)
           .flatMap(res => executeInSequenceOnlySuccess(tail, fn).map(l => l :+ res))
           .recoverWith(_ => executeInSequenceOnlySuccess(tail, fn))
-      case _ => Future.successful(Seq.empty)
+      case _ => Future.successful(Nil)
 
   /**
     * Executes all calls sequentially until receiving a Future.Success

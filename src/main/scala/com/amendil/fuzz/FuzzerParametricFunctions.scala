@@ -57,21 +57,21 @@ object FuzzerParametricFunctions extends StrictLogging:
       (fuzzFunction2WithThreeParameters, paramCount * argCount * argCount + 2),
       (fuzzFunction1NWithThreeParameters, paramCount * argCount * argCount + 2),
       (fuzzFunction3WithThreeParameters, paramCount * argCount * argCount * argCount + 2),
-      (fuzzFunction2NWithThreeParameters, paramCount * argCount * argCount * argCount + 2),
+      (fuzzFunction2NWithThreeParameters, paramCount * argCount * argCount * argCount + 2)
       // Functions below MUST happen after the "WithThreeParameter", they are then very easy to compute
-      (fuzzFunction1WithFourParameters, paramCount * argCount + 3),
-      (fuzzFunction0NWithFourParameters, paramCount * argCount + 3),
-      (fuzzFunction2WithFourParameters, paramCount * argCount * argCount + 3),
-      (fuzzFunction1NWithFourParameters, paramCount * argCount * argCount + 3),
-      (fuzzFunction3WithFourParameters, paramCount * argCount * argCount * argCount + 3),
-      (fuzzFunction2NWithFourParameters, paramCount * argCount * argCount * argCount + 3),
+      // (fuzzFunction1WithFourParameters, paramCount * argCount + 3),
+      // (fuzzFunction0NWithFourParameters, paramCount * argCount + 3),
+      // (fuzzFunction2WithFourParameters, paramCount * argCount * argCount + 3),
+      // (fuzzFunction1NWithFourParameters, paramCount * argCount * argCount + 3),
+      // (fuzzFunction3WithFourParameters, paramCount * argCount * argCount * argCount + 3),
+      // (fuzzFunction2NWithFourParameters, paramCount * argCount * argCount * argCount + 3),
       // Functions below MUST happen after the "WithFourParameter", they are then very easy to compute
-      (fuzzFunction1WithFiveParameters, paramCount * argCount + 4),
-      (fuzzFunction0NWithFiveParameters, paramCount * argCount + 4),
-      (fuzzFunction2WithFiveParameters, paramCount * argCount * argCount + 4),
-      (fuzzFunction1NWithFiveParameters, paramCount * argCount * argCount + 4),
-      (fuzzFunction3WithFiveParameters, paramCount * argCount * argCount * argCount + 4),
-      (fuzzFunction2NWithFiveParameters, paramCount * argCount * argCount * argCount + 4)
+      // (fuzzFunction1WithFiveParameters, paramCount * argCount + 4),
+      // (fuzzFunction0NWithFiveParameters, paramCount * argCount + 4),
+      // (fuzzFunction2WithFiveParameters, paramCount * argCount * argCount + 4),
+      // (fuzzFunction1NWithFiveParameters, paramCount * argCount * argCount + 4),
+      // (fuzzFunction3WithFiveParameters, paramCount * argCount * argCount * argCount + 4),
+      // (fuzzFunction2NWithFiveParameters, paramCount * argCount * argCount * argCount + 4)
     )
 
   private def fuzzFunction1Or0NWithOneParameter(
@@ -136,7 +136,8 @@ object FuzzerParametricFunctions extends StrictLogging:
   )(using client: CHClient, ec: ExecutionContext): Future[CHFunctionFuzzResult] =
     logger.debug("fuzzFunction3Or2NWithOneParameter")
     if fn.isLambda || fn.isNonParametric || fn.isSpecialInfiniteFunction ||
-      fn.parametric1Function0Ns.nonEmpty || fn.parametric1Function1Ns.nonEmpty
+      fn.parametric1Function0Ns.nonEmpty || fn.parametric1Function1Ns.nonEmpty ||
+      (fn.parametric1Function1s.filterNot(_.arg1.name.startsWith("Tuple")).nonEmpty && fn.parametric1Function2s.isEmpty)
     then Future.successful(fn)
     else
       for
@@ -165,321 +166,378 @@ object FuzzerParametricFunctions extends StrictLogging:
       fn: CHFunctionFuzzResult
   )(using client: CHClient, ec: ExecutionContext): Future[CHFunctionFuzzResult] =
     logger.debug("fuzzFunction1WithTwoParameters")
-    fuzzAddOneParameter(
-      fn.name,
-      fn.parametric1Function1s,
-      (f: Parametric1Function1, param: CHFuzzableType) =>
-        CHFunctionIO.Parametric2Function1(f.paramArg1, param, f.arg1, f.output)
-    ).map(res => fn.copy(parametric2Function1s = res))
+    if fn.parametric1Function1s.isEmpty then Future.successful(fn)
+    else
+      fuzzAddOneParameter(
+        fn.name,
+        fn.parametric1Function1s,
+        (f: Parametric1Function1, param: CHFuzzableType) =>
+          CHFunctionIO.Parametric2Function1(f.paramArg1, param, f.arg1, f.output)
+      ).map(res => fn.copy(parametric2Function1s = res))
 
   private def fuzzFunction1WithThreeParameters(
       fn: CHFunctionFuzzResult
   )(using client: CHClient, ec: ExecutionContext): Future[CHFunctionFuzzResult] =
     logger.debug("fuzzFunction1WithThreeParameters")
-    fuzzAddOneParameter(
-      fn.name,
-      fn.parametric2Function1s,
-      (f: Parametric2Function1, param: CHFuzzableType) =>
-        CHFunctionIO.Parametric3Function1(f.paramArg1, f.paramArg2, param, f.arg1, f.output)
-    ).map(res => fn.copy(parametric3Function1s = res))
+    if fn.parametric2Function1s.isEmpty then Future.successful(fn)
+    else
+      fuzzAddOneParameter(
+        fn.name,
+        fn.parametric2Function1s,
+        (f: Parametric2Function1, param: CHFuzzableType) =>
+          CHFunctionIO.Parametric3Function1(f.paramArg1, f.paramArg2, param, f.arg1, f.output)
+      ).map(res => fn.copy(parametric3Function1s = res))
 
   private def fuzzFunction1WithFourParameters(
       fn: CHFunctionFuzzResult
   )(using client: CHClient, ec: ExecutionContext): Future[CHFunctionFuzzResult] =
     logger.debug("fuzzFunction1WithFourParameters")
-    fuzzAddOneParameter(
-      fn.name,
-      fn.parametric3Function1s,
-      (f: Parametric3Function1, param: CHFuzzableType) =>
-        CHFunctionIO.Parametric4Function1(f.paramArg1, f.paramArg2, f.paramArg3, param, f.arg1, f.output)
-    ).map(res => fn.copy(parametric4Function1s = res))
+    if fn.parametric3Function1s.isEmpty then Future.successful(fn)
+    else
+      fuzzAddOneParameter(
+        fn.name,
+        fn.parametric3Function1s,
+        (f: Parametric3Function1, param: CHFuzzableType) =>
+          CHFunctionIO.Parametric4Function1(f.paramArg1, f.paramArg2, f.paramArg3, param, f.arg1, f.output)
+      ).map(res => fn.copy(parametric4Function1s = res))
 
   private def fuzzFunction1WithFiveParameters(
       fn: CHFunctionFuzzResult
   )(using client: CHClient, ec: ExecutionContext): Future[CHFunctionFuzzResult] =
     logger.debug("fuzzFunction1WithFiveParameters")
-    fuzzAddOneParameter(
-      fn.name,
-      fn.parametric4Function1s,
-      (f: Parametric4Function1, param: CHFuzzableType) =>
-        CHFunctionIO.Parametric5Function1(f.paramArg1, f.paramArg2, f.paramArg3, f.paramArg4, param, f.arg1, f.output)
-    ).map(res => fn.copy(parametric5Function1s = res))
+    if fn.parametric4Function1s.isEmpty then Future.successful(fn)
+    else
+      fuzzAddOneParameter(
+        fn.name,
+        fn.parametric4Function1s,
+        (f: Parametric4Function1, param: CHFuzzableType) =>
+          CHFunctionIO.Parametric5Function1(f.paramArg1, f.paramArg2, f.paramArg3, f.paramArg4, param, f.arg1, f.output)
+      ).map(res => fn.copy(parametric5Function1s = res))
 
   private def fuzzFunction2WithTwoParameters(
       fn: CHFunctionFuzzResult
   )(using client: CHClient, ec: ExecutionContext): Future[CHFunctionFuzzResult] =
     logger.debug("fuzzFunction2WithTwoParameters")
-    fuzzAddOneParameter(
-      fn.name,
-      fn.parametric1Function2s,
-      (f: Parametric1Function2, param: CHFuzzableType) =>
-        CHFunctionIO.Parametric2Function2(f.paramArg1, param, f.arg1, f.arg2, f.output)
-    ).map(res => fn.copy(parametric2Function2s = res))
+    if fn.parametric1Function2s.isEmpty then Future.successful(fn)
+    else
+      fuzzAddOneParameter(
+        fn.name,
+        fn.parametric1Function2s,
+        (f: Parametric1Function2, param: CHFuzzableType) =>
+          CHFunctionIO.Parametric2Function2(f.paramArg1, param, f.arg1, f.arg2, f.output)
+      ).map(res => fn.copy(parametric2Function2s = res))
 
   private def fuzzFunction2WithThreeParameters(
       fn: CHFunctionFuzzResult
   )(using client: CHClient, ec: ExecutionContext): Future[CHFunctionFuzzResult] =
     logger.debug("fuzzFunction2WithThreeParameters")
-    fuzzAddOneParameter(
-      fn.name,
-      fn.parametric2Function2s,
-      (f: Parametric2Function2, param: CHFuzzableType) =>
-        CHFunctionIO.Parametric3Function2(f.paramArg1, f.paramArg2, param, f.arg1, f.arg2, f.output)
-    ).map(res => fn.copy(parametric3Function2s = res))
+    if fn.parametric2Function2s.isEmpty then Future.successful(fn)
+    else
+      fuzzAddOneParameter(
+        fn.name,
+        fn.parametric2Function2s,
+        (f: Parametric2Function2, param: CHFuzzableType) =>
+          CHFunctionIO.Parametric3Function2(f.paramArg1, f.paramArg2, param, f.arg1, f.arg2, f.output)
+      ).map(res => fn.copy(parametric3Function2s = res))
 
   private def fuzzFunction2WithFourParameters(
       fn: CHFunctionFuzzResult
   )(using client: CHClient, ec: ExecutionContext): Future[CHFunctionFuzzResult] =
     logger.debug("fuzzFunction2WithFourParameters")
-    fuzzAddOneParameter(
-      fn.name,
-      fn.parametric3Function2s,
-      (f: Parametric3Function2, param: CHFuzzableType) =>
-        CHFunctionIO.Parametric4Function2(f.paramArg1, f.paramArg2, f.paramArg3, param, f.arg1, f.arg2, f.output)
-    ).map(res => fn.copy(parametric4Function2s = res))
+    if fn.parametric3Function2s.isEmpty then Future.successful(fn)
+    else
+      fuzzAddOneParameter(
+        fn.name,
+        fn.parametric3Function2s,
+        (f: Parametric3Function2, param: CHFuzzableType) =>
+          CHFunctionIO.Parametric4Function2(f.paramArg1, f.paramArg2, f.paramArg3, param, f.arg1, f.arg2, f.output)
+      ).map(res => fn.copy(parametric4Function2s = res))
 
   private def fuzzFunction2WithFiveParameters(
       fn: CHFunctionFuzzResult
   )(using client: CHClient, ec: ExecutionContext): Future[CHFunctionFuzzResult] =
     logger.debug("fuzzFunction2WithFiveParameters")
-    fuzzAddOneParameter(
-      fn.name,
-      fn.parametric4Function2s,
-      (f: Parametric4Function2, param: CHFuzzableType) =>
-        CHFunctionIO.Parametric5Function2(
-          f.paramArg1,
-          f.paramArg2,
-          f.paramArg3,
-          f.paramArg4,
-          param,
-          f.arg1,
-          f.arg2,
-          f.output
-        )
-    ).map(res => fn.copy(parametric5Function2s = res))
+    if fn.parametric4Function2s.isEmpty then Future.successful(fn)
+    else
+      fuzzAddOneParameter(
+        fn.name,
+        fn.parametric4Function2s,
+        (f: Parametric4Function2, param: CHFuzzableType) =>
+          CHFunctionIO.Parametric5Function2(
+            f.paramArg1,
+            f.paramArg2,
+            f.paramArg3,
+            f.paramArg4,
+            param,
+            f.arg1,
+            f.arg2,
+            f.output
+          )
+      ).map(res => fn.copy(parametric5Function2s = res))
 
   private def fuzzFunction3WithTwoParameters(
       fn: CHFunctionFuzzResult
   )(using client: CHClient, ec: ExecutionContext): Future[CHFunctionFuzzResult] =
     logger.debug("fuzzFunction3WithTwoParameters")
-    fuzzAddOneParameter(
-      fn.name,
-      fn.parametric1Function3s,
-      (f: Parametric1Function3, param: CHFuzzableType) =>
-        CHFunctionIO.Parametric2Function3(f.paramArg1, param, f.arg1, f.arg2, f.arg3, f.output)
-    ).map(res => fn.copy(parametric2Function3s = res))
+    if fn.parametric1Function3s.isEmpty then Future.successful(fn)
+    else
+      fuzzAddOneParameter(
+        fn.name,
+        fn.parametric1Function3s,
+        (f: Parametric1Function3, param: CHFuzzableType) =>
+          CHFunctionIO.Parametric2Function3(f.paramArg1, param, f.arg1, f.arg2, f.arg3, f.output)
+      ).map(res => fn.copy(parametric2Function3s = res))
 
   private def fuzzFunction3WithThreeParameters(
       fn: CHFunctionFuzzResult
   )(using client: CHClient, ec: ExecutionContext): Future[CHFunctionFuzzResult] =
     logger.debug("fuzzFunction3WithThreeParameters")
-    fuzzAddOneParameter(
-      fn.name,
-      fn.parametric2Function3s,
-      (f: Parametric2Function3, param: CHFuzzableType) =>
-        CHFunctionIO.Parametric3Function3(f.paramArg1, f.paramArg2, param, f.arg1, f.arg2, f.arg3, f.output)
-    ).map(res => fn.copy(parametric3Function3s = res))
+    if fn.parametric2Function3s.isEmpty then Future.successful(fn)
+    else
+      fuzzAddOneParameter(
+        fn.name,
+        fn.parametric2Function3s,
+        (f: Parametric2Function3, param: CHFuzzableType) =>
+          CHFunctionIO.Parametric3Function3(f.paramArg1, f.paramArg2, param, f.arg1, f.arg2, f.arg3, f.output)
+      ).map(res => fn.copy(parametric3Function3s = res))
 
   private def fuzzFunction3WithFourParameters(
       fn: CHFunctionFuzzResult
   )(using client: CHClient, ec: ExecutionContext): Future[CHFunctionFuzzResult] =
     logger.debug("fuzzFunction3WithFourParameters")
-    fuzzAddOneParameter(
-      fn.name,
-      fn.parametric3Function3s,
-      (f: Parametric3Function3, param: CHFuzzableType) =>
-        CHFunctionIO.Parametric4Function3(
-          f.paramArg1,
-          f.paramArg2,
-          f.paramArg3,
-          param,
-          f.arg1,
-          f.arg2,
-          f.arg3,
-          f.output
-        )
-    ).map(res => fn.copy(parametric4Function3s = res))
+    if fn.parametric3Function3s.isEmpty then Future.successful(fn)
+    else
+      fuzzAddOneParameter(
+        fn.name,
+        fn.parametric3Function3s,
+        (f: Parametric3Function3, param: CHFuzzableType) =>
+          CHFunctionIO.Parametric4Function3(
+            f.paramArg1,
+            f.paramArg2,
+            f.paramArg3,
+            param,
+            f.arg1,
+            f.arg2,
+            f.arg3,
+            f.output
+          )
+      ).map(res => fn.copy(parametric4Function3s = res))
 
   private def fuzzFunction3WithFiveParameters(
       fn: CHFunctionFuzzResult
   )(using client: CHClient, ec: ExecutionContext): Future[CHFunctionFuzzResult] =
     logger.debug("fuzzFunction3WithFiveParameters")
-    fuzzAddOneParameter(
-      fn.name,
-      fn.parametric4Function3s,
-      (f: Parametric4Function3, param: CHFuzzableType) =>
-        CHFunctionIO.Parametric5Function3(
-          f.paramArg1,
-          f.paramArg2,
-          f.paramArg3,
-          f.paramArg4,
-          param,
-          f.arg1,
-          f.arg2,
-          f.arg3,
-          f.output
-        )
-    ).map(res => fn.copy(parametric5Function3s = res))
+    if fn.parametric4Function3s.isEmpty then Future.successful(fn)
+    else
+      fuzzAddOneParameter(
+        fn.name,
+        fn.parametric4Function3s,
+        (f: Parametric4Function3, param: CHFuzzableType) =>
+          CHFunctionIO.Parametric5Function3(
+            f.paramArg1,
+            f.paramArg2,
+            f.paramArg3,
+            f.paramArg4,
+            param,
+            f.arg1,
+            f.arg2,
+            f.arg3,
+            f.output
+          )
+      ).map(res => fn.copy(parametric5Function3s = res))
 
   private def fuzzFunction0NWithTwoParameters(
       fn: CHFunctionFuzzResult
   )(using client: CHClient, ec: ExecutionContext): Future[CHFunctionFuzzResult] =
     logger.debug("fuzzFunction0NWithTwoParameters")
-    fuzzAddOneParameter(
-      fn.name,
-      fn.parametric1Function0Ns,
-      (f: Parametric1Function0N, param: CHFuzzableType) =>
-        CHFunctionIO.Parametric2Function0N(f.paramArg1, param, f.argN, f.output)
-    ).map(res => fn.copy(parametric2Function0Ns = res))
+    if fn.parametric1Function0Ns.isEmpty then Future.successful(fn)
+    else
+      fuzzAddOneParameter(
+        fn.name,
+        fn.parametric1Function0Ns,
+        (f: Parametric1Function0N, param: CHFuzzableType) =>
+          CHFunctionIO.Parametric2Function0N(f.paramArg1, param, f.argN, f.output)
+      ).map(res => fn.copy(parametric2Function0Ns = res))
 
   private def fuzzFunction0NWithThreeParameters(
       fn: CHFunctionFuzzResult
   )(using client: CHClient, ec: ExecutionContext): Future[CHFunctionFuzzResult] =
     logger.debug("fuzzFunction0NWithThreeParameters")
-    fuzzAddOneParameter(
-      fn.name,
-      fn.parametric2Function0Ns,
-      (f: Parametric2Function0N, param: CHFuzzableType) =>
-        CHFunctionIO.Parametric3Function0N(f.paramArg1, f.paramArg2, param, f.argN, f.output)
-    ).map(res => fn.copy(parametric3Function0Ns = res))
+    if fn.parametric2Function0Ns.isEmpty then Future.successful(fn)
+    else
+      fuzzAddOneParameter(
+        fn.name,
+        fn.parametric2Function0Ns,
+        (f: Parametric2Function0N, param: CHFuzzableType) =>
+          CHFunctionIO.Parametric3Function0N(f.paramArg1, f.paramArg2, param, f.argN, f.output)
+      ).map(res => fn.copy(parametric3Function0Ns = res))
 
   private def fuzzFunction0NWithFourParameters(
       fn: CHFunctionFuzzResult
   )(using client: CHClient, ec: ExecutionContext): Future[CHFunctionFuzzResult] =
     logger.debug("fuzzFunction0NWithFourParameters")
-    fuzzAddOneParameter(
-      fn.name,
-      fn.parametric3Function0Ns,
-      (f: Parametric3Function0N, param: CHFuzzableType) =>
-        CHFunctionIO.Parametric4Function0N(f.paramArg1, f.paramArg2, f.paramArg3, param, f.argN, f.output)
-    ).map(res => fn.copy(parametric4Function0Ns = res))
+    if fn.parametric3Function0Ns.isEmpty then Future.successful(fn)
+    else
+      fuzzAddOneParameter(
+        fn.name,
+        fn.parametric3Function0Ns,
+        (f: Parametric3Function0N, param: CHFuzzableType) =>
+          CHFunctionIO.Parametric4Function0N(f.paramArg1, f.paramArg2, f.paramArg3, param, f.argN, f.output)
+      ).map(res => fn.copy(parametric4Function0Ns = res))
 
   private def fuzzFunction0NWithFiveParameters(
       fn: CHFunctionFuzzResult
   )(using client: CHClient, ec: ExecutionContext): Future[CHFunctionFuzzResult] =
     logger.debug("fuzzFunction0NWithFiveParameters")
-    fuzzAddOneParameter(
-      fn.name,
-      fn.parametric4Function0Ns,
-      (f: Parametric4Function0N, param: CHFuzzableType) =>
-        CHFunctionIO.Parametric5Function0N(f.paramArg1, f.paramArg2, f.paramArg3, f.paramArg4, param, f.argN, f.output)
-    ).map(res => fn.copy(parametric5Function0Ns = res))
+    if fn.parametric4Function0Ns.isEmpty then Future.successful(fn)
+    else
+      fuzzAddOneParameter(
+        fn.name,
+        fn.parametric4Function0Ns,
+        (f: Parametric4Function0N, param: CHFuzzableType) =>
+          CHFunctionIO.Parametric5Function0N(
+            f.paramArg1,
+            f.paramArg2,
+            f.paramArg3,
+            f.paramArg4,
+            param,
+            f.argN,
+            f.output
+          )
+      ).map(res => fn.copy(parametric5Function0Ns = res))
 
   private def fuzzFunction1NWithTwoParameters(
       fn: CHFunctionFuzzResult
   )(using client: CHClient, ec: ExecutionContext): Future[CHFunctionFuzzResult] =
     logger.debug("fuzzFunction1NWithTwoParameters")
-    fuzzAddOneParameter(
-      fn.name,
-      fn.parametric1Function1Ns,
-      (f: Parametric1Function1N, param: CHFuzzableType) =>
-        CHFunctionIO.Parametric2Function1N(f.paramArg1, param, f.arg1, f.argN, f.output)
-    ).map(res => fn.copy(parametric2Function1Ns = res))
+    if fn.parametric1Function1Ns.isEmpty then Future.successful(fn)
+    else
+      fuzzAddOneParameter(
+        fn.name,
+        fn.parametric1Function1Ns,
+        (f: Parametric1Function1N, param: CHFuzzableType) =>
+          CHFunctionIO.Parametric2Function1N(f.paramArg1, param, f.arg1, f.argN, f.output)
+      ).map(res => fn.copy(parametric2Function1Ns = res))
 
   private def fuzzFunction1NWithThreeParameters(
       fn: CHFunctionFuzzResult
   )(using client: CHClient, ec: ExecutionContext): Future[CHFunctionFuzzResult] =
     logger.debug("fuzzFunction1NWithThreeParameters")
-    fuzzAddOneParameter(
-      fn.name,
-      fn.parametric2Function1Ns,
-      (f: Parametric2Function1N, param: CHFuzzableType) =>
-        CHFunctionIO.Parametric3Function1N(f.paramArg1, f.paramArg2, param, f.arg1, f.argN, f.output)
-    ).map(res => fn.copy(parametric3Function1Ns = res))
+    logger.debug(s"${fn.parametric2Function1Ns.size}")
+    if fn.parametric2Function1Ns.isEmpty then Future.successful(fn)
+    else
+      fuzzAddOneParameter(
+        fn.name,
+        fn.parametric2Function1Ns,
+        (f: Parametric2Function1N, param: CHFuzzableType) =>
+          CHFunctionIO.Parametric3Function1N(f.paramArg1, f.paramArg2, param, f.arg1, f.argN, f.output)
+      ).map(res => fn.copy(parametric3Function1Ns = res))
 
   private def fuzzFunction1NWithFourParameters(
       fn: CHFunctionFuzzResult
   )(using client: CHClient, ec: ExecutionContext): Future[CHFunctionFuzzResult] =
     logger.debug("fuzzFunction1NWithFourParameters")
-    fuzzAddOneParameter(
-      fn.name,
-      fn.parametric3Function1Ns,
-      (f: Parametric3Function1N, param: CHFuzzableType) =>
-        CHFunctionIO.Parametric4Function1N(f.paramArg1, f.paramArg2, f.paramArg3, param, f.arg1, f.argN, f.output)
-    ).map(res => fn.copy(parametric4Function1Ns = res))
+    if fn.parametric3Function1Ns.isEmpty then Future.successful(fn)
+    else
+      fuzzAddOneParameter(
+        fn.name,
+        fn.parametric3Function1Ns,
+        (f: Parametric3Function1N, param: CHFuzzableType) =>
+          CHFunctionIO.Parametric4Function1N(f.paramArg1, f.paramArg2, f.paramArg3, param, f.arg1, f.argN, f.output)
+      ).map(res => fn.copy(parametric4Function1Ns = res))
 
   private def fuzzFunction1NWithFiveParameters(
       fn: CHFunctionFuzzResult
   )(using client: CHClient, ec: ExecutionContext): Future[CHFunctionFuzzResult] =
     logger.debug("fuzzFunction1NWithFiveParameters")
-    fuzzAddOneParameter(
-      fn.name,
-      fn.parametric4Function1Ns,
-      (f: Parametric4Function1N, param: CHFuzzableType) =>
-        CHFunctionIO.Parametric5Function1N(
-          f.paramArg1,
-          f.paramArg2,
-          f.paramArg3,
-          f.paramArg4,
-          param,
-          f.arg1,
-          f.argN,
-          f.output
-        )
-    ).map(res => fn.copy(parametric5Function1Ns = res))
+    if fn.parametric4Function1Ns.isEmpty then Future.successful(fn)
+    else
+      fuzzAddOneParameter(
+        fn.name,
+        fn.parametric4Function1Ns,
+        (f: Parametric4Function1N, param: CHFuzzableType) =>
+          CHFunctionIO.Parametric5Function1N(
+            f.paramArg1,
+            f.paramArg2,
+            f.paramArg3,
+            f.paramArg4,
+            param,
+            f.arg1,
+            f.argN,
+            f.output
+          )
+      ).map(res => fn.copy(parametric5Function1Ns = res))
 
   private def fuzzFunction2NWithTwoParameters(
       fn: CHFunctionFuzzResult
   )(using client: CHClient, ec: ExecutionContext): Future[CHFunctionFuzzResult] =
     logger.debug("fuzzFunction2NWithTwoParameters")
-    fuzzAddOneParameter(
-      fn.name,
-      fn.parametric1Function2Ns,
-      (f: Parametric1Function2N, param: CHFuzzableType) =>
-        CHFunctionIO.Parametric2Function2N(f.paramArg1, param, f.arg1, f.arg2, f.argN, f.output)
-    ).map(res => fn.copy(parametric2Function2Ns = res))
+    if fn.parametric1Function2Ns.isEmpty then Future.successful(fn)
+    else
+      fuzzAddOneParameter(
+        fn.name,
+        fn.parametric1Function2Ns,
+        (f: Parametric1Function2N, param: CHFuzzableType) =>
+          CHFunctionIO.Parametric2Function2N(f.paramArg1, param, f.arg1, f.arg2, f.argN, f.output)
+      ).map(res => fn.copy(parametric2Function2Ns = res))
 
   private def fuzzFunction2NWithThreeParameters(
       fn: CHFunctionFuzzResult
   )(using client: CHClient, ec: ExecutionContext): Future[CHFunctionFuzzResult] =
     logger.debug("fuzzFunction2NWithThreeParameters")
-    fuzzAddOneParameter(
-      fn.name,
-      fn.parametric2Function2Ns,
-      (f: Parametric2Function2N, param: CHFuzzableType) =>
-        CHFunctionIO.Parametric3Function2N(f.paramArg1, f.paramArg2, param, f.arg1, f.arg2, f.argN, f.output)
-    ).map(res => fn.copy(parametric3Function2Ns = res))
+    if fn.parametric2Function2Ns.isEmpty then Future.successful(fn)
+    else
+      fuzzAddOneParameter(
+        fn.name,
+        fn.parametric2Function2Ns,
+        (f: Parametric2Function2N, param: CHFuzzableType) =>
+          CHFunctionIO.Parametric3Function2N(f.paramArg1, f.paramArg2, param, f.arg1, f.arg2, f.argN, f.output)
+      ).map(res => fn.copy(parametric3Function2Ns = res))
 
   private def fuzzFunction2NWithFourParameters(
       fn: CHFunctionFuzzResult
   )(using client: CHClient, ec: ExecutionContext): Future[CHFunctionFuzzResult] =
     logger.debug("fuzzFunction2NWithFourParameters")
-    fuzzAddOneParameter(
-      fn.name,
-      fn.parametric3Function2Ns,
-      (f: Parametric3Function2N, param: CHFuzzableType) =>
-        CHFunctionIO.Parametric4Function2N(
-          f.paramArg1,
-          f.paramArg2,
-          f.paramArg3,
-          param,
-          f.arg1,
-          f.arg2,
-          f.argN,
-          f.output
-        )
-    ).map(res => fn.copy(parametric4Function2Ns = res))
+    if fn.parametric3Function2Ns.isEmpty then Future.successful(fn)
+    else
+      fuzzAddOneParameter(
+        fn.name,
+        fn.parametric3Function2Ns,
+        (f: Parametric3Function2N, param: CHFuzzableType) =>
+          CHFunctionIO.Parametric4Function2N(
+            f.paramArg1,
+            f.paramArg2,
+            f.paramArg3,
+            param,
+            f.arg1,
+            f.arg2,
+            f.argN,
+            f.output
+          )
+      ).map(res => fn.copy(parametric4Function2Ns = res))
 
   private def fuzzFunction2NWithFiveParameters(
       fn: CHFunctionFuzzResult
   )(using client: CHClient, ec: ExecutionContext): Future[CHFunctionFuzzResult] =
     logger.debug("fuzzFunction2NWithFiveParameters")
-    fuzzAddOneParameter(
-      fn.name,
-      fn.parametric4Function2Ns,
-      (f: Parametric4Function2N, param: CHFuzzableType) =>
-        CHFunctionIO.Parametric5Function2N(
-          f.paramArg1,
-          f.paramArg2,
-          f.paramArg3,
-          f.paramArg4,
-          param,
-          f.arg1,
-          f.arg2,
-          f.argN,
-          f.output
-        )
-    ).map(res => fn.copy(parametric5Function2Ns = res))
+    if fn.parametric4Function2Ns.isEmpty then Future.successful(fn)
+    else
+      fuzzAddOneParameter(
+        fn.name,
+        fn.parametric4Function2Ns,
+        (f: Parametric4Function2N, param: CHFuzzableType) =>
+          CHFunctionIO.Parametric5Function2N(
+            f.paramArg1,
+            f.paramArg2,
+            f.paramArg3,
+            f.paramArg4,
+            param,
+            f.arg1,
+            f.arg2,
+            f.argN,
+            f.output
+          )
+      ).map(res => fn.copy(parametric5Function2Ns = res))
 
   /**
     * Test all combination of parametric functions containing paramCount parameters and argCount arguments
@@ -509,8 +567,8 @@ object FuzzerParametricFunctions extends StrictLogging:
             crossJoin(
               buildFuzzingValuesArgs(paramTypes.map(_.fuzzingValues)),
               buildFuzzingValuesArgs(nonParamTypes.map(_.fuzzingValues))
-            ).map { case (paramArgs, nonParamArgs) => s"SELECT $fnName($paramArgs)($nonParamArgs)" },
-            client.execute
+            ).map { case (paramArgs, nonParamArgs) => s"SELECT toTypeName($fnName($paramArgs)($nonParamArgs))" },
+            client.executeNoResult
           ).map(_ => (paramTypes, nonParamTypes))
         },
         maxConcurrency = Settings.ClickHouse.maxSupportedConcurrency
@@ -549,7 +607,7 @@ object FuzzerParametricFunctions extends StrictLogging:
                 val queries = crossJoin(
                   buildFuzzingValuesArgs(paramAbstractTypes.map(_.fuzzingValues)),
                   buildFuzzingValuesArgs(nonParamTypes.map(_.fuzzingValues))
-                ).map { case (paramArgs, nonParamArgs) => s"SELECT $fnName($paramArgs)($nonParamArgs)" }
+                ).map { case (paramArgs, nonParamArgs) => s"SELECT toTypeName($fnName($paramArgs)($nonParamArgs))" }
 
                 (nonParamTypes, queries)
               }
@@ -566,7 +624,7 @@ object FuzzerParametricFunctions extends StrictLogging:
                 val queries = crossJoin(
                   buildFuzzingValuesArgs(paramTypes.map(_.fuzzingValues)),
                   buildFuzzingValuesArgs(nonParamAbstractTypes.map(_.fuzzingValues))
-                ).map { case (paramArgs, nonParamArgs) => s"SELECT $fnName($paramArgs)($nonParamArgs)" }
+                ).map { case (paramArgs, nonParamArgs) => s"SELECT toTypeName($fnName($paramArgs)($nonParamArgs))" }
 
                 (paramTypes, queries)
               }
@@ -577,9 +635,8 @@ object FuzzerParametricFunctions extends StrictLogging:
               executeInParallelOnlySuccess(
                 argumentsAndSqlQuery,
                 (nonParamTypes, queries) =>
-                  executeInSequenceOnlySuccess(queries, client.execute).map(resp =>
-                    (nonParamTypes, resp.map(_.meta.head.`type`).reduce(CHFuzzableType.merge))
-                  ),
+                  executeInSequenceOnlySuccess(queries, client.execute(_).map(_.data.head.head.asInstanceOf[String]))
+                    .map(outputTypes => (nonParamTypes, outputTypes.reduce(CHFuzzableType.merge))),
                 maxConcurrency = Settings.ClickHouse.maxSupportedConcurrency
               ).map(_.toMap)
 
@@ -587,7 +644,8 @@ object FuzzerParametricFunctions extends StrictLogging:
             validParameters: Seq[ParametricArguments] <-
               executeInParallelOnlySuccess(
                 parametersAndSqlQuery,
-                (paramTypes, queries) => executeInSequenceUntilSuccess(queries, client.execute).map(_ => paramTypes),
+                (paramTypes, queries) =>
+                  executeInSequenceUntilSuccess(queries, client.executeNoResult).map(_ => paramTypes),
                 maxConcurrency = Settings.ClickHouse.maxSupportedConcurrency
               )
           yield {
@@ -660,9 +718,9 @@ object FuzzerParametricFunctions extends StrictLogging:
 
     executeInSequenceUntilSuccess(
       crossJoin(fuzzingValuesParams, fuzzingValuesArgsV1 ++ fuzzingValuesArgsV2).map { case (params, args) =>
-        s"SELECT $fnName($params)($args)"
+        s"SELECT toTypeName($fnName($params)($args))"
       },
-      client.execute
+      client.executeNoResult
     ).map(_ => true).recover(_ => false)
 
   private def testAddOneParameter(
@@ -680,9 +738,9 @@ object FuzzerParametricFunctions extends StrictLogging:
 
         executeInSequenceUntilSuccess(
           crossJoin(fuzzingValuesParams, fuzzingValuesArgs).map { case (params, args) =>
-            s"SELECT $fnName($params)($args)"
+            s"SELECT toTypeName($fnName($params)($args))"
           },
-          client.execute
+          client.executeNoResult
         ).map(_ => additionalParamType)
       },
       maxConcurrency = Settings.ClickHouse.maxSupportedConcurrency

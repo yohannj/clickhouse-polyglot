@@ -38,8 +38,10 @@ object FuzzerSpecialFunctions extends StrictLogging:
     val exprs2: String = manyCHFuzzableTypes.reverse.map(_.fuzzingValues.head).mkString(",")
 
     client
-      .execute(s"SELECT ${fn.name}($exprs1), ${fn.name}($exprs2)")
+      .execute(s"SELECT toTypeName(${fn.name}($exprs1)), toTypeName(${fn.name}($exprs2))")
       .map { (resp: CHResponse) =>
-        fn.copy(specialFunction0Ns = Seq(CHFunctionIO.Function0N(CHAggregatedType.Any, resp.meta.head.`type`)))
+        fn.copy(specialFunction0Ns =
+          Seq(CHFunctionIO.Function0N(CHAggregatedType.Any, resp.data.head.head.asInstanceOf[String]))
+        )
       }
       .recover(_ => fn)
