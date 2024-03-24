@@ -1696,13 +1696,13 @@ object CHFuzzableType extends StrictLogging:
       case None =>
         val errMsg = s"Unable to determine CHFuzzableType for $name"
         logger.debug(errMsg)
-        throw new IllegalArgumentException(errMsg)
+        throw IllegalArgumentException(errMsg)
 
   def findByName(name: String): Option[CHFuzzableType] =
     CHFuzzableType.values.find(t => t.name.equals(name) || t.aliases.contains(name))
 
   def merge(type1: String, type2: String): String =
-    val exceptionIfUnknown = new IllegalArgumentException(s"Unable to determine higher type for $type1 and $type2")
+    val exceptionIfUnknown = IllegalArgumentException(s"Unable to determine higher type for $type1 and $type2")
     if type1 == type2 then type1 // Expects both type to be identical, should be the most obvious use case
     else
       val chFuzzableType1 = CHFuzzableType.getByName(type1)

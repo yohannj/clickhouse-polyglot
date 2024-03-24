@@ -28,7 +28,7 @@ import scala.util.Try
     yield {
       assume(Try { chVersion.toDouble }.isSuccess)
 
-      val pw = new PrintWriter(new File(s"res/functions_v${chVersion}.txt.part"))
+      val pw = PrintWriter(File(s"res/functions_v${chVersion}.txt.part"))
       val functionCount = functionNames.size
 
       val functionsFuzzResultsF: Future[Seq[CHFunctionFuzzResult]] =
@@ -86,7 +86,7 @@ def ensuringFuzzingValuesAreValid()(using client: CHClient, ec: ExecutionContext
       (CHFuzzableType.values.flatMap(_.fuzzingValues) ++ CHFuzzableAbstractType.values.flatMap(_.fuzzingValues))
         .map(v =>
           client
-            .executeNoResult(s"SELECT $v")
+            .executeNoResult(s"SELECT toTypeName($v)")
             .map(_ => None)
             .recover(err => Some(s"$v: ${err.getMessage}"))
         )

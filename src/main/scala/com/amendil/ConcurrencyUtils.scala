@@ -146,4 +146,4 @@ object ConcurrencyUtils:
   ): Future[Unit] =
     elements match
       case Seq(head, tail @ _*) => fn(head).map(_ => (): Unit).recoverWith(_ => executeInSequenceUntilSuccess(tail, fn))
-      case _                    => Future.failed(new Exception("Executed all elements, but none worked"))
+      case _                    => Future.failed(Exception("Executed all elements, but none worked"))

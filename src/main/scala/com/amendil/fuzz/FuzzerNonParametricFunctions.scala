@@ -57,7 +57,7 @@ object FuzzerNonParametricFunctions extends StrictLogging:
         ): T =
           io._1 match
             case Seq(arg1) => functionConstructor(arg1, io._2)
-            case _         => throw new Exception(s"Expected 1 argument, but found ${io._1.size} arguments")
+            case _         => throw Exception(s"Expected 1 argument, but found ${io._1.size} arguments")
 
         if fnHasInfiniteArgs then fn.copy(function0Ns = functions.map(toFn(_, CHFunctionIO.Function0N.apply)))
         else fn.copy(function1s = functions.map(toFn(_, CHFunctionIO.Function1.apply)))
@@ -81,7 +81,7 @@ object FuzzerNonParametricFunctions extends StrictLogging:
         ): T =
           io._1 match
             case Seq(arg1, arg2) => functionConstructor(arg1, arg2, io._2)
-            case _               => throw new Exception(s"Expected 2 argument, but found ${io._1.size} arguments")
+            case _               => throw Exception(s"Expected 2 argument, but found ${io._1.size} arguments")
 
         if fnHasInfiniteArgs then fn.copy(function1Ns = functions.map(toFn(_, CHFunctionIO.Function1N.apply)))
         else fn.copy(function2s = functions.map(toFn(_, CHFunctionIO.Function2.apply)))
@@ -106,7 +106,7 @@ object FuzzerNonParametricFunctions extends StrictLogging:
         ): T =
           io._1 match
             case Seq(arg1, arg2, arg3) => functionConstructor(arg1, arg2, arg3, io._2)
-            case _                     => throw new Exception(s"Expected 3 argument, but found ${io._1.size} arguments")
+            case _                     => throw Exception(s"Expected 3 argument, but found ${io._1.size} arguments")
 
         if fnHasInfiniteArgs then fn.copy(function2Ns = functions.map(toFn(_, CHFunctionIO.Function2N.apply)))
         else fn.copy(function3s = functions.map(toFn(_, CHFunctionIO.Function3.apply)))
@@ -133,7 +133,7 @@ object FuzzerNonParametricFunctions extends StrictLogging:
         ): T =
           io._1 match
             case Seq(arg1, arg2, arg3, arg4) => functionConstructor(arg1, arg2, arg3, arg4, io._2)
-            case _                           => throw new Exception(s"Expected 4 argument, but found ${io._1.size} arguments")
+            case _                           => throw Exception(s"Expected 4 argument, but found ${io._1.size} arguments")
 
         if fnHasInfiniteArgs then fn.copy(function3Ns = functions.map(toFn(_, CHFunctionIO.Function3N.apply)))
         else fn.copy(function4s = functions.map(toFn(_, CHFunctionIO.Function4.apply)))
@@ -143,7 +143,7 @@ object FuzzerNonParametricFunctions extends StrictLogging:
       fnName: String,
       argCount: Int
   )(using client: CHClient, ec: ExecutionContext): Future[Seq[(InputTypes, OutputType)]] =
-    for {
+    for
       // Build all combinations of fonction input having argCount arguments
       // Those combinations are described using AbstractTypes!
       // They are all used to query ClickHouse and we are retrieving here only the ones that succeeded.
@@ -184,7 +184,7 @@ object FuzzerNonParametricFunctions extends StrictLogging:
           ,
           maxConcurrency = Settings.ClickHouse.maxSupportedConcurrency
         )
-    } yield {
+    yield {
       res
     }
 

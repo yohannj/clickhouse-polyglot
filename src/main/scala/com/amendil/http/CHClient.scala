@@ -37,7 +37,7 @@ class CHClient(url: String)(using ec: ExecutionContext):
     execute(
       HttpRequest
         .newBuilder()
-        .uri(new URI(s"$url"))
+        .uri(URI(s"$url"))
         .POST(
           HttpRequest.BodyPublishers.ofString(
             // JSONCompact is an efficient format (small network footprint + quick to parse)
@@ -61,7 +61,7 @@ class CHClient(url: String)(using ec: ExecutionContext):
     executeNoResult(
       HttpRequest
         .newBuilder()
-        .uri(new URI(s"$url"))
+        .uri(URI(s"$url"))
         .POST(
           HttpRequest.BodyPublishers.ofString(
             s"$query SETTINGS ${CHClient.settings};"
@@ -80,7 +80,7 @@ class CHClient(url: String)(using ec: ExecutionContext):
           else
             // When there is an error, sometime it's because too many queries are being sent by ClickHouse.
             // As the query may be invalid, we must retry the call!
-            val message = new String(r.body().readAllBytes(), StandardCharsets.UTF_8)
+            val message = String(r.body().readAllBytes(), StandardCharsets.UTF_8)
             val shouldRetry = message.contains("Too many simultaneous queries.")
             shouldRetry
         },
@@ -92,8 +92,8 @@ class CHClient(url: String)(using ec: ExecutionContext):
         // ClickHouse's result format is based on the `FORMAT` clause in the query.
         Future.successful(jsonMapper.readValue(httpResponse.body(), classOf[CHResponse]))
       else
-        val message = new String(httpResponse.body().readAllBytes(), StandardCharsets.UTF_8)
-        Future.failed(new Exception(s"ClickHouse query failed: $message"))
+        val message = String(httpResponse.body().readAllBytes(), StandardCharsets.UTF_8)
+        Future.failed(Exception(s"ClickHouse query failed: $message"))
     }
 
   private def executeNoResult(req: HttpRequest, attempt: Int = 0, previousWaitTime: Long = 0L): Future[Unit] =
@@ -105,7 +105,7 @@ class CHClient(url: String)(using ec: ExecutionContext):
           else
             // When there is an error, sometime it's because too many queries are being sent by ClickHouse.
             // As the query may be invalid, we must retry the call!
-            val message = new String(r.body().readAllBytes(), StandardCharsets.UTF_8)
+            val message = String(r.body().readAllBytes(), StandardCharsets.UTF_8)
             val shouldRetry = message.contains("Too many simultaneous queries.")
             shouldRetry
         },
@@ -114,8 +114,8 @@ class CHClient(url: String)(using ec: ExecutionContext):
       .map { httpResponse =>
         if httpResponse.statusCode() == HttpURLConnection.HTTP_OK then (): Unit
         else
-          val message = new String(httpResponse.body().readAllBytes(), StandardCharsets.UTF_8)
-          throw new Exception(s"ClickHouse query failed: $message")
+          val message = String(httpResponse.body().readAllBytes(), StandardCharsets.UTF_8)
+          throw Exception(s"ClickHouse query failed: $message")
       }
 
 object CHClient:

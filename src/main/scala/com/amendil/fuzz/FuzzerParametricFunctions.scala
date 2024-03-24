@@ -93,7 +93,7 @@ object FuzzerParametricFunctions extends StrictLogging:
           io._1 match
             case (Seq(param1), Seq(arg1)) => parametricFunctionConstructor(param1, arg1, io._2)
             case _ =>
-              throw new Exception(
+              throw Exception(
                 s"Expected 1 parameter and 1 argument, but found ${io._1.parameters.size} parameters and ${io._1.arguments.size} arguments"
               )
 
@@ -122,7 +122,7 @@ object FuzzerParametricFunctions extends StrictLogging:
           io._1 match
             case (Seq(param1), Seq(arg1, arg2)) => parametricFunctionConstructor(param1, arg1, arg2, io._2)
             case _ =>
-              throw new Exception(
+              throw Exception(
                 s"Expected 1 parameter and 2 arguments, but found ${io._1.parameters.size} parameters and ${io._1.arguments.size} arguments"
               )
 
@@ -153,7 +153,7 @@ object FuzzerParametricFunctions extends StrictLogging:
           io._1 match
             case (Seq(param1), Seq(arg1, arg2, arg3)) => parametricFunctionConstructor(param1, arg1, arg2, arg3, io._2)
             case _ =>
-              throw new Exception(
+              throw Exception(
                 s"Expected 1 parameter and 3 arguments, but found ${io._1.parameters.size} parameters and ${io._1.arguments.size} arguments"
               )
 
@@ -567,7 +567,7 @@ object FuzzerParametricFunctions extends StrictLogging:
             crossJoin(
               buildFuzzingValuesArgs(paramTypes.map(_.fuzzingValues)),
               buildFuzzingValuesArgs(nonParamTypes.map(_.fuzzingValues))
-            ).map { case (paramArgs, nonParamArgs) => s"SELECT toTypeName($fnName($paramArgs)($nonParamArgs))" },
+            ).map { (paramArgs, nonParamArgs) => s"SELECT toTypeName($fnName($paramArgs)($nonParamArgs))" },
             client.executeNoResult
           ).map(_ => (paramTypes, nonParamTypes))
         },
@@ -603,11 +603,11 @@ object FuzzerParametricFunctions extends StrictLogging:
                 generateCHFuzzableTypeCombinations(input.arguments)
                   .map((input.parameters, _))
               }
-              .map { case (paramAbstractTypes, nonParamTypes) =>
+              .map { (paramAbstractTypes, nonParamTypes) =>
                 val queries = crossJoin(
                   buildFuzzingValuesArgs(paramAbstractTypes.map(_.fuzzingValues)),
                   buildFuzzingValuesArgs(nonParamTypes.map(_.fuzzingValues))
-                ).map { case (paramArgs, nonParamArgs) => s"SELECT toTypeName($fnName($paramArgs)($nonParamArgs))" }
+                ).map { (paramArgs, nonParamArgs) => s"SELECT toTypeName($fnName($paramArgs)($nonParamArgs))" }
 
                 (nonParamTypes, queries)
               }
@@ -620,11 +620,11 @@ object FuzzerParametricFunctions extends StrictLogging:
                 generateCHFuzzableTypeCombinations(input.parameters)
                   .map((_, input.arguments))
               }
-              .map { case (paramTypes, nonParamAbstractTypes) =>
+              .map { (paramTypes, nonParamAbstractTypes) =>
                 val queries = crossJoin(
                   buildFuzzingValuesArgs(paramTypes.map(_.fuzzingValues)),
                   buildFuzzingValuesArgs(nonParamAbstractTypes.map(_.fuzzingValues))
-                ).map { case (paramArgs, nonParamArgs) => s"SELECT toTypeName($fnName($paramArgs)($nonParamArgs))" }
+                ).map { (paramArgs, nonParamArgs) => s"SELECT toTypeName($fnName($paramArgs)($nonParamArgs))" }
 
                 (paramTypes, queries)
               }
@@ -717,7 +717,7 @@ object FuzzerParametricFunctions extends StrictLogging:
     val fuzzingValuesArgsV2 = buildFuzzingValuesArgs(arguments.map(_.fuzzingValues) ++ argNv2)
 
     executeInSequenceUntilSuccess(
-      crossJoin(fuzzingValuesParams, fuzzingValuesArgsV1 ++ fuzzingValuesArgsV2).map { case (params, args) =>
+      crossJoin(fuzzingValuesParams, fuzzingValuesArgsV1 ++ fuzzingValuesArgsV2).map { (params, args) =>
         s"SELECT toTypeName($fnName($params)($args))"
       },
       client.executeNoResult
@@ -737,7 +737,7 @@ object FuzzerParametricFunctions extends StrictLogging:
         val fuzzingValuesArgs = buildFuzzingValuesArgs(arguments.map(_.fuzzingValues))
 
         executeInSequenceUntilSuccess(
-          crossJoin(fuzzingValuesParams, fuzzingValuesArgs).map { case (params, args) =>
+          crossJoin(fuzzingValuesParams, fuzzingValuesArgs).map { (params, args) =>
             s"SELECT toTypeName($fnName($params)($args))"
           },
           client.executeNoResult
