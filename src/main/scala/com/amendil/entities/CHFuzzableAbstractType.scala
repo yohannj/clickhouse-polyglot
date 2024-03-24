@@ -502,10 +502,20 @@ enum CHFuzzableAbstractType(val fuzzingValues: Seq[String], val chFuzzableTypes:
       )
 
   // Special
+  case DateTimeUnit
+      extends CHFuzzableAbstractType(
+        Seq(CHFuzzableType.DateUnit.fuzzingValues.head, CHFuzzableType.TimeUnit.fuzzingValues.head),
+        Seq(CHFuzzableType.DateUnit, CHFuzzableType.TimeUnit)
+      )
   case SequencePattern
       extends CHFuzzableAbstractType(
         CHFuzzableType.SequencePattern.fuzzingValues,
         Seq(CHFuzzableType.SequencePattern)
+      )
+  case TimeZone
+      extends CHFuzzableAbstractType(
+        Seq(CHFuzzableType.TimeZone.fuzzingValues.head),
+        Seq(CHFuzzableType.TimeZone)
       )
   case WindowFunctionMode
       extends CHFuzzableAbstractType(

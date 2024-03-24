@@ -1677,10 +1677,25 @@ enum CHFuzzableType(
           "'Variant'"
         )
       )
+  case DateUnit
+      extends CHFuzzableType(
+        "DateUnit",
+        CHDateUnit.values.toSeq.map(_.values.head).map(name => s"'$name'")
+      )
   case SequencePattern
       extends CHFuzzableType(
         "SequencePattern",
         Seq("'(?1)'")
+      )
+  case TimeUnit
+      extends CHFuzzableType(
+        "TimeUnit",
+        CHTimeUnit.values.toSeq.map(_.values.head).map(name => s"'$name'")
+      )
+  case TimeZone
+      extends CHFuzzableType(
+        "TimeZone",
+        Seq(s"'${CHTimeZone.Asia_Istanbul.name}'") // Using the same timezone as when fuzzing DateTime
       )
   case WindowFunctionMode
       extends CHFuzzableType(
