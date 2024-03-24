@@ -15,4 +15,9 @@ object Settings {
     val maxSupportedConcurrency: Int = config.getInt("clickhouse.concurrency")
   }
 
+  object Fuzzer {
+    val supportLowCardinality: Boolean = config.getBoolean("fuzzer.support_lowcardinality")
+    val supportNullable: Boolean = config.getBoolean("fuzzer.support_nullable")
+  }
+
 }

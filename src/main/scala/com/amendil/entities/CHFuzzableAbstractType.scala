@@ -1,6 +1,13 @@
 package com.amendil.entities
 
-enum CHFuzzableAbstractType(val fuzzingValues: Seq[String], val chFuzzableTypes: Seq[CHFuzzableType]):
+import com.amendil.Settings
+
+enum CHFuzzableAbstractType(val fuzzingValues: Seq[String], _chFuzzableTypes: Seq[CHFuzzableType]):
+  val chFuzzableTypes = _chFuzzableTypes.filter { chType =>
+    (Settings.Fuzzer.supportLowCardinality || !chType.name.contains("LowCardinality")) &&
+    (Settings.Fuzzer.supportNullable || !chType.name.contains("Nullable"))
+  }
+
   // Numbers
   case Numbers
       extends CHFuzzableAbstractType(
