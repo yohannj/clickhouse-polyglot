@@ -2,11 +2,14 @@ package com.amendil.entities
 
 import com.amendil.Settings
 
-enum CHFuzzableAbstractType(val fuzzingValues: Seq[String], _chFuzzableTypes: Seq[CHFuzzableType]):
-  val chFuzzableTypes = _chFuzzableTypes.filter { chType =>
-    (Settings.Fuzzer.supportLowCardinality || !chType.name.contains("LowCardinality")) &&
-    (Settings.Fuzzer.supportNullable || !chType.name.contains("Nullable"))
+enum CHFuzzableAbstractType(_fuzzingValues: Seq[String], _chFuzzableTypes: Seq[CHFuzzableType]):
+  val chFuzzableTypes: Seq[CHFuzzableType] = _chFuzzableTypes.filter { chType =>
+    (Settings.Fuzzer.supportJson || !chType.name.toLowerCase().contains("json")) &&
+    (Settings.Fuzzer.supportLowCardinality || !chType.name.toLowerCase().contains("lowcardinality")) &&
+    (Settings.Fuzzer.supportNullable || !chType.name.toLowerCase().contains("nullable"))
   }
+
+  val fuzzingValues: Seq[String] = if chFuzzableTypes.nonEmpty then _fuzzingValues else Nil
 
   // Numbers
   case Numbers
@@ -180,8 +183,7 @@ enum CHFuzzableAbstractType(val fuzzingValues: Seq[String], _chFuzzableTypes: Se
         Seq(CHFuzzableType.IPv6.fuzzingValues.head),
         Seq(CHFuzzableType.IPv6, CHFuzzableType.NullableIPv6)
       )
-  // Json is an experimental and obsolete type
-  // case Json extends CHFuzzableAbstractType(Seq(CHFuzzableType.Json.fuzzingValues.head), Seq(CHFuzzableType.Json))
+  case Json extends CHFuzzableAbstractType(CHFuzzableType.Json.fuzzingValues.headOption.toSeq, Seq(CHFuzzableType.Json))
   // case Nothing extends CHFuzzableAbstractType(CHFuzzableType.NullableNothing.fuzzingValues, Seq(CHFuzzableType.NullableNothing))
   case String
       extends CHFuzzableAbstractType(
@@ -286,9 +288,11 @@ enum CHFuzzableAbstractType(val fuzzingValues: Seq[String], _chFuzzableTypes: Se
       extends CHFuzzableAbstractType(Seq(s"[${IPv4.fuzzingValues.head}]::Array(IPv4)"), Seq(CHFuzzableType.ArrayIPv4))
   case ArrayIPv6
       extends CHFuzzableAbstractType(Seq(s"[${IPv6.fuzzingValues.head}]::Array(IPv6)"), Seq(CHFuzzableType.ArrayIPv6))
-  // Json is an experimental and obsolete type
-  // case ArrayJson
-  //     extends CHFuzzableAbstractType(Seq(s"[${Json.fuzzingValues.head}]::Array(JSON)"), Seq(CHFuzzableType.ArrayJson))
+  case ArrayJson
+      extends CHFuzzableAbstractType(
+        CHFuzzableType.Json.fuzzingValues.headOption.map(v => s"[$v]::Array(JSON)").toSeq,
+        Seq(CHFuzzableType.ArrayJson)
+      )
   // case ArrayNothing extends CHFuzzableAbstractType(CHFuzzableType.ArrayNothing.fuzzingValues, Seq(CHFuzzableType.ArrayNothing))
   case ArrayString
       extends CHFuzzableAbstractType(
@@ -468,12 +472,11 @@ enum CHFuzzableAbstractType(val fuzzingValues: Seq[String], _chFuzzableTypes: Se
         Seq(s"tuple(${IPv6.fuzzingValues.head})::Tuple(IPv6)"),
         Seq(CHFuzzableType.Tuple1IPv6)
       )
-  // Json is an experimental and obsolete type
-  // case Tuple1Json
-  //     extends CHFuzzableAbstractType(
-  //       Seq(s"tuple(${Json.fuzzingValues.head})::Tuple(JSON)"),
-  //       Seq(CHFuzzableType.Tuple1Json)
-  //     )
+  case Tuple1Json
+      extends CHFuzzableAbstractType(
+        CHFuzzableType.Json.fuzzingValues.headOption.map(v => s"tuple($v)::Tuple(JSON)").toSeq,
+        Seq(CHFuzzableType.Tuple1Json)
+      )
   // case Tuple1Nothing extends CHFuzzableAbstractType(CHFuzzableType.Tuple1Nothing.fuzzingValues, Seq(CHFuzzableType.Tuple1Nothing))
   case Tuple1String
       extends CHFuzzableAbstractType(

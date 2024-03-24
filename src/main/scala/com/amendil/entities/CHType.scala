@@ -1,5 +1,6 @@
 package com.amendil.entities
 
+import com.amendil.Settings
 import com.typesafe.scalalogging.StrictLogging
 
 trait CHType { def name: String }
@@ -21,9 +22,15 @@ enum CHAggregatedType(val name: String) extends CHType:
 
 enum CHFuzzableType(
     val name: String,
-    val fuzzingValues: Seq[String],
+    _fuzzingValues: Seq[String],
     val aliases: Seq[String] = Nil
 ) extends CHType:
+  val fuzzingValues: Seq[String] =
+    if (Settings.Fuzzer.supportJson || !name.toLowerCase().contains("json")) &&
+      (Settings.Fuzzer.supportLowCardinality || !name.toLowerCase().contains("lowcardinality")) &&
+      (Settings.Fuzzer.supportNullable || !name.toLowerCase().contains("nullable"))
+    then _fuzzingValues
+    else Nil
 
   // Numbers
   case BooleanType
@@ -367,12 +374,11 @@ enum CHFuzzableType(
           "'116.106.34.242'::IPv6"
         )
       )
-  // Json is an experimental and obsolete type
-  // case Json
-  //     extends CHFuzzableType(
-  //       "JSON",
-  //       Seq("""'{"a": 1, "b": { "c": "foo", "d": [1, 2, 3] }, "c": null}'::JSON""")
-  //     )
+  case Json
+      extends CHFuzzableType(
+        "JSON",
+        Seq("""'{"a": 1, "b": { "c": "foo", "d": [1, 2, 3] }, "c": null}'::JSON""")
+      )
   case StringType
       extends CHFuzzableType(
         "String",
@@ -1163,14 +1169,13 @@ enum CHFuzzableType(
       )
   case ArrayIPv4 extends CHFuzzableType("Array(IPv4)", Seq(s"[${IPv4.fuzzingValues.mkString(", ")}]::Array(IPv4)"))
   case ArrayIPv6 extends CHFuzzableType("Array(IPv6)", Seq(s"[${IPv6.fuzzingValues.mkString(", ")}]::Array(IPv6)"))
-  // Json is an experimental and obsolete type
-  // case ArrayJson
-  //     extends CHFuzzableType(
-  //       "Array(JSON)",
-  //       Seq(
-  //         s"[${Json.fuzzingValues.mkString(", ")}]::Array(JSON)"
-  //       )
-  //     )
+  case ArrayJson
+      extends CHFuzzableType(
+        "Array(JSON)",
+        Seq(
+          s"[${Json.fuzzingValues.mkString(", ")}]::Array(JSON)"
+        )
+      )
   case ArrayString
       extends CHFuzzableType(
         "Array(String)",
@@ -1568,12 +1573,11 @@ enum CHFuzzableType(
       )
   case Tuple1IPv4 extends CHFuzzableType("Tuple(IPv4)", Seq(s"tuple(${IPv4.fuzzingValues.head})::Tuple(IPv4)"))
   case Tuple1IPv6 extends CHFuzzableType("Tuple(IPv6)", Seq(s"tuple(${IPv6.fuzzingValues.head})::Tuple(IPv6)"))
-  // Json is an experimental and obsolete type
-  // case Tuple1Json
-  //     extends CHFuzzableType(
-  //       "Tuple(JSON)",
-  //       Seq(s"tuple(${Json.fuzzingValues.head})::Tuple(JSON)")
-  //     )
+  case Tuple1Json
+      extends CHFuzzableType(
+        "Tuple(JSON)",
+        Json.fuzzingValues.headOption.map(v => s"tuple($v)::Tuple(JSON)").toSeq
+      )
   // case Tuple1Nothing extends CHFuzzableType("Tuple(Nullable(Nothing))", Seq("tuple(null)::Tuple(Nullable(Nothing))"))
   case Tuple1String
       extends CHFuzzableType(

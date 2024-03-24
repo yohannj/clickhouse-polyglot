@@ -16,6 +16,7 @@ object FuzzerParametricFunctions extends StrictLogging:
   // Remove some types that are obviously not parameters
   private val parametricAbstractType: Seq[CHFuzzableAbstractType] = CHFuzzableAbstractType.values.toSeq.filterNot {
     abstractType =>
+      abstractType.fuzzingValues.isEmpty ||
       abstractType.fuzzingValues.head.contains("::Array(") ||
       abstractType.fuzzingValues.head.contains("array(") ||
       abstractType.fuzzingValues.head.contains("::Map(") ||

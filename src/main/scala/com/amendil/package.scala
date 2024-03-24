@@ -1,20 +1,21 @@
 package com
 
 package object amendil:
-  val unknownFunctions: Seq[String] = Seq("DATE_DIFF")
+  val unknownFunctions: Seq[String] = Seq(
+    "DATE_TRUNC",
+    "FROM_BASE64",
+    "INET6_ATON",
+    "INET_ATON",
+    "IPv4StringToNum",
+    "IPv6StringToNum"
+  )
   val unknownFunctions2: Seq[String] = Seq(
-    "DATE_DIFF",
     "DATE_TRUNC",
     "FROM_BASE64",
     "INET6_ATON",
     "INET_ATON",
     "IPv4StringToNum",
     "IPv6StringToNum",
-    "JSONExtract",
-    "JSONExtractKeysAndValues",
-    "JSON_EXISTS",
-    "JSON_QUERY",
-    "JSON_VALUE",
     "MACNumToString",
     "REGEXP_EXTRACT",
     "SUBSTRING_INDEX",

@@ -25,6 +25,9 @@ import scala.util.Try
       chVersion <- getCHVersion()
       // functionNames <- getCHFunctions()
       functionNames <- Future.successful(unknownFunctions)
+      functionNamesToFuzz = functionNames.filter { functionName =>
+        Settings.Fuzzer.supportJson || !functionName.toLowerCase().contains("json")
+      }
     yield {
       assume(Try { chVersion.toDouble }.isSuccess)
 
