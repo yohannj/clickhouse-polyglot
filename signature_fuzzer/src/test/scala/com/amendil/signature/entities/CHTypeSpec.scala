@@ -1,0 +1,24 @@
+package com.amendil.signature.entities
+
+import com.amendil.common.entities._
+import org.scalatest.freespec.AnyFreeSpec
+import org.scalatest.matchers.should.Matchers
+
+class CHFuzzableTypeSpec extends AnyFreeSpec with Matchers {
+
+  "CHFuzzableAbstractType" - {
+    "should list all CHFuzzableType" in {
+      val actual = CHFuzzableAbstractType.values.flatMap(_.chFuzzableTypes)
+      val expected = CHFuzzableType.values
+
+      expected.toSet.diff(actual.toSet) shouldBe Set.empty
+    }
+
+    "should reference a CHFuzzableType only once" in {
+      val referencedCHFuzzableTypes = CHFuzzableAbstractType.values.flatMap(_.chFuzzableTypes)
+
+      val duplicates = referencedCHFuzzableTypes diff referencedCHFuzzableTypes.distinct
+      duplicates shouldBe Array.empty[CHFuzzableType]
+    }
+  }
+}
