@@ -22,6 +22,7 @@ enum CHSpecialType(val name: String) extends CHType:
 
 enum CHAggregatedType(val name: String) extends CHType:
   case Any extends CHAggregatedType("Any")
+  case Numbers extends CHAggregatedType("Numbers")
 
 enum CHFuzzableType(
     val name: String,

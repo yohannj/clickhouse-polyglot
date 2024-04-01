@@ -268,11 +268,10 @@ object Fuzzer extends StrictLogging:
           s"Function $fnName cannot be parameterized",
           s"Function $fnName is not parametric",
           s"Incorrect number of parameters for aggregate function $fnName, should be 0",
-          s"Parameters are not supported if executable user defined function is not direct",
-          s"The function '$fnName' can only be used as a window function, not as an aggregate function"
+          s"Parameters are not supported if executable user defined function is not direct"
         )
 
-        nonParametricErrorMessages.exists(err.getMessage().contains)
+        !nonParametricErrorMessages.exists(err.getMessage().contains)
       }
 
   private def generateCHFuzzableAbstractTypeCombinations(

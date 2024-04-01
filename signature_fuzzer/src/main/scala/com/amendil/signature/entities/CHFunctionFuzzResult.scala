@@ -77,35 +77,21 @@ final case class CHFunctionFuzzResult(
     specialParametric2Function3Ns: Seq[Parametric2Function3N]
 ) extends StrictLogging:
   logger.trace(s"CHFunctionFuzzResult - init constructor")
-  // Helps working with all those functions by providing a single variable
-  // And check inputs are unique
-  val functions =
-    function0Ns ++ function1Ns ++ function2Ns ++ function3Ns ++ function0Opt ++
-      function1s ++ function2s ++ function3s ++ function4s ++ function5s ++
-      lambdaFunction0NOpt ++ lambdaFunction1NOpt ++ parametric0NFunction0Ns ++
-      parametric0NFunction1Ns ++ parametric0NFunction2Ns ++ parametric0NFunction1s ++
-      parametric0NFunction2s ++ parametric0NFunction3s ++ parametric1NFunction0Ns ++
-      parametric1NFunction1Ns ++ parametric1NFunction2Ns ++ parametric1NFunction1s ++
-      parametric1NFunction2s ++ parametric1NFunction3s ++ parametric2NFunction0Ns ++
-      parametric2NFunction1Ns ++ parametric2NFunction2Ns ++ parametric2NFunction1s ++
-      parametric2NFunction2s ++ parametric2NFunction3s ++ parametric3NFunction0Ns ++
-      parametric3NFunction1Ns ++ parametric3NFunction2Ns ++ parametric3NFunction1s ++
-      parametric3NFunction2s ++ parametric3NFunction3s ++ parametric1Function0Ns ++
-      parametric1Function1Ns ++ parametric1Function2Ns ++ parametric1Function1s ++
-      parametric1Function2s ++ parametric1Function3s ++ parametric2Function0Ns ++
-      parametric2Function1Ns ++ parametric2Function2Ns ++ parametric2Function1s ++
-      parametric2Function2s ++ parametric2Function3s ++ parametric3Function0Ns ++
-      parametric3Function1Ns ++ parametric3Function2Ns ++ parametric3Function1s ++
-      parametric3Function2s ++ parametric3Function3s ++ parametric4Function0Ns ++
-      parametric4Function1Ns ++ parametric4Function2Ns ++ parametric4Function1s ++
-      parametric4Function2s ++ parametric4Function3s ++ specialFunction0Ns ++
-      specialParametric2Function2Ns ++ specialParametric2Function3Ns
+
+  private val functions =
+    // productIterator is an internal method in all "case class" to iterate over its constructor arguments
+    productIterator.toSeq
+      .collect {
+        case s: Seq[?] if s.nonEmpty && s.head.isInstanceOf[CHFunctionIO] => s
+        case Some(fn) if fn.isInstanceOf[CHFunctionIO]                    => Seq(fn)
+      }
+      .flatten
+      .asInstanceOf[Seq[CHFunctionIO]]
 
   require(
     functions.groupBy(f => (f.parameters, f.arguments)).values.filter(_.size != 1).isEmpty,
     s"Function $name has multiple time the same signature"
   )
-
   logger.trace(s"CHFunctionFuzzResult - require validated")
 
   val atLeastOneSignatureFound: Boolean = functions.nonEmpty

@@ -1,7 +1,6 @@
 package com.amendil.common.http
 
-import java.util.concurrent.{CompletableFuture, Executors, ScheduledExecutorService, TimeUnit}
-import scala.compat.java8.FutureConverters._
+import java.util.concurrent.{Executors, ScheduledExecutorService, TimeUnit}
 import scala.concurrent.{ExecutionContext, Future, Promise}
 import scala.util.Random
 
@@ -30,13 +29,13 @@ object Retry {
     * @return The result of asyncCall
     */
   private[http] def retryWithExponentialBackoff[T](
-      asyncCall: () => CompletableFuture[T],
+      asyncCall: () => Future[T],
       shouldRetry: T => Boolean,
       maxNumberOfAttempts: Int,
       attempt: Int = 0,
       previousWaitTimeMs: Long = 0L
   )(using ec: ExecutionContext): Future[T] =
-    toScala { asyncCall() }.flatMap { res =>
+    asyncCall().flatMap { res =>
       if shouldRetry(res) && attempt >= maxNumberOfAttempts then
         val waitTimeMs: Long = (Math.min(previousWaitTimeMs * 1.15, 59800) + random.nextInt(200)).toLong
         val p = Promise[T]()

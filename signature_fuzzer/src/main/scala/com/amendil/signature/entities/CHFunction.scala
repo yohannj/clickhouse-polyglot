@@ -31,10 +31,21 @@ object CHFunction:
 
   // TODO: Write tests
   def fromCHFunctionFuzzResult(fuzzResult: CHFunctionFuzzResult, platform: String): CHFunction =
+    val signatures =
+      // productIterator is an internal method in all "case class" to iterate over its constructor arguments
+      fuzzResult.productIterator.toSeq.flatMap {
+        case s: Seq[?] if s.nonEmpty => // Look for functions that we discovered
+          s.head match
+            case _: CHFunctionIO => Some(CHFunctionIO.aggregate(s.asInstanceOf[Seq[CHFunctionIO]]))
+            case _               => None // This argument is a Sequence but not of functions
+        case Some(fn) if fn.isInstanceOf[CHFunctionIO] => Some(Seq(fn.asInstanceOf[CHFunctionIO]))
+        case _                                         => None // This argument is not a Sequence of functions
+      }.flatten
+
     CHFunction(
       name = fuzzResult.name,
       supportedPlatforms = Seq(platform),
-      signatures = fuzzResult.functions,
+      signatures = signatures,
       modes = fuzzResult.modes.toSeq.sortWith(_.ordinal < _.ordinal),
       isExperimental = false // FIXME
     )

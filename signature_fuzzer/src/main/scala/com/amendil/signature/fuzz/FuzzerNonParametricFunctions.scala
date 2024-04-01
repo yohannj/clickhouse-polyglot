@@ -68,40 +68,14 @@ object FuzzerNonParametricFunctions extends StrictLogging:
     logger.debug("fuzzFunction1Or0N")
     if fn.isSpecialInfiniteFunction then Future.successful(fn)
     else
-      executeInSequenceOnlySuccess(
-        if fn.atLeastOneSignatureFound then
-          // We know whether the function requires/supports or not `OVER window` so we can bruteforce only one of the valid values
-          Seq(!fn.modes.contains(CHFunction.Mode.NoOverWindow))
-        else
-          // We don't yet know if the function requires/supports or not `OVER window` so we need to brute force them all
-          Seq(true, false)
-        ,
-        (fuzzOverWindow: Boolean) =>
-          for
-            functions: Seq[(InputTypes, OutputType)] <-
-              fuzzFiniteArgsFunctions(fn.name, argCount = 1, fuzzOverWindow)
-
-            fnHasInfiniteArgs: Boolean <-
-              if functions.isEmpty then Future.successful(false)
-              else testInfiniteArgsFunctions(fn.name, functions.head._1, fuzzOverWindow)
-          yield {
-            if fnHasInfiniteArgs then (fuzzOverWindow, functions.map(toFn(_, CHFunctionIO.Function0N.apply)), Nil)
-            else (fuzzOverWindow, Nil, functions.map(toFn(_, CHFunctionIO.Function1.apply)))
-          }
-      ).map(res =>
+      fuzzNonParametric(
+        fn,
+        argCount = 1,
+        (io: (InputTypes, OutputType)) => toFn(io, CHFunctionIO.Function1.apply),
+        (io: (InputTypes, OutputType)) => toFn(io, CHFunctionIO.Function0N.apply)
+      ).map((modes, fn1s, fn0Ns) =>
         logger.trace(s"fuzzFunction1Or0N - fuzz done")
-        if res.isEmpty then fn
-        else
-          val modes = res
-            .filter(r => r._2.nonEmpty || r._3.nonEmpty)
-            .map(_._1)
-            .map(if _ then CHFunction.Mode.OverWindow else CHFunction.Mode.NoOverWindow)
-
-          val (fn0Ns, fn1s) =
-            res.foldLeft(
-              (Seq.empty[CHFunctionIO.Function0N], Seq.empty[CHFunctionIO.Function1])
-            )((acc, r) => (acc._1 ++ r._2, acc._2 ++ r._3))
-          fn.copy(modes = fn.modes ++ modes, function0Ns = fn0Ns, function1s = fn1s)
+        fn.copy(modes = fn.modes ++ modes, function1s = fn1s, function0Ns = fn0Ns)
       )
 
   private def fuzzFunction2Or1N(
@@ -110,40 +84,14 @@ object FuzzerNonParametricFunctions extends StrictLogging:
     logger.debug("fuzzFunction2Or1N")
     if fn.isLambda || fn.isSpecialInfiniteFunction || fn.function0Ns.nonEmpty then Future.successful(fn)
     else
-      executeInSequenceOnlySuccess(
-        if fn.atLeastOneSignatureFound then
-          // We know whether the function requires/supports or not `OVER window` so we can bruteforce only one of the valid values
-          Seq(!fn.modes.contains(CHFunction.Mode.NoOverWindow))
-        else
-          // We don't yet know if the function requires/supports or not `OVER window` so we need to brute force them all
-          Seq(true, false)
-        ,
-        (fuzzOverWindow: Boolean) =>
-          for
-            functions: Seq[(InputTypes, OutputType)] <-
-              fuzzFiniteArgsFunctions(fn.name, argCount = 2, fuzzOverWindow)
-
-            fnHasInfiniteArgs: Boolean <-
-              if functions.isEmpty then Future.successful(false)
-              else testInfiniteArgsFunctions(fn.name, functions.head._1, fuzzOverWindow)
-          yield {
-            if fnHasInfiniteArgs then (fuzzOverWindow, functions.map(toFn(_, CHFunctionIO.Function1N.apply)), Nil)
-            else (fuzzOverWindow, Nil, functions.map(toFn(_, CHFunctionIO.Function2.apply)))
-          }
-      ).map(res =>
+      fuzzNonParametric(
+        fn,
+        argCount = 2,
+        (io: (InputTypes, OutputType)) => toFn(io, CHFunctionIO.Function2.apply),
+        (io: (InputTypes, OutputType)) => toFn(io, CHFunctionIO.Function1N.apply)
+      ).map((modes, fn2s, fn1Ns) =>
         logger.trace(s"fuzzFunction2Or1N - fuzz done")
-        if res.isEmpty then fn
-        else
-          val modes = res
-            .filter(r => r._2.nonEmpty || r._3.nonEmpty)
-            .map(_._1)
-            .map(if _ then CHFunction.Mode.OverWindow else CHFunction.Mode.NoOverWindow)
-
-          val (fn1Ns, fn2s) =
-            res.foldLeft(
-              (Seq.empty[CHFunctionIO.Function1N], Seq.empty[CHFunctionIO.Function2])
-            )((acc, r) => (acc._1 ++ r._2, acc._2 ++ r._3))
-          fn.copy(modes = fn.modes ++ modes, function1Ns = fn1Ns, function2s = fn2s)
+        fn.copy(modes = fn.modes ++ modes, function2s = fn2s, function1Ns = fn1Ns)
       )
 
   private def fuzzFunction3Or2N(
@@ -154,40 +102,14 @@ object FuzzerNonParametricFunctions extends StrictLogging:
       (fn.function1s.filterNot(_.arg1.name.startsWith("Tuple")).nonEmpty && fn.function2s.isEmpty)
     then Future.successful(fn)
     else
-      executeInSequenceOnlySuccess(
-        if fn.atLeastOneSignatureFound then
-          // We know whether the function requires/supports or not `OVER window` so we can bruteforce only one of the valid values
-          Seq(!fn.modes.contains(CHFunction.Mode.NoOverWindow))
-        else
-          // We don't yet know if the function requires/supports or not `OVER window` so we need to brute force them all
-          Seq(true, false)
-        ,
-        (fuzzOverWindow: Boolean) =>
-          for
-            functions: Seq[(InputTypes, OutputType)] <-
-              fuzzFiniteArgsFunctions(fn.name, argCount = 3, fuzzOverWindow)
-
-            fnHasInfiniteArgs: Boolean <-
-              if functions.isEmpty then Future.successful(false)
-              else testInfiniteArgsFunctions(fn.name, functions.head._1, fuzzOverWindow)
-          yield {
-            if fnHasInfiniteArgs then (fuzzOverWindow, functions.map(toFn(_, CHFunctionIO.Function2N.apply)), Nil)
-            else (fuzzOverWindow, Nil, functions.map(toFn(_, CHFunctionIO.Function3.apply)))
-          }
-      ).map(res =>
+      fuzzNonParametric(
+        fn,
+        argCount = 3,
+        (io: (InputTypes, OutputType)) => toFn(io, CHFunctionIO.Function3.apply),
+        (io: (InputTypes, OutputType)) => toFn(io, CHFunctionIO.Function2N.apply)
+      ).map((modes, fn3s, fn2Ns) =>
         logger.trace(s"fuzzFunction3Or2N - fuzz done")
-        if res.isEmpty then fn
-        else
-          val modes = res
-            .filter(r => r._2.nonEmpty || r._3.nonEmpty)
-            .map(_._1)
-            .map(if _ then CHFunction.Mode.OverWindow else CHFunction.Mode.NoOverWindow)
-
-          val (fn2Ns, fn3s) =
-            res.foldLeft(
-              (Seq.empty[CHFunctionIO.Function2N], Seq.empty[CHFunctionIO.Function3])
-            )((acc, r) => (acc._1 ++ r._2, acc._2 ++ r._3))
-          fn.copy(modes = fn.modes ++ modes, function2Ns = fn2Ns, function3s = fn3s)
+        fn.copy(modes = fn.modes ++ modes, function3s = fn3s, function2Ns = fn2Ns)
       )
 
   private def fuzzFunction4Or3N(
@@ -200,41 +122,80 @@ object FuzzerNonParametricFunctions extends StrictLogging:
         .nonEmpty && fn.function3s.isEmpty)
     then Future.successful(fn)
     else
-      executeInSequenceOnlySuccess(
-        if fn.atLeastOneSignatureFound then
-          // We know whether the function requires/supports or not `OVER window` so we can bruteforce only one of the valid values
-          Seq(!fn.modes.contains(CHFunction.Mode.NoOverWindow))
-        else
-          // We don't yet know if the function requires/supports or not `OVER window` so we need to brute force them all
-          Seq(true, false)
-        ,
-        (fuzzOverWindow: Boolean) =>
-          for
-            functions: Seq[(InputTypes, OutputType)] <-
-              fuzzFiniteArgsFunctions(fn.name, argCount = 4, fuzzOverWindow)
-
-            fnHasInfiniteArgs: Boolean <-
-              if functions.isEmpty then Future.successful(false)
-              else testInfiniteArgsFunctions(fn.name, functions.head._1, fuzzOverWindow)
-          yield {
-            if fnHasInfiniteArgs then (fuzzOverWindow, functions.map(toFn(_, CHFunctionIO.Function3N.apply)), Nil)
-            else (fuzzOverWindow, Nil, functions.map(toFn(_, CHFunctionIO.Function4.apply)))
-          }
-      ).map(res =>
+      fuzzNonParametric(
+        fn,
+        argCount = 4,
+        (io: (InputTypes, OutputType)) => toFn(io, CHFunctionIO.Function4.apply),
+        (io: (InputTypes, OutputType)) => toFn(io, CHFunctionIO.Function3N.apply)
+      ).map((modes, fn4s, fn3Ns) =>
         logger.trace(s"fuzzFunction4Or3N - fuzz done")
-        if res.isEmpty then fn
-        else
-          val modes = res
-            .filter(r => r._2.nonEmpty || r._3.nonEmpty)
-            .map(_._1)
-            .map(if _ then CHFunction.Mode.OverWindow else CHFunction.Mode.NoOverWindow)
-
-          val (fn3Ns, fn4s) =
-            res.foldLeft(
-              (Seq.empty[CHFunctionIO.Function3N], Seq.empty[CHFunctionIO.Function4])
-            )((acc, r) => (acc._1 ++ r._2, acc._2 ++ r._3))
-          fn.copy(modes = fn.modes ++ modes, function3Ns = fn3Ns, function4s = fn4s)
+        fn.copy(modes = fn.modes ++ modes, function4s = fn4s, function3Ns = fn3Ns)
       )
+
+  private def fuzzNonParametric[U1 <: CHFunctionIO, U2 <: CHFunctionIO](
+      fn: CHFunctionFuzzResult,
+      argCount: Int,
+      fnConstructorFiniteArgs: ((InputTypes, OutputType)) => U1,
+      fnConstructorInfiniteArgs: ((InputTypes, OutputType)) => U2
+  )(using client: CHClient, ec: ExecutionContext): Future[(Seq[CHFunction.Mode], Seq[U1], Seq[U2])] =
+    if fn.atLeastOneSignatureFound then
+      // We know whether the function requires/supports or not `OVER window` so we can bruteforce only one of the valid values
+      fuzzNonParametricSingleMode(
+        fn.name,
+        argCount,
+        fuzzOverWindow = !fn.modes.contains(CHFunction.Mode.NoOverWindow),
+        fnConstructorFiniteArgs,
+        fnConstructorInfiniteArgs
+      ).map((finiteFn, infiniteFn) => (Nil, finiteFn, infiniteFn))
+    else
+      // We don't yet know if the function requires/supports or not `OVER window` so we need to brute force them all
+      // First check without OVER window
+      fuzzNonParametricSingleMode(
+        fn.name,
+        argCount,
+        fuzzOverWindow = false,
+        fnConstructorFiniteArgs,
+        fnConstructorInfiniteArgs
+      ).flatMap((finiteFn, infiniteFn) =>
+        // Success without OVER window, let's try a sample function with OVER window
+        val sampleFn = finiteFn.headOption.orElse(infiniteFn.headOption).get
+
+        val queries =
+          buildFuzzingValuesArgs(sampleFn.arguments.asInstanceOf[Seq[CHFuzzableType]].map(_.fuzzingValues))
+            .map(args => query(fn.name, args, fuzzOverWindow = true))
+
+        executeInParallelUntilSuccess(queries, client.executeNoResult, Settings.ClickHouse.maxSupportedConcurrency)
+          .map(_ => (Seq(CHFunction.Mode.OverWindow, CHFunction.Mode.NoOverWindow), finiteFn, infiniteFn))
+          .recover(_ => (Seq(CHFunction.Mode.NoOverWindow), finiteFn, infiniteFn))
+      ).recoverWith(_ =>
+        // Failure without OVER window, fuzz with OVER window
+        fuzzNonParametricSingleMode(
+          fn.name,
+          argCount,
+          fuzzOverWindow = true,
+          fnConstructorFiniteArgs,
+          fnConstructorInfiniteArgs
+        ).map((finiteFn, infiniteFn) => (Seq(CHFunction.Mode.OverWindow), finiteFn, infiniteFn))
+          .recover(_ => (Nil, Nil, Nil)) // Nothing worked
+      )
+
+  private def fuzzNonParametricSingleMode[U1 <: CHFunctionIO, U2 <: CHFunctionIO](
+      fnName: String,
+      argCount: Int,
+      fuzzOverWindow: Boolean,
+      fnConstructorFiniteArgs: ((InputTypes, OutputType)) => U1,
+      fnConstructorInfiniteArgs: ((InputTypes, OutputType)) => U2
+  )(using client: CHClient, ec: ExecutionContext): Future[(Seq[U1], Seq[U2])] =
+    for
+      functions: Seq[(InputTypes, OutputType)] <- fuzzFiniteArgsFunctions(fnName, argCount, fuzzOverWindow)
+
+      fnHasInfiniteArgs: Boolean <-
+        if functions.isEmpty then Future.successful(false)
+        else testInfiniteArgsFunctions(fnName, functions.head._1, fuzzOverWindow)
+    yield {
+      if fnHasInfiniteArgs then (Nil, functions.map(fnConstructorInfiniteArgs))
+      else (functions.map(fnConstructorFiniteArgs), Nil)
+    }
 
   private def fuzzFiniteArgsFunctions(
       fnName: String,

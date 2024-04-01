@@ -4,13 +4,13 @@ import com.amendil.common.entities.CHResponse
 import com.fasterxml.jackson.databind.json.JsonMapper
 import com.fasterxml.jackson.module.scala.DefaultScalaModule
 
-import java.io.InputStream
 import java.net.{HttpURLConnection, URI}
 import java.net.http.{HttpClient, HttpRequest, HttpResponse}
 import java.net.http.HttpClient.Version
 import java.net.http.HttpResponse.BodyHandlers
 import java.nio.charset.StandardCharsets
 import java.time.Duration
+import scala.compat.java8.FutureConverters._
 import scala.concurrent.{ExecutionContext, Future}
 
 class CHClient(url: String)(using ec: ExecutionContext):
@@ -34,7 +34,7 @@ class CHClient(url: String)(using ec: ExecutionContext):
     * @return A Future containing the result of the query.
     */
   def execute(query: String): Future[CHResponse] =
-    execute(
+    executeAndParseJson(
       HttpRequest
         .newBuilder()
         .uri(URI(s"$url"))
@@ -71,52 +71,37 @@ class CHClient(url: String)(using ec: ExecutionContext):
         .build()
     )
 
-  private def execute(req: HttpRequest, attempt: Int = 0, previousWaitTime: Long = 0L): Future[CHResponse] =
-    val clickHouseHttpResponseF: Future[HttpResponse[InputStream]] =
-      Retry.retryWithExponentialBackoff(
-        () => client.sendAsync(req, BodyHandlers.ofInputStream()),
-        shouldRetry = r => {
-          if r.statusCode() == HttpURLConnection.HTTP_OK then false
-          else
-            // When there is an error, sometime it's because too many queries are being sent by ClickHouse.
-            // As the query may be invalid, we must retry the call!
-            val message = String(r.body().readAllBytes(), StandardCharsets.UTF_8)
-            val shouldRetry = message.contains("Too many simultaneous queries.")
-            shouldRetry
-        },
-        maxNumberOfAttempts = Int.MaxValue // Never stops querying ClickHouse, we need 100% accuracy
-      )
-
-    clickHouseHttpResponseF.flatMap { (httpResponse: HttpResponse[InputStream]) =>
-      if httpResponse.statusCode() == HttpURLConnection.HTTP_OK then
-        // ClickHouse's result format is based on the `FORMAT` clause in the query.
-        Future.successful(jsonMapper.readValue(httpResponse.body(), classOf[CHResponse]))
-      else
-        val message = String(httpResponse.body().readAllBytes(), StandardCharsets.UTF_8)
-        Future.failed(Exception(s"ClickHouse query failed: $message"))
+  private def executeAndParseJson(req: HttpRequest): Future[CHResponse] =
+    execute(req).flatMap { (statusCode: Int, body: String) =>
+      if statusCode == HttpURLConnection.HTTP_OK then Future.successful(jsonMapper.readValue(body, classOf[CHResponse]))
+      else Future.failed(Exception(s"ClickHouse query failed: $body"))
     }
 
-  private def executeNoResult(req: HttpRequest, attempt: Int = 0, previousWaitTime: Long = 0L): Future[Unit] =
-    Retry
-      .retryWithExponentialBackoff(
-        () => client.sendAsync(req, BodyHandlers.ofInputStream()),
-        shouldRetry = r => {
-          if r.statusCode() == HttpURLConnection.HTTP_OK then false
-          else
-            // When there is an error, sometime it's because too many queries are being sent by ClickHouse.
-            // As the query may be invalid, we must retry the call!
-            val message = String(r.body().readAllBytes(), StandardCharsets.UTF_8)
-            val shouldRetry = message.contains("Too many simultaneous queries.")
-            shouldRetry
+  private def executeNoResult(req: HttpRequest): Future[Unit] =
+    execute(req).map { (statusCode: Int, body: String) =>
+      if statusCode == HttpURLConnection.HTTP_OK then (): Unit
+      else throw Exception(s"ClickHouse query failed: $body")
+    }
+
+  /**
+    * @return A tuple containing the HTTP Status code and the body as a String
+    */
+  private def execute(req: HttpRequest): Future[(Int, String)] =
+    Retry.retryWithExponentialBackoff(
+      () =>
+        toScala { client.sendAsync(req, BodyHandlers.ofInputStream()) }.map { r =>
+          (r.statusCode(), String(r.body().readAllBytes(), StandardCharsets.UTF_8))
         },
-        maxNumberOfAttempts = Int.MaxValue // Never stops querying ClickHouse, we need 100% accuracy
-      )
-      .map { httpResponse =>
-        if httpResponse.statusCode() == HttpURLConnection.HTTP_OK then (): Unit
+      shouldRetry = (statusCode: Int, body: String) => {
+        if statusCode == HttpURLConnection.HTTP_OK then false
         else
-          val message = String(httpResponse.body().readAllBytes(), StandardCharsets.UTF_8)
-          throw Exception(s"ClickHouse query failed: $message")
-      }
+          // When there is an error, sometime it's because too many queries are being sent by ClickHouse.
+          // As the query may be invalid, we must retry the call!
+          val shouldRetry = body.contains("Too many simultaneous queries.")
+          shouldRetry
+      },
+      maxNumberOfAttempts = Int.MaxValue // Never stops querying ClickHouse, we need 100% accuracy
+    )
 
 object CHClient:
   private val settings: String = Seq(

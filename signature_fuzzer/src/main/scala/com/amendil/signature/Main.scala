@@ -58,6 +58,7 @@ import scala.util.Try
                     if !fuzzResult.atLeastOneSignatureFound then
                       logger.error(s"No signatures found for method $functionName")
                     pw.write(s"${CHFunction.fromCHFunctionFuzzResult(fuzzResult, "x64").asString()}\n")
+                    pw.flush()
                     fuzzResult
                   }
               else Future.successful(CHFunctionFuzzResult(name = functionName))

@@ -2,19 +2,9 @@ package com.amendil
 
 package object signature:
   val unknownFunctions: Seq[String] = Seq(
-    "exponentialTimeDecayedAvg",
-    "extractAllGroups",
-    "extractAllGroupsHorizontal",
-    "extractAllGroupsVertical",
-    "extractGroups"
+    "extractAllGroups"
   )
   val unknownFunctions3: Seq[String] = Seq(
-    "divideDecimal",
-    "evalMLMethod",
-    "exponentialTimeDecayedAvg",
-    "exponentialTimeDecayedCount",
-    "exponentialTimeDecayedMax",
-    "exponentialTimeDecayedSum",
     "extractAllGroups",
     "extractAllGroupsHorizontal",
     "extractAllGroupsVertical",
@@ -203,12 +193,6 @@ package object signature:
     "dictGetUUIDOrDefault",
     "dictHas",
     "dictIsIn",
-    "divideDecimal",
-    "evalMLMethod",
-    "exponentialTimeDecayedAvg",
-    "exponentialTimeDecayedCount",
-    "exponentialTimeDecayedMax",
-    "exponentialTimeDecayedSum",
     "extractAllGroups",
     "extractAllGroupsHorizontal",
     "extractAllGroupsVertical",

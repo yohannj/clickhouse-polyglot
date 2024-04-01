@@ -97,7 +97,7 @@ object ConcurrencyUtils:
 
   /**
     * Executes all calls in parallel until receiving a Future.Success
-    * This is done by calling one function and recoverWith to call the next one.
+    * This is done by calling one function followed by recoverWith to call the next one.
     *
     * @return A Future.Success if one call worked, Future.Failure otherwise
     */
@@ -169,7 +169,7 @@ object ConcurrencyUtils:
 
   /**
     * Executes all calls sequentially until receiving a Future.Success
-    * This is done by calling one function and recoverWith to call the next one.
+    * This is done by calling one function followed by recoverWith to call the next one.
     *
     * @return A Future.Success if one call worked, Future.Failure otherwise
     */

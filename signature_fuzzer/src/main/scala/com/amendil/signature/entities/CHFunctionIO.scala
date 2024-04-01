@@ -29,6 +29,10 @@ sealed trait CHParametricNFunctionIO extends CHFunctionIO:
   override def hasInfiniteArgument: Boolean = true
 
 object CHFunctionIO:
+
+  def aggregate[T <: CHFunctionIO](functions: Seq[CHFunctionIO]): Seq[CHFunctionIO] =
+    functions
+
   case class Function0N(argN: CHType, output: String) extends CHFunctionNIO:
     val kind = "function0N"
     override val arguments = Seq(argN)
