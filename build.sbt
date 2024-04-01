@@ -14,6 +14,7 @@ lazy val common = project
     libraryDependencies ++= Seq(
       dependencies.scalaLogging,
       dependencies.logbackClassic,
+      dependencies.config,
       dependencies.jacksonModuleScala,
       dependencies.scalaJava8Compact
     )
@@ -21,7 +22,7 @@ lazy val common = project
 
 lazy val signature_fuzzer = project
   .settings(
-    name := "fuzz",
+    name := "signature_fuzzer",
     version := "0.1.0-SNAPSHOT",
     commonSettings,
     libraryDependencies ++= Seq(

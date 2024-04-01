@@ -1,5 +1,6 @@
 package com.amendil.common
 
+import java.util.concurrent.atomic.AtomicBoolean
 import scala.collection.mutable.ListBuffer
 import scala.concurrent.{ExecutionContext, Future}
 
@@ -95,6 +96,37 @@ object ConcurrencyUtils:
     Future.sequence(futures).map(_.flatten)
 
   /**
+    * Executes all calls in parallel until receiving a Future.Success
+    * This is done by calling one function and recoverWith to call the next one.
+    *
+    * @return A Future.Success if one call worked, Future.Failure otherwise
+    */
+  def executeInParallelUntilSuccess[T](elements: Seq[T], fn: (T) => Future[?], maxConcurrency: Int)(
+      using ec: ExecutionContext
+  ): Future[Unit] =
+    val partitionSize =
+      if elements.size == 0 || maxConcurrency < 1 then 1
+      else Math.ceil(elements.size.toFloat / maxConcurrency).toInt
+
+    val status = AtomicBoolean(false)
+    val futures = elements
+      .grouped(partitionSize)
+      .toSeq
+      .map { (subElements: Seq[T]) =>
+        executeInSequenceUntilSuccess(
+          subElements,
+          el =>
+            if status.get then Future.successful((): Unit)
+            else fn(el).map(_ => status.set(true))
+        ).map(_ => (): Unit).recover(_ => (): Unit)
+      }
+
+    Future.sequence(futures).map { _ =>
+      if status.get then (): Unit
+      else throw Exception("Executed all elements, but none worked")
+    }
+
+  /**
     * Executes all calls sequentially.
     * This is done by call one function and flatMap to call the next one.
     *
@@ -137,11 +169,11 @@ object ConcurrencyUtils:
 
   /**
     * Executes all calls sequentially until receiving a Future.Success
-    * This is done by call one function and recoverWith to call the next one.
+    * This is done by calling one function and recoverWith to call the next one.
     *
-    * @return A Future.Success containing true if we found a successful call, false otherwise
+    * @return A Future.Success if one call worked, Future.Failure otherwise
     */
-  def executeInSequenceUntilSuccess[T](elements: Seq[T], fn: (T) => Future[_])(
+  def executeInSequenceUntilSuccess[T](elements: Seq[T], fn: (T) => Future[?])(
       using ec: ExecutionContext
   ): Future[Unit] =
     elements match

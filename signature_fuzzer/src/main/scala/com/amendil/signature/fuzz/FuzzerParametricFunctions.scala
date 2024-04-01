@@ -45,7 +45,7 @@ object FuzzerParametricFunctions extends StrictLogging:
     Seq(
       (fuzzFunction1Or0NWith1Or0NParameter, paramCount * argCount),
       (fuzzFunction2Or1NWith1Or0NParameter, paramCount * argCount * argCount),
-      (fuzzFunction3Or2NWith1Or0NParameter, paramCount * argCount * argCount * argCount),
+      // XXX (fuzzFunction3Or2NWith1Or0NParameter, paramCount * argCount * argCount * argCount),
       // Functions below MUST happen after the "With1Or0NParameter", they are then very easy to compute
       (fuzzFunction1With2Or1NParameters, paramCount * argCount + 1),
       (fuzzFunction0NWith2Or1NParameters, paramCount * argCount + 1),
@@ -73,42 +73,28 @@ object FuzzerParametricFunctions extends StrictLogging:
       fn: CHFunctionFuzzResult
   )(using client: CHClient, ec: ExecutionContext): Future[CHFunctionFuzzResult] =
     logger.debug("fuzzFunction1Or0NWith1Or0NParameter")
-    if fn.isLambda || fn.isNonParametric || fn.isSpecialInfiniteFunction then Future.successful(fn)
-    else
-      for
-        functions: Seq[(ParametricFunctionInput, OutputType)] <-
-          fuzzParametricFunction(fn.name, paramCount = 1, argCount = 1)
-        fnHasInfiniteParams: Boolean <-
-          if functions.isEmpty then Future.successful(true) else testInfiniteParamsFunctions(fn.name, functions.head._1)
-        fnHasInfiniteArgs: Boolean <-
-          if functions.isEmpty then Future.successful(true) else testInfiniteArgsFunctions(fn.name, functions.head._1)
-      yield {
-        def toFn[T <: CHFunctionIO](
-            io: (ParametricFunctionInput, OutputType),
-            parametricFunctionConstructor: (CHFuzzableType, CHFuzzableType, String) => T
-        ): T =
-          io._1 match
-            case (Seq(param1), Seq(arg1)) => parametricFunctionConstructor(param1, arg1, io._2)
-            case _ =>
-              throw Exception(
-                s"Expected 1 parameter and 1 argument, but found ${io._1.parameters.size} parameters and ${io._1.arguments.size} arguments"
-              )
-
-        if fnHasInfiniteParams && fnHasInfiniteArgs then
-          fn.copy(parametric0NFunction0Ns = functions.map(toFn(_, CHFunctionIO.Parametric0NFunction0N.apply)))
-        else if fnHasInfiniteParams && !fnHasInfiniteArgs then
-          fn.copy(parametric0NFunction1s = functions.map(toFn(_, CHFunctionIO.Parametric0NFunction1.apply)))
-        else if !fnHasInfiniteParams && fnHasInfiniteArgs then
-          fn.copy(parametric1Function0Ns = functions.map(toFn(_, CHFunctionIO.Parametric1Function0N.apply)))
-        else fn.copy(parametric1Function1s = functions.map(toFn(_, CHFunctionIO.Parametric1Function1.apply)))
-      }
+    for
+      functions: Seq[(ParametricFunctionInput, OutputType)] <-
+        fuzzParametricFunction(fn.name, paramCount = 1, argCount = 1)
+      fnHasInfiniteParams: Boolean <-
+        if functions.isEmpty then Future.successful(true) else testInfiniteParamsFunctions(fn.name, functions.head._1)
+      fnHasInfiniteArgs: Boolean <-
+        if functions.isEmpty then Future.successful(true) else testInfiniteArgsFunctions(fn.name, functions.head._1)
+    yield {
+      if fnHasInfiniteParams && fnHasInfiniteArgs then
+        fn.copy(parametric0NFunction0Ns = functions.map(toFn(_, CHFunctionIO.Parametric0NFunction0N.apply)))
+      else if fnHasInfiniteParams && !fnHasInfiniteArgs then
+        fn.copy(parametric0NFunction1s = functions.map(toFn(_, CHFunctionIO.Parametric0NFunction1.apply)))
+      else if !fnHasInfiniteParams && fnHasInfiniteArgs then
+        fn.copy(parametric1Function0Ns = functions.map(toFn(_, CHFunctionIO.Parametric1Function0N.apply)))
+      else fn.copy(parametric1Function1s = functions.map(toFn(_, CHFunctionIO.Parametric1Function1.apply)))
+    }
 
   private def fuzzFunction2Or1NWith1Or0NParameter(
       fn: CHFunctionFuzzResult
   )(using client: CHClient, ec: ExecutionContext): Future[CHFunctionFuzzResult] =
     logger.debug("fuzzFunction2Or1NWith1Or0NParameter")
-    if fn.isLambda || fn.isNonParametric || fn.isSpecialInfiniteFunction ||
-      fn.parametric0NFunction0Ns.nonEmpty || fn.parametric1Function0Ns.nonEmpty
+    if fn.parametric0NFunction0Ns.nonEmpty || fn.parametric1Function0Ns.nonEmpty
     then Future.successful(fn)
     else
       for
@@ -119,17 +105,6 @@ object FuzzerParametricFunctions extends StrictLogging:
         fnHasInfiniteArgs: Boolean <-
           if functions.isEmpty then Future.successful(true) else testInfiniteArgsFunctions(fn.name, functions.head._1)
       yield {
-        def toFn[T <: CHFunctionIO](
-            io: (ParametricFunctionInput, OutputType),
-            parametricFunctionConstructor: (CHFuzzableType, CHFuzzableType, CHFuzzableType, String) => T
-        ): T =
-          io._1 match
-            case (Seq(param1), Seq(arg1, arg2)) => parametricFunctionConstructor(param1, arg1, arg2, io._2)
-            case _ =>
-              throw Exception(
-                s"Expected 1 parameter and 2 arguments, but found ${io._1.parameters.size} parameters and ${io._1.arguments.size} arguments"
-              )
-
         if fnHasInfiniteParams && fnHasInfiniteArgs then
           fn.copy(parametric0NFunction1Ns = functions.map(toFn(_, CHFunctionIO.Parametric0NFunction1N.apply)))
         else if fnHasInfiniteParams && !fnHasInfiniteArgs then
@@ -143,8 +118,7 @@ object FuzzerParametricFunctions extends StrictLogging:
       fn: CHFunctionFuzzResult
   )(using client: CHClient, ec: ExecutionContext): Future[CHFunctionFuzzResult] =
     logger.debug("fuzzFunction3Or2NWith1Or0NParameter")
-    if fn.isLambda || fn.isNonParametric || fn.isSpecialInfiniteFunction ||
-      fn.parametric0NFunction0Ns.nonEmpty || fn.parametric1Function0Ns.nonEmpty ||
+    if fn.parametric0NFunction0Ns.nonEmpty || fn.parametric1Function0Ns.nonEmpty ||
       fn.parametric0NFunction1Ns.nonEmpty || fn.parametric1Function1Ns.nonEmpty || (
         (fn.parametric0NFunction1s.filterNot(_.arg1.name.startsWith("Tuple")).nonEmpty ||
           fn.parametric1Function1s
@@ -161,17 +135,6 @@ object FuzzerParametricFunctions extends StrictLogging:
         fnHasInfiniteArgs: Boolean <-
           if functions.isEmpty then Future.successful(true) else testInfiniteArgsFunctions(fn.name, functions.head._1)
       yield {
-        def toFn[T <: CHFunctionIO](
-            io: (ParametricFunctionInput, OutputType),
-            parametricFunctionConstructor: (CHFuzzableType, CHFuzzableType, CHFuzzableType, CHFuzzableType, String) => T
-        ): T =
-          io._1 match
-            case (Seq(param1), Seq(arg1, arg2, arg3)) => parametricFunctionConstructor(param1, arg1, arg2, arg3, io._2)
-            case _ =>
-              throw Exception(
-                s"Expected 1 parameter and 3 arguments, but found ${io._1.parameters.size} parameters and ${io._1.arguments.size} arguments"
-              )
-
         if fnHasInfiniteParams && fnHasInfiniteArgs then
           fn.copy(parametric0NFunction2Ns = functions.map(toFn(_, CHFunctionIO.Parametric0NFunction2N.apply)))
         else if fnHasInfiniteParams && !fnHasInfiniteArgs then
@@ -774,6 +737,39 @@ object FuzzerParametricFunctions extends StrictLogging:
           sampleInput
         ).map { isInfiniteParamsFunction => (validAdditionalParameters, isInfiniteParamsFunction) }
     }
+
+  private def toFn[T <: CHFunctionIO](
+      io: (ParametricFunctionInput, OutputType),
+      parametricFunctionConstructor: (CHFuzzableType, CHFuzzableType, String) => T
+  ): T =
+    io._1 match
+      case (Seq(param1), Seq(arg1)) => parametricFunctionConstructor(param1, arg1, io._2)
+      case _ =>
+        throw Exception(
+          s"Expected 1 parameter and 1 argument, but found ${io._1.parameters.size} parameters and ${io._1.arguments.size} arguments"
+        )
+
+  private def toFn[T <: CHFunctionIO](
+      io: (ParametricFunctionInput, OutputType),
+      parametricFunctionConstructor: (CHFuzzableType, CHFuzzableType, CHFuzzableType, String) => T
+  ): T =
+    io._1 match
+      case (Seq(param1), Seq(arg1, arg2)) => parametricFunctionConstructor(param1, arg1, arg2, io._2)
+      case _ =>
+        throw Exception(
+          s"Expected 1 parameter and 2 arguments, but found ${io._1.parameters.size} parameters and ${io._1.arguments.size} arguments"
+        )
+
+  private def toFn[T <: CHFunctionIO](
+      io: (ParametricFunctionInput, OutputType),
+      parametricFunctionConstructor: (CHFuzzableType, CHFuzzableType, CHFuzzableType, CHFuzzableType, String) => T
+  ): T =
+    io._1 match
+      case (Seq(param1), Seq(arg1, arg2, arg3)) => parametricFunctionConstructor(param1, arg1, arg2, arg3, io._2)
+      case _ =>
+        throw Exception(
+          s"Expected 1 parameter and 3 arguments, but found ${io._1.parameters.size} parameters and ${io._1.arguments.size} arguments"
+        )
 
   private type ParametricArguments = Seq[CHFuzzableType]
   private type NonParametricArguments = Seq[CHFuzzableType]

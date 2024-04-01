@@ -1,5 +1,6 @@
 package com.amendil.common.entities
 
+import com.amendil.common.Settings
 import com.typesafe.scalalogging.StrictLogging
 
 trait CHType { def name: String }
@@ -8,6 +9,9 @@ enum CHSpecialType(val name: String) extends CHType:
   case Array(innerType: CHType) extends CHSpecialType(s"Array(${innerType.name})")
   case GenericType(typeName: String) extends CHSpecialType(typeName)
   case LambdaNType(outputType: String) extends CHSpecialType(s"LambdaN($outputType)")
+
+  case CatboostParameter
+      extends CHSpecialType("CatboostParameter") // UIntX, IntX, Float32, Float64, Date, Date32, DateTime
 
   case SequenceBaseFirstMatch extends CHSpecialType("SequenceBaseFirstMatch") // "'first_match'"
   case SequenceBaseHead extends CHSpecialType("SequenceBaseHead") // "'head'"
@@ -29,7 +33,7 @@ enum CHFuzzableType(
   case BooleanType
       extends CHFuzzableType(
         "Boolean",
-        Seq("0::UInt8", "1::UInt8"),
+        Seq("false::Bool", "true::Bool"),
         aliases = Seq("Bool")
       )
   case Int8
@@ -175,6 +179,7 @@ enum CHFuzzableType(
           "Decimal(39, 38)",
           "Decimal(40, 0)",
           "Decimal(76, 0)",
+          "Decimal(76, 1)",
           "Decimal(76, 9)",
           "Decimal(76, 18)",
           "Decimal(76, 38)",
@@ -354,8 +359,22 @@ enum CHFuzzableType(
   case FixedString
       extends CHFuzzableType(
         "FixedString",
-        Seq("'azertyuiop'::FixedString(10)", "''::FixedString(1)"),
-        aliases = Seq("FixedString(1)", "FixedString(10)", "FixedString(255)", "FixedString(65535)")
+        Seq(
+          "'azertyuiop'::FixedString(10)",
+          "''::FixedString(1)",
+          "'01GNB2S2FGN2P93QPXDNB4EN2A'::FixedString(26)",
+          "'a/<@];!~p{jTj={)'::FixedString(16)"
+        ),
+        aliases = Seq(
+          "FixedString(1)",
+          "FixedString(6)",
+          "FixedString(10)",
+          "FixedString(16)",
+          "FixedString(26)",
+          "FixedString(32)",
+          "FixedString(255)",
+          "FixedString(65535)"
+        )
       )
   case IPv4 extends CHFuzzableType("IPv4", Seq("'116.106.34.242'::IPv4"))
   case IPv6
@@ -375,7 +394,14 @@ enum CHFuzzableType(
   case StringType
       extends CHFuzzableType(
         "String",
-        Seq("'foo'::String", "''::String", "'127.0.0.1'::String")
+        Seq(
+          "'foo'::String",
+          "''::String",
+          "'127.0.0.1'::String",
+          "'01GNB2S2FGN2P93QPXDNB4EN2A'",
+          "'public_suffix_list'",
+          s"'${Settings.Type.catboostPath}'"
+        )
       )
   case UUID
       extends CHFuzzableType(
@@ -484,6 +510,7 @@ enum CHFuzzableType(
         aliases = Seq(
           "LowCardinality(FixedString(1))",
           "LowCardinality(FixedString(10))",
+          "LowCardinality(FixedString(16))",
           "LowCardinality(FixedString(255))",
           "LowCardinality(FixedString(65535))"
         )
@@ -595,6 +622,7 @@ enum CHFuzzableType(
         aliases = Seq(
           "LowCardinality(Nullable(FixedString(1)))",
           "LowCardinality(Nullable(FixedString(10)))",
+          "LowCardinality(Nullable(FixedString(16)))",
           "LowCardinality(Nullable(FixedString(255)))",
           "LowCardinality(Nullable(FixedString(65535)))"
         )
@@ -856,6 +884,7 @@ enum CHFuzzableType(
         aliases = Seq(
           "Nullable(FixedString(1))",
           "Nullable(FixedString(10))",
+          "Nullable(FixedString(16))",
           "Nullable(FixedString(255))",
           "Nullable(FixedString(65535))"
         )
@@ -1151,11 +1180,14 @@ enum CHFuzzableType(
       extends CHFuzzableType(
         "Array(FixedString)",
         Seq(
-          s"[${FixedString.fuzzingValues.mkString(", ")}]::Array(FixedString(10))"
+          s"[${FixedString.fuzzingValues.mkString(", ")}]::Array(FixedString(32))"
         ),
         aliases = Seq(
           "Array(FixedString(1))",
           "Array(FixedString(10))",
+          "Array(FixedString(16))",
+          "Array(FixedString(26))",
+          "Array(FixedString(32))",
           "Array(FixedString(255))",
           "Array(FixedString(65535))"
         )
@@ -1344,8 +1376,13 @@ enum CHFuzzableType(
   case MapFixedStringInt8
       extends CHFuzzableType(
         "Map(FixedString, Int8)",
-        FixedString.fuzzingValues.map { fuzzingValue => s"map($fuzzingValue, 1)::Map(FixedString(10), Int8)" },
-        aliases = Seq("Map(FixedString(10), Int8)")
+        FixedString.fuzzingValues.map { fuzzingValue => s"map($fuzzingValue, 1)::Map(FixedString(32), Int8)" },
+        aliases = Seq(
+          "Map(FixedString(10), Int8)",
+          "Map(FixedString(16), Int8)",
+          "Map(FixedString(26), Int8)",
+          "Map(FixedString(32), Int8)"
+        )
       )
   case MapIPv4Int8
       extends CHFuzzableType(
@@ -1606,83 +1643,35 @@ enum CHFuzzableType(
       )
 
   // Special
+  case Charset
+      extends CHFuzzableType(
+        "Charset",
+        Seq(s"'${CHCharset.UTF_8.name}'", s"'${CHCharset.US_ASCII.name}'")
+      )
   case ClickHouseType
       extends CHFuzzableType(
         "ClickHouseType",
-        // XXX Should be a conf?! => Built using `SELECT name FROM system.data_type_families WHERE empty(alias_to) ORDER BY name FORMAT TSV`
-        // XXX How to handle parameterized types?
-        Seq(
-          "'AggregateFunction'",
-          "'Array'",
-          "'Bool'",
-          "'Date'",
-          "'Date32'",
-          "'DateTime'",
-          "'DateTime32'",
-          "'DateTime64'",
-          "'Decimal'",
-          "'Decimal128'",
-          "'Decimal256'",
-          "'Decimal32'",
-          "'Decimal64'",
-          "'Enum'",
-          "'Enum16'",
-          "'Enum8'",
-          "'FixedString'",
-          "'Float32'",
-          "'Float64'",
-          "'IPv4'",
-          "'IPv6'",
-          "'Int128'",
-          "'Int16'",
-          "'Int256'",
-          "'Int32'",
-          "'Int64'",
-          "'Int8'",
-          "'IntervalDay'",
-          "'IntervalHour'",
-          "'IntervalMicrosecond'",
-          "'IntervalMillisecond'",
-          "'IntervalMinute'",
-          "'IntervalMonth'",
-          "'IntervalNanosecond'",
-          "'IntervalQuarter'",
-          "'IntervalSecond'",
-          "'IntervalWeek'",
-          "'IntervalYear'",
-          "'JSON'",
-          "'LowCardinality'",
-          "'Map'",
-          "'MultiPolygon'",
-          "'Nested'",
-          "'Nothing'",
-          "'Nullable'",
-          "'Object'",
-          "'Point'",
-          "'Polygon'",
-          "'Ring'",
-          "'SimpleAggregateFunction'",
-          "'String'",
-          "'Tuple'",
-          "'UInt128'",
-          "'UInt16'",
-          "'UInt256'",
-          "'UInt32'",
-          "'UInt64'",
-          "'UInt8'",
-          "'UUID'",
-          "'Variant'"
-        )
+        CHBaseType.values.toSeq.map(baseType => s"'${baseType.name}'")
       )
   case DateUnit
       extends CHFuzzableType(
         "DateUnit",
         CHDateUnit.values.toSeq.map(_.values.head).map(name => s"'$name'")
       )
+  case EncryptionMode
+      extends CHFuzzableType(
+        "EncryptionMode",
+        CHEncryptionMode.values.toSeq.map(mode => s"'${mode.name}'")
+      )
   case SequencePattern
       extends CHFuzzableType(
         "SequencePattern",
         Seq("'(?1)'")
+      )
+  case Time64Unit
+      extends CHFuzzableType(
+        "Time64Unit",
+        CHTime64Unit.values.toSeq.map(_.values.head).map(name => s"'$name'")
       )
   case TimeUnit
       extends CHFuzzableType(

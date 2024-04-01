@@ -2,7 +2,6 @@ package com.amendil.common.entities
 
 // FIXME This list can change between ClickHouse version.
 // It'd be great to retrieve it from ClickHouse on startup and use its values for fuzzing.
-// Commenting most of them to improve performance compilation
 /**
   * Timezones advertised using `SELECT * FROM system.time_zones`
   */

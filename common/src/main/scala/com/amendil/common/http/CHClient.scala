@@ -120,10 +120,11 @@ class CHClient(url: String)(using ec: ExecutionContext):
 
 object CHClient:
   private val settings: String = Seq(
-    "allow_suspicious_low_cardinality_types=1",
+    "allow_experimental_funnel_functions=1",
     "allow_experimental_object_type=1",
     "allow_experimental_nlp_functions=1",
-    "allow_experimental_funnel_functions=1",
-    "log_queries=0",
-    "decimal_check_overflow=0"
+    "allow_introspection_functions=1",
+    "allow_suspicious_low_cardinality_types=1",
+    "decimal_check_overflow=0",
+    "log_queries=0"
   ).mkString(", ")

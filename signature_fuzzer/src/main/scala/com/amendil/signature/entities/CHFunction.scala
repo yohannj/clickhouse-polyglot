@@ -6,6 +6,7 @@ final case class CHFunction(
     name: String,
     supportedPlatforms: Seq[String],
     signatures: Seq[CHFunctionIO],
+    modes: Seq[CHFunction.Mode],
     isExperimental: Boolean
 ):
   def asString(): String =
@@ -21,6 +22,7 @@ final case class CHFunction(
       s"""|$name
           |${indent}Supported platforms: ${supportedPlatforms.sorted.mkString(", ")}
           |${indent}Is experimental: ${if isExperimental then "Yes" else "No"}
+          |${indent}Modes: ${modes.mkString(", ")}
           |${indent}Signatures:
           |$signaturesStr""".stripMargin
 
@@ -33,5 +35,11 @@ object CHFunction:
       name = fuzzResult.name,
       supportedPlatforms = Seq(platform),
       signatures = fuzzResult.functions,
+      modes = fuzzResult.modes.toSeq.sortWith(_.ordinal < _.ordinal),
       isExperimental = false // FIXME
     )
+
+  enum Mode {
+    case NoOverWindow extends Mode
+    case OverWindow extends Mode
+  }

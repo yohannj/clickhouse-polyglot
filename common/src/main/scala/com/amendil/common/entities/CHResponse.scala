@@ -2,7 +2,7 @@ package com.amendil.common.entities
 
 final case class CHResponse(
     meta: Seq[CHMetaElement],
-    data: Seq[Seq[_]],
+    data: Seq[Seq[?]],
     rows: Int,
     statistics: CHResponseStatistics
 )

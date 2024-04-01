@@ -1270,7 +1270,7 @@
         <ttl>event_date + INTERVAL 30 DAY</ttl>
     </blob_storage_log>
 
-    <!-- <top_level_domains_path>/var/lib/clickhouse/top_level_domains/</top_level_domains_path> -->
+    <top_level_domains_path>/var/lib/clickhouse/top_level_domains/</top_level_domains_path>
     <!-- Custom TLD lists.
          Format: <name>/path/to/file</name>
 
@@ -1278,9 +1278,7 @@
          Path to the list is under top_level_domains_path (see above).
     -->
     <top_level_domains_lists>
-        <!--
-        <public_suffix_list>/path/to/public_suffix_list.dat</public_suffix_list>
-        -->
+        <public_suffix_list>public_suffix_list.dat</public_suffix_list>
     </top_level_domains_lists>
 
     <!-- Configuration of external dictionaries. See:
@@ -1580,6 +1578,7 @@
     <!-- <shutdown_wait_unfinished_queries>false</shutdown_wait_unfinished_queries> -->
 
     <!-- ADDED SETTINGS FOR CLICKHOUSE-FUZZER -->
+    <catboost_lib_path>/etc/clickhouse-server/model/catboost.so</catboost_lib_path>
     <lemmatizers>
         <lemmatizer>
             <lang>en</lang>

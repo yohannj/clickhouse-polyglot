@@ -1,3 +1,5 @@
 running_clickhouse/host/ch24_2/var/lib/clickhouse/preprocessed_configs/*
 running_clickhouse/host/ch24_2/var/lib/clickhouse/status
 running_clickhouse/host/ch24_2/var/log/clickhouse-server/*
+**/libcatboostmodel.so
+**/application.conf

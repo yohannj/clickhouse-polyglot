@@ -64,6 +64,11 @@ object CHFunctionIO:
     val kind = "function4"
     override val arguments = Seq(arg1, arg2, arg3, arg4)
 
+  case class Function5(arg1: CHType, arg2: CHType, arg3: CHType, arg4: CHType, arg5: CHType, output: String)
+      extends CHFunctionIO:
+    val kind = "function5"
+    override val arguments = Seq(arg1, arg2, arg3, arg4, arg5)
+
   case class LambdaFunction0N(lambdaArg: CHSpecialType.LambdaNType, argN: CHType, output: String) extends CHFunctionNIO:
     val kind = "lambdaFunction0N"
     override val arguments = Seq(lambdaArg, argN)

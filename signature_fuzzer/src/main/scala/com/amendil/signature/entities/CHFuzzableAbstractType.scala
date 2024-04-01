@@ -15,7 +15,7 @@ enum CHFuzzableAbstractType(_fuzzingValues: Seq[String], _chFuzzableTypes: Seq[C
   // Numbers
   case Numbers
       extends CHFuzzableAbstractType(
-        Seq("1", "1::UInt64"),
+        Seq("1", "1::UInt64", "true", "-999999999::Decimal32(0)"),
         Seq(
           CHFuzzableType.BooleanType,
           CHFuzzableType.Int8,
@@ -91,7 +91,7 @@ enum CHFuzzableAbstractType(_fuzzingValues: Seq[String], _chFuzzableTypes: Seq[C
   // Date
   case Date
       extends CHFuzzableAbstractType(
-        Seq("'1970-01-02'::Date"),
+        Seq("'1970-01-02'::Date", "'1900-01-01'::Date32"),
         Seq(
           CHFuzzableType.Date,
           CHFuzzableType.Date32,
@@ -105,7 +105,7 @@ enum CHFuzzableAbstractType(_fuzzingValues: Seq[String], _chFuzzableTypes: Seq[C
       )
   case DateTime
       extends CHFuzzableAbstractType(
-        Seq("'1970-01-02 00:00:00'::DateTime"),
+        Seq("'1970-01-02 00:00:00'::DateTime", "'1900-01-01 00:00:00'::DateTime64(0, 'Asia/Istanbul')"),
         Seq(
           CHFuzzableType.DateTime,
           CHFuzzableType.DateTime64,
@@ -131,19 +131,25 @@ enum CHFuzzableAbstractType(_fuzzingValues: Seq[String], _chFuzzableTypes: Seq[C
           CHFuzzableType.NullableIntervalYear
         )
       )
-  case IntervalDateTime
+  case IntervalDateTime64
       extends CHFuzzableAbstractType(
         Seq(CHFuzzableType.IntervalNanosecond.fuzzingValues.head),
         Seq(
           CHFuzzableType.IntervalNanosecond,
           CHFuzzableType.IntervalMicrosecond,
           CHFuzzableType.IntervalMillisecond,
+          CHFuzzableType.NullableIntervalNanosecond,
+          CHFuzzableType.NullableIntervalMicrosecond,
+          CHFuzzableType.NullableIntervalMillisecond
+        )
+      )
+  case IntervalDateTime
+      extends CHFuzzableAbstractType(
+        Seq(CHFuzzableType.IntervalSecond.fuzzingValues.head),
+        Seq(
           CHFuzzableType.IntervalSecond,
           CHFuzzableType.IntervalMinute,
           CHFuzzableType.IntervalHour,
-          CHFuzzableType.NullableIntervalNanosecond,
-          CHFuzzableType.NullableIntervalMicrosecond,
-          CHFuzzableType.NullableIntervalMillisecond,
           CHFuzzableType.NullableIntervalSecond,
           CHFuzzableType.NullableIntervalMinute,
           CHFuzzableType.NullableIntervalHour
@@ -188,7 +194,7 @@ enum CHFuzzableAbstractType(_fuzzingValues: Seq[String], _chFuzzableTypes: Seq[C
   // case Nothing extends CHFuzzableAbstractType(CHFuzzableType.NullableNothing.fuzzingValues, Seq(CHFuzzableType.NullableNothing))
   case String
       extends CHFuzzableAbstractType(
-        CHFuzzableType.StringType.fuzzingValues,
+        CHFuzzableType.StringType.fuzzingValues :+ "'a/<@];!~p{jTj={)'::FixedString(16)",
         Seq(
           CHFuzzableType.StringType,
           CHFuzzableType.FixedString,
@@ -513,10 +519,24 @@ enum CHFuzzableAbstractType(_fuzzingValues: Seq[String], _chFuzzableTypes: Seq[C
       )
 
   // Special
+  case Charset
+      extends CHFuzzableAbstractType(
+        CHFuzzableType.Charset.fuzzingValues,
+        Seq(CHFuzzableType.Charset)
+      )
+  case ClickHouseType
+      extends CHFuzzableAbstractType(
+        CHFuzzableType.ClickHouseType.fuzzingValues,
+        Seq(CHFuzzableType.ClickHouseType)
+      )
   case DateTimeUnit
       extends CHFuzzableAbstractType(
-        Seq(CHFuzzableType.DateUnit.fuzzingValues.head, CHFuzzableType.TimeUnit.fuzzingValues.head),
-        Seq(CHFuzzableType.DateUnit, CHFuzzableType.TimeUnit)
+        Seq(
+          CHFuzzableType.DateUnit.fuzzingValues.head,
+          CHFuzzableType.TimeUnit.fuzzingValues.head,
+          CHFuzzableType.Time64Unit.fuzzingValues.head
+        ),
+        Seq(CHFuzzableType.DateUnit, CHFuzzableType.TimeUnit, CHFuzzableType.Time64Unit)
       )
   case SequencePattern
       extends CHFuzzableAbstractType(

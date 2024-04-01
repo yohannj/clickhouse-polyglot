@@ -5,156 +5,50 @@ import com.amendil.common.entities._
 import com.amendil.common.entities.CHFuzzableType._
 import com.amendil.common.http.CHClient
 import com.amendil.signature.entities._
+import com.typesafe.scalalogging.StrictLogging
 
 import scala.concurrent.{ExecutionContext, Future}
 
-object Fuzzer:
+object Fuzzer extends StrictLogging:
 
-  // TODO It would be nice to test the hardcoded functions somehow
   def fuzz(functionName: String)(using client: CHClient, ec: ExecutionContext): Future[CHFunctionFuzzResult] =
+    val fn = CHFunctionFuzzResult(functionName)
     functionName match
-      case "CAST" | "_CAST" | "accurateCast" | "accurateCastOrNull" =>
-        // Cast methods can return any kind of type, depending on the value of a String.
-        // This is an edge case not automatically handled by this fuzzer, and it is not worth it to handle it.
-        Future.successful(
-          CHFunctionFuzzResult(
-            name = functionName,
-            function2s = Seq(CHFunctionIO.Function2(CHAggregatedType.Any, CHFuzzableType.ClickHouseType, "Any"))
-          )
-        )
-      case "accurateCastOrDefault" =>
-        // Cast methods can return any kind of type, depending on the value of a String.
-        // This is an edge case not automatically handled by this fuzzer, and it is not worth it to handle it.
-        Future.successful(
-          CHFunctionFuzzResult(
-            name = functionName,
-            function2s = Seq(CHFunctionIO.Function2(CHAggregatedType.Any, CHFuzzableType.ClickHouseType, "Any")),
-            // FIXME Third argument of the Function3 is not really "Any", but should be of the ClickHouseType chosen
-            function3s = Seq(
-              CHFunctionIO.Function3(CHAggregatedType.Any, CHFuzzableType.ClickHouseType, CHAggregatedType.Any, "Any")
-            )
-          )
-        )
-      case "sequenceNextNode" =>
-        // This method has many parameters and arguments. It's not worth to fuzz it.
-        import CHFuzzableType._
-        import CHSpecialType._
-
-        // format: off
-        Future.successful(
-          CHFunctionFuzzResult(
-            name = functionName,
-            specialParametric2Function2Ns =
-              for
-                (direction, base) <- 
-                  Seq(
-                    (SequenceDirectionForward, SequenceBaseHead),
-                    (SequenceDirectionBackward, SequenceBaseTail)
-                  )
-
-                timestamp <-
-                  Seq(
-                    BooleanType, UInt8, UInt16, UInt32, UInt64, Date, DateTime, LowCardinalityBoolean,
-                    LowCardinalityUInt8, LowCardinalityUInt16, LowCardinalityUInt32, LowCardinalityUInt64,
-                    LowCardinalityDate, LowCardinalityDateTime, LowCardinalityNullableBoolean, LowCardinalityNullableUInt8,
-                    LowCardinalityNullableUInt16, LowCardinalityNullableUInt32, LowCardinalityNullableUInt64,
-                    LowCardinalityNullableDate, LowCardinalityNullableDateTime, NullableBoolean, NullableUInt8,
-                    NullableUInt16, NullableUInt32, NullableUInt64, NullableDate, NullableDateTime
-                  )
-
-              yield {
-                CHFunctionIO.Parametric2Function2N(direction, base, timestamp, StringType, BooleanType, "Nullable(String)")
-              },
-            specialParametric2Function3Ns =
-              for
-                (direction, base) <- 
-                  Seq(
-                    (SequenceDirectionForward, SequenceBaseFirstMatch),
-                    (SequenceDirectionForward, SequenceBaseLastMatch),
-                    (SequenceDirectionBackward, SequenceBaseFirstMatch),
-                    (SequenceDirectionBackward, SequenceBaseLastMatch)
-                  )
-
-                timestamp <-
-                  Seq(
-                    BooleanType, UInt8, UInt16, UInt32, UInt64, Date, DateTime, LowCardinalityBoolean,
-                    LowCardinalityUInt8, LowCardinalityUInt16, LowCardinalityUInt32, LowCardinalityUInt64,
-                    LowCardinalityDate, LowCardinalityDateTime, LowCardinalityNullableBoolean, LowCardinalityNullableUInt8,
-                    LowCardinalityNullableUInt16, LowCardinalityNullableUInt32, LowCardinalityNullableUInt64,
-                    LowCardinalityNullableDate, LowCardinalityNullableDateTime, NullableBoolean, NullableUInt8,
-                    NullableUInt16, NullableUInt32, NullableUInt64, NullableDate, NullableDateTime
-                  )
-
-              yield {
-                CHFunctionIO.Parametric2Function3N(direction, base, timestamp, StringType, BooleanType, BooleanType, "Nullable(String)")
-              }
-          )
-        )
-        // format: on
+      case "evalMLMethod" =>
+        // To be handled at a later time
+        // It requires a new type as the first argument must be the result of a "-State" combinator
+        // https://clickhouse.com/docs/en/sql-reference/aggregate-functions/reference/stochasticlinearregression
+        Future.successful(fn)
+      case "__getScalar" =>
+        // Internal function
+        Future.successful(fn)
       case _ =>
-        val fuzzingFunctionsWithCost: Seq[(CHFunctionFuzzResult => Future[CHFunctionFuzzResult], Long)] =
-          FuzzerSpecialFunctions.fuzzingFunctionWithCost ++
-            FuzzerLambdaFunctions.fuzzingFunctionWithCost ++
-            FuzzerNonParametricFunctions.fuzzingFunctionWithCost ++
-            FuzzerParametricFunctions.fuzzingFunctionWithCost
+        FuzzerHardcodedFunctions.fuzz(fn).flatMap { res =>
+          if res.atLeastOneSignatureFound then Future.successful(res)
+          else
+            for
+              isParametric <- checkIsParametric(fn.name)
+              fuzzingFunctionsWithCost: Seq[(CHFunctionFuzzResult => Future[CHFunctionFuzzResult], Long)] =
+                if isParametric then FuzzerParametricFunctions.fuzzingFunctionWithCost
+                else
+                  FuzzerSpecialFunctions.fuzzingFunctionWithCost ++
+                    FuzzerLambdaFunctions.fuzzingFunctionWithCost ++
+                    FuzzerNonParametricFunctions.fuzzingFunctionWithCost
 
-        val sortedFuzzingFunctions = fuzzingFunctionsWithCost.sortBy(_._2).map(_._1)
+              sortedFuzzingFunctions = fuzzingFunctionsWithCost.sortBy(_._2).map(_._1)
 
-        executeChain(
-          CHFunctionFuzzResult(name = functionName),
-          sortedFuzzingFunctions
-        )
-
-  /**
-    * @param CHFuzzableAbstractTypeList List of CHFuzzableAbstractType that will be used to generate the combinations
-    * @return All combinations of CHFuzzableAbstractType of argCount elements.
-    */
-  private[fuzz] def generateCHFuzzableAbstractTypeCombinations(
-      argCount: Int,
-      CHFuzzableAbstractTypeList: Seq[CHFuzzableAbstractType] = CHFuzzableAbstractType.values.toSeq
-  ): Seq[Seq[CHFuzzableAbstractType]] =
-    generateCHFuzzableAbstractTypeCombinations(
-      argCount = argCount,
-      currentArgs = Nil,
-      CHFuzzableAbstractTypeList = CHFuzzableAbstractTypeList
-    )
-
-  private def generateCHFuzzableAbstractTypeCombinations(
-      argCount: Int,
-      currentArgs: Seq[CHFuzzableAbstractType],
-      CHFuzzableAbstractTypeList: Seq[CHFuzzableAbstractType]
-  ): Seq[Seq[CHFuzzableAbstractType]] =
-    if argCount > 0 then
-      CHFuzzableAbstractTypeList.toSeq.map { abstractType =>
-        generateCHFuzzableAbstractTypeCombinations(
-          argCount - 1,
-          currentArgs :+ abstractType,
-          CHFuzzableAbstractTypeList
-        )
-      }.flatten
-    else Seq(currentArgs)
-
-  private[fuzz] def generateCHFuzzableTypeCombinations(
-      abstractTypes: Seq[CHFuzzableAbstractType],
-      currentArgs: Seq[CHFuzzableType] = Nil
-  ): Seq[Seq[CHFuzzableType]] =
-    abstractTypes match
-      case Seq(head, tail @ _*) =>
-        head.chFuzzableTypes
-          .map(chFuzzableType => generateCHFuzzableTypeCombinations(tail, currentArgs :+ chFuzzableType))
-          .flatten
-      case Seq() => Seq(currentArgs)
-
-  private[fuzz] def buildFuzzingValuesArgs(argumentsValues: Seq[Seq[String]]): Seq[String] =
-    argumentsValues match
-      case Seq()   => throw IllegalArgumentException("Tried to fuzz an argument without any value")
-      case Seq(el) => el
-      case Seq(head, tail @ _*) =>
-        val subChoices: Seq[String] = buildFuzzingValuesArgs(tail)
-        head.flatMap(el => subChoices.map(subChoice => s"$el, $subChoice"))
+              fuzzedFn <- executeChain(fn, sortedFuzzingFunctions)
+            yield {
+              fuzzedFn
+            }
+        }
 
   def mergeOutputType(type1: String, type2: String): String =
-    val exceptionIfUnknown = IllegalArgumentException(s"Unable to determine higher type for $type1 and $type2")
+    lazy val exceptionIfUnknown = {
+      val errMsg = s"Unable to determine higher type for $type1 and $type2"
+      logger.error(errMsg)
+      IllegalArgumentException(errMsg)
+    }
     if type1 == type2 then type1 // Expects both type to be identical, should be the most obvious use case
     else
       val chFuzzableType1 = CHFuzzableType.getByName(type1)
@@ -303,6 +197,95 @@ object Fuzzer:
             case Float64 => Float64
             case _       => throw exceptionIfUnknown
         // From now on, neither type1 nor type2 can be a float number
+        else if chFuzzableType1 == Date then
+          chFuzzableType2 match
+            case Date32 | DateTime | DateTime64 => chFuzzableType2
+            case _                              => throw exceptionIfUnknown
+        else if chFuzzableType2 == Date then
+          chFuzzableType1 match
+            case Date32 | DateTime | DateTime64 => chFuzzableType1
+            case _                              => throw exceptionIfUnknown
+        else if chFuzzableType1 == DateTime then
+          chFuzzableType2 match
+            case DateTime64 => DateTime64
+            case _          => throw exceptionIfUnknown
+        else if chFuzzableType2 == Date then
+          chFuzzableType1 match
+            case DateTime64 => DateTime64
+            case _          => throw exceptionIfUnknown
         else throw exceptionIfUnknown
 
       mergedType.name
+
+  /**
+    * @param CHFuzzableAbstractTypeList List of CHFuzzableAbstractType that will be used to generate the combinations
+    * @return All combinations of CHFuzzableAbstractType of argCount elements.
+    */
+  private[fuzz] def generateCHFuzzableAbstractTypeCombinations(
+      argCount: Int,
+      CHFuzzableAbstractTypeList: Seq[CHFuzzableAbstractType] = CHFuzzableAbstractType.values.toSeq
+  ): Seq[Seq[CHFuzzableAbstractType]] =
+    generateCHFuzzableAbstractTypeCombinations(
+      argCount = argCount,
+      currentArgs = Nil,
+      CHFuzzableAbstractTypeList = CHFuzzableAbstractTypeList
+    )
+
+  private[fuzz] def generateCHFuzzableTypeCombinations(
+      abstractTypes: Seq[CHFuzzableAbstractType],
+      currentArgs: Seq[CHFuzzableType] = Nil
+  ): Seq[Seq[CHFuzzableType]] =
+    abstractTypes match
+      case Seq(head, tail @ _*) =>
+        head.chFuzzableTypes
+          .map(chFuzzableType => generateCHFuzzableTypeCombinations(tail, currentArgs :+ chFuzzableType))
+          .flatten
+      case Seq() => Seq(currentArgs)
+
+  private[fuzz] def buildFuzzingValuesArgs(argumentsValues: Seq[Seq[String]]): Seq[String] =
+    argumentsValues match
+      case Seq()   => throw IllegalArgumentException("Tried to fuzz an argument without any value")
+      case Seq(el) => el
+      case Seq(head, tail @ _*) =>
+        val subChoices: Seq[String] = buildFuzzingValuesArgs(tail)
+        head.flatMap(el => subChoices.map(subChoice => s"$el, $subChoice"))
+
+  private def checkIsParametric(fnName: String)(
+      using client: CHClient,
+      ec: ExecutionContext
+  ): Future[Boolean] =
+    client
+      .executeNoResult(s"SELECT toTypeName($fnName(1)(1))")
+      .map(_ => true) // Coincidence: we used a valid parametric signature for the test
+      .recover { err =>
+        // Those messages were initially found by looking at `!parameters.empty()` in ClickHouse codebase.
+        // The idea is to help detect as early as possible when the function is not parametric for sure.
+        // In case we miss an error message, it is expected for the Fuzzer to be unable to determine any signature,
+        // that way we receive an error log about it and we can update this list.
+        val nonParametricErrorMessages = Seq(
+          s"Aggregate function $fnName cannot have parameters",
+          s"Executable user defined functions with `executable_pool` type does not support parameters",
+          s"Function $fnName cannot be parameterized",
+          s"Function $fnName is not parametric",
+          s"Incorrect number of parameters for aggregate function $fnName, should be 0",
+          s"Parameters are not supported if executable user defined function is not direct",
+          s"The function '$fnName' can only be used as a window function, not as an aggregate function"
+        )
+
+        nonParametricErrorMessages.exists(err.getMessage().contains)
+      }
+
+  private def generateCHFuzzableAbstractTypeCombinations(
+      argCount: Int,
+      currentArgs: Seq[CHFuzzableAbstractType],
+      CHFuzzableAbstractTypeList: Seq[CHFuzzableAbstractType]
+  ): Seq[Seq[CHFuzzableAbstractType]] =
+    if argCount > 0 then
+      CHFuzzableAbstractTypeList.toSeq.map { abstractType =>
+        generateCHFuzzableAbstractTypeCombinations(
+          argCount - 1,
+          currentArgs :+ abstractType,
+          CHFuzzableAbstractTypeList
+        )
+      }.flatten
+    else Seq(currentArgs)

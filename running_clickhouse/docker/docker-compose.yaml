@@ -9,6 +9,9 @@ services:
       - ${PWD}/config/config.xml:/etc/clickhouse-server/config.d/config.xml
       - ${PWD}/config/z_no_logging.xml:/etc/clickhouse-server/config.d/z_no_logging.xml
       - ${PWD}/config/users.xml:/etc/clickhouse-server/users.d/users.xml
+      - ${PWD}/config/public_suffit_list.dat:/etc/clickhouse-server/model/top_level_domains/public_suffit_list.dat
+      - ${PWD}/config/catboost.so:/etc/clickhouse-server/model/catboost.so
+      - ${PWD}/config/titanic.catboost.bin:/etc/clickhouse-server/model/titanic.catboost.bin
       - ${PWD}/config/lemmatizer_en.bin:/var/lib/clickhouse/user_files/lemmatizer_en.bin
       - ${PWD}/config/synonym_en.txt:/var/lib/clickhouse/user_files/synonym_en.txt
       - ${PWD}/config/wordnet/adj.exc:/var/lib/clickhouse/user_files/wordnet/adj.exc

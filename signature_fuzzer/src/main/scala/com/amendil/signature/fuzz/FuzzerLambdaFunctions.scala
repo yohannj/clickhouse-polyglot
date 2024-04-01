@@ -25,14 +25,15 @@ object FuzzerLambdaFunctions extends StrictLogging:
       fn: CHFunctionFuzzResult
   )(using client: CHClient, ec: ExecutionContext): Future[CHFunctionFuzzResult] =
     logger.debug("fuzzLambdaFunction")
-    if fn.isParametric || fn.isSpecialInfiniteFunction then Future.successful(fn)
+    if fn.isSpecialInfiniteFunction then Future.successful(fn)
     else
       // Checks for functions which lambda return types is neither a Boolean nor the type of the first Array
       client
         .executeNoResult(s"SELECT toTypeName(${fn.name}(x -> today(), ['s']))")
         .map { _ =>
-          fn.copy(lambdaFunction0NOpt =
-            Some(
+          fn.copy(
+            modes = fn.modes + CHFunction.Mode.NoOverWindow,
+            lambdaFunction0NOpt = Some(
               CHFunctionIO.LambdaFunction0N(
                 CHSpecialType.LambdaNType("T"),
                 argN = CHSpecialType.Array(CHAggregatedType.Any),
@@ -50,8 +51,9 @@ object FuzzerLambdaFunctions extends StrictLogging:
 
               if outputType == "String" || outputType == "Array(String)" then
                 // Return type is the type of the first Array, so a generic type!
-                fn.copy(lambdaFunction1NOpt =
-                  Some(
+                fn.copy(
+                  modes = fn.modes + CHFunction.Mode.NoOverWindow,
+                  lambdaFunction1NOpt = Some(
                     CHFunctionIO.LambdaFunction1N(
                       CHSpecialType.LambdaNType(CHFuzzableType.BooleanType.name),
                       arg1 = CHSpecialType.Array(CHSpecialType.GenericType("T")),
@@ -62,8 +64,9 @@ object FuzzerLambdaFunctions extends StrictLogging:
                 )
               else
                 // Return type is unrelated to the type of the first Array so we keep it as is!
-                fn.copy(lambdaFunction0NOpt =
-                  Some(
+                fn.copy(
+                  modes = fn.modes + CHFunction.Mode.NoOverWindow,
+                  lambdaFunction0NOpt = Some(
                     CHFunctionIO.LambdaFunction0N(
                       CHSpecialType.LambdaNType(CHFuzzableType.BooleanType.name),
                       argN = CHSpecialType.Array(CHAggregatedType.Any),
