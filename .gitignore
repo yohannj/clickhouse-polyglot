@@ -1,5 +1,12 @@
-running_clickhouse/host/ch24_2/var/lib/clickhouse/preprocessed_configs/*
-running_clickhouse/host/ch24_2/var/lib/clickhouse/status
-running_clickhouse/host/ch24_2/var/log/clickhouse-server/*
+running_clickhouse/host/*/clickhouse-server.pid
+running_clickhouse/host/*/config/config.d/z_path_update.xml
+running_clickhouse/host/*/var/lib/clickhouse/data/
+running_clickhouse/host/*/var/lib/clickhouse/metadata/default
+running_clickhouse/host/*/var/lib/clickhouse/metadata/system
+running_clickhouse/host/*/var/lib/clickhouse/preprocessed_configs/*
+running_clickhouse/host/*/var/lib/clickhouse/status
+running_clickhouse/host/*/var/lib/clickhouse/store/
+running_clickhouse/host/*/var/log/clickhouse-server/*
+
 **/libcatboostmodel.so
 **/application.conf
