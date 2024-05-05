@@ -22,8 +22,13 @@ final case class CHFunctionFuzzResult(
     function3s: Seq[Function3],
     function4s: Seq[Function4],
     function5s: Seq[Function5],
-    lambdaFunction0NOpt: Option[LambdaFunction0N],
-    lambdaFunction1NOpt: Option[LambdaFunction1N],
+    function6s: Seq[Function6],
+    function7s: Seq[Function7],
+    function8s: Seq[Function8],
+    function9s: Seq[Function9],
+    lambdaArrayFunction0NOpt: Option[LambdaArrayFunction0N],
+    lambdaArrayFunction1NOpt: Option[LambdaArrayFunction1N],
+    lambdaMapFunction1Opt: Option[LambdaMapFunction1],
     parametric0NFunction0Ns: Seq[Parametric0NFunction0N],
     parametric0NFunction1Ns: Seq[Parametric0NFunction1N],
     parametric0NFunction2Ns: Seq[Parametric0NFunction2N],
@@ -48,6 +53,12 @@ final case class CHFunctionFuzzResult(
     parametric3NFunction1s: Seq[Parametric3NFunction1],
     parametric3NFunction2s: Seq[Parametric3NFunction2],
     parametric3NFunction3s: Seq[Parametric3NFunction3],
+    parametric0Function0Ns: Seq[Parametric0Function0N],
+    parametric0Function1Ns: Seq[Parametric0Function1N],
+    parametric0Function2Ns: Seq[Parametric0Function2N],
+    parametric0Function1s: Seq[Parametric0Function1],
+    parametric0Function2s: Seq[Parametric0Function2],
+    parametric0Function3s: Seq[Parametric0Function3],
     parametric1Function0Ns: Seq[Parametric1Function0N],
     parametric1Function1Ns: Seq[Parametric1Function1N],
     parametric1Function2Ns: Seq[Parametric1Function2N],
@@ -99,7 +110,8 @@ final case class CHFunctionFuzzResult(
   val isSpecialInfiniteFunction: Boolean =
     specialFunction0Ns.nonEmpty || specialParametric2Function2Ns.nonEmpty || specialParametric2Function3Ns.nonEmpty
 
-  val isLambda: Boolean = lambdaFunction0NOpt.nonEmpty || lambdaFunction1NOpt.nonEmpty
+  val isLambda: Boolean =
+    lambdaArrayFunction0NOpt.nonEmpty || lambdaArrayFunction1NOpt.nonEmpty || lambdaMapFunction1Opt.nonEmpty
 
 object CHFunctionFuzzResult {
   def apply(name: String): CHFunctionFuzzResult =
@@ -116,8 +128,13 @@ object CHFunctionFuzzResult {
       function3s = Nil,
       function4s = Nil,
       function5s = Nil,
-      lambdaFunction0NOpt = None,
-      lambdaFunction1NOpt = None,
+      function6s = Nil,
+      function7s = Nil,
+      function8s = Nil,
+      function9s = Nil,
+      lambdaArrayFunction0NOpt = None,
+      lambdaArrayFunction1NOpt = None,
+      lambdaMapFunction1Opt = None,
       parametric0NFunction0Ns = Nil,
       parametric0NFunction1Ns = Nil,
       parametric0NFunction2Ns = Nil,
@@ -142,6 +159,12 @@ object CHFunctionFuzzResult {
       parametric3NFunction1s = Nil,
       parametric3NFunction2s = Nil,
       parametric3NFunction3s = Nil,
+      parametric0Function0Ns = Nil,
+      parametric0Function1Ns = Nil,
+      parametric0Function2Ns = Nil,
+      parametric0Function1s = Nil,
+      parametric0Function2s = Nil,
+      parametric0Function3s = Nil,
       parametric1Function0Ns = Nil,
       parametric1Function1Ns = Nil,
       parametric1Function2Ns = Nil,

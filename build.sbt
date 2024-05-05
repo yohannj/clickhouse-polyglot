@@ -12,11 +12,14 @@ lazy val common = project
     version := "0.1.0-SNAPSHOT",
     commonSettings,
     libraryDependencies ++= Seq(
-      dependencies.scalaLogging,
-      dependencies.logbackClassic,
       dependencies.config,
+      dependencies.fastparse,
       dependencies.jacksonModuleScala,
-      dependencies.scalaJava8Compact
+      dependencies.logbackClassic,
+      dependencies.scalaJava8Compact,
+      dependencies.scalaLogging,
+      dependencies.scalatestFreespec,
+      dependencies.scalatestShouldMatchers
     )
   )
 
@@ -26,9 +29,9 @@ lazy val signature_fuzzer = project
     version := "0.1.0-SNAPSHOT",
     commonSettings,
     libraryDependencies ++= Seq(
-      dependencies.scalaLogging,
-      dependencies.logbackClassic,
       dependencies.config,
+      dependencies.logbackClassic,
+      dependencies.scalaLogging,
       dependencies.scalatestFreespec,
       dependencies.scalatestShouldMatchers
     )
@@ -39,15 +42,16 @@ lazy val dependencies = new {
   private val scalatestV = "3.2.18"
 
   // Logging
-  val scalaLogging = "com.typesafe.scala-logging" %% "scala-logging" % "3.9.5"
   val logbackClassic = "ch.qos.logback" % "logback-classic" % "1.5.3"
+  val scalaLogging = "com.typesafe.scala-logging" %% "scala-logging" % "3.9.5"
 
   // Http
   val jacksonModuleScala = "com.fasterxml.jackson.module" %% "jackson-module-scala" % "2.17.0"
 
   // Misc
-  val scalaJava8Compact = "org.scala-lang.modules" %% "scala-java8-compat" % "1.0.2"
   val config = "com.typesafe" % "config" % "1.4.3"
+  val fastparse = "com.lihaoyi" %% "fastparse" % "3.1.0"
+  val scalaJava8Compact = "org.scala-lang.modules" %% "scala-java8-compat" % "1.0.2"
 
   // Test
   val scalatestFreespec = "org.scalatest" %% "scalatest-freespec" % scalatestV % Test

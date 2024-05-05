@@ -14,66 +14,124 @@ object FuzzerLambdaFunctions extends StrictLogging:
       ec: ExecutionContext
   ): Seq[((CHFunctionFuzzResult) => Future[CHFunctionFuzzResult], Long)] =
     Seq(
-      (fuzzLambdaFunction, 1L)
+      (fuzzBlandLambdaFunctionWithArray, 1L),
+      (fuzzBooleanLambdaFunctionWithArray, 1L),
+      (fuzzBooleanLambdaFunctionWithMap, 1L)
     )
 
   /**
     * Detect functions that uses a lambda as their first argument.
+    *
+    * Lambda's return types is neither a Boolean nor the type of the first Array
     * Further arguments of those functions can only be arrays.
     */
-  private def fuzzLambdaFunction(
+  private def fuzzBlandLambdaFunctionWithArray(
       fn: CHFunctionFuzzResult
   )(using client: CHClient, ec: ExecutionContext): Future[CHFunctionFuzzResult] =
-    logger.debug("fuzzLambdaFunction")
+    logger.debug("fuzzBlandLambdaFunctionWithArray")
     if fn.isSpecialInfiniteFunction then Future.successful(fn)
     else
-      // Checks for functions which lambda return types is neither a Boolean nor the type of the first Array
       client
         .executeNoResult(s"SELECT toTypeName(${fn.name}(x -> today(), ['s']))")
         .map { _ =>
           fn.copy(
             modes = fn.modes + CHFunction.Mode.NoOverWindow,
-            lambdaFunction0NOpt = Some(
-              CHFunctionIO.LambdaFunction0N(
-                CHSpecialType.LambdaNType("T"),
+            lambdaArrayFunction0NOpt = Some(
+              CHFunctionIO.LambdaArrayFunction0N(
+                CHSpecialType.LambdaType(CHSpecialType.GenericType("T")),
                 argN = CHSpecialType.Array(CHAggregatedType.Any),
-                output = "T"
+                output = CHSpecialType.GenericType("T")
               )
             )
           )
         }
-        .recoverWith { _ =>
-          // Checks for functions which lambda return types is a Boolean
-          client
-            .execute(s"SELECT toTypeName(${fn.name}(x, y -> 1, ['s'], [1]))")
-            .map { (resp: CHResponse) =>
-              val outputType: String = resp.data.head.head.asInstanceOf[String]
+        .recover(_ => fn)
 
-              if outputType == "String" || outputType == "Array(String)" then
-                // Return type is the type of the first Array, so a generic type!
-                fn.copy(
-                  modes = fn.modes + CHFunction.Mode.NoOverWindow,
-                  lambdaFunction1NOpt = Some(
-                    CHFunctionIO.LambdaFunction1N(
-                      CHSpecialType.LambdaNType(CHFuzzableType.BooleanType.name),
-                      arg1 = CHSpecialType.Array(CHSpecialType.GenericType("T")),
-                      argN = CHSpecialType.Array(CHAggregatedType.Any),
-                      output = outputType.replace("String", "T")
-                    )
-                  )
+  /**
+    * Detect functions that uses a lambda as their first argument, and arrays afterwards.
+    *
+    * Lambda's return types is a Boolean.
+    */
+  private def fuzzBooleanLambdaFunctionWithArray(
+      fn: CHFunctionFuzzResult
+  )(using client: CHClient, ec: ExecutionContext): Future[CHFunctionFuzzResult] =
+    logger.debug("fuzzBooleanLambdaFunctionWithArray")
+    if fn.isSpecialInfiniteFunction then Future.successful(fn)
+    else
+      client
+        .execute(s"SELECT toTypeName(${fn.name}(x, y -> 1, ['s'], [1]))")
+        .map { (resp: CHResponse) =>
+          val outputType = CHType.getByName(resp.data.head.head.asInstanceOf[String])
+
+          if outputType == CHFuzzableType.StringType || outputType == CHSpecialType.Array(CHFuzzableType.StringType)
+          then
+            // Return type is the type of the first Array, so a generic type!
+            fn.copy(
+              modes = fn.modes + CHFunction.Mode.NoOverWindow,
+              lambdaArrayFunction1NOpt = Some(
+                CHFunctionIO.LambdaArrayFunction1N(
+                  CHSpecialType.LambdaType(CHFuzzableType.BooleanType),
+                  arg1 = CHSpecialType.Array(CHSpecialType.GenericType("T")),
+                  argN = CHSpecialType.Array(CHAggregatedType.Any),
+                  output =
+                    if outputType == CHFuzzableType.StringType then CHSpecialType.GenericType("T")
+                    else CHSpecialType.Array(CHSpecialType.GenericType("T"))
                 )
-              else
-                // Return type is unrelated to the type of the first Array so we keep it as is!
-                fn.copy(
-                  modes = fn.modes + CHFunction.Mode.NoOverWindow,
-                  lambdaFunction0NOpt = Some(
-                    CHFunctionIO.LambdaFunction0N(
-                      CHSpecialType.LambdaNType(CHFuzzableType.BooleanType.name),
-                      argN = CHSpecialType.Array(CHAggregatedType.Any),
-                      output = outputType
-                    )
-                  )
+              )
+            )
+          else
+            // Return type is unrelated to the type of the first Array so we keep it as is!
+            fn.copy(
+              modes = fn.modes + CHFunction.Mode.NoOverWindow,
+              lambdaArrayFunction0NOpt = Some(
+                CHFunctionIO.LambdaArrayFunction0N(
+                  CHSpecialType.LambdaType(CHFuzzableType.BooleanType),
+                  argN = CHSpecialType.Array(CHAggregatedType.Any),
+                  output = outputType
                 )
-            }
+              )
+            )
+        }
+        .recover(_ => fn)
+
+  /**
+    * Detect functions that uses a lambda as their first argument, and a map as their second argument.
+    *
+    * Lambda's return types is a Boolean.
+    */
+  private def fuzzBooleanLambdaFunctionWithMap(
+      fn: CHFunctionFuzzResult
+  )(using client: CHClient, ec: ExecutionContext): Future[CHFunctionFuzzResult] =
+    logger.debug("fuzzBooleanLambdaFunctionWithMap")
+    if fn.isSpecialInfiniteFunction then Future.successful(fn)
+    else
+      client
+        .execute(s"SELECT toTypeName(${fn.name}(x, y -> 1, map(now(), today())))")
+        .map { (resp: CHResponse) =>
+          val outputType = CHType.getByName(resp.data.head.head.asInstanceOf[String]) match
+            case CHFuzzableType.DateTime =>
+              // Return type is the type of the keys, so a generic type!
+              CHSpecialType.GenericType("T")
+            case CHFuzzableType.Date =>
+              // Return type is the type of the values, so a generic type!
+              CHSpecialType.GenericType("U")
+            case CHSpecialType.Map(CHFuzzableType.DateTime, CHFuzzableType.Date) |
+                CHSpecialType.Map(CHFuzzableType.DateTime, CHFuzzableType.Date) =>
+              // Return type is the same as provided map!
+              CHSpecialType.Map(CHSpecialType.GenericType("T"), CHSpecialType.GenericType("U"))
+            case other =>
+              // Let's suppose the returned type never changes depending on the size or types in the map
+              other
+
+          fn.copy(
+            modes = fn.modes + CHFunction.Mode.NoOverWindow,
+            lambdaMapFunction1Opt = Some(
+              CHFunctionIO.LambdaMapFunction1(
+                CHSpecialType.LambdaType(CHFuzzableType.BooleanType),
+                arg1 = CHSpecialType.Map(CHSpecialType.GenericType("T"), CHSpecialType.GenericType("U")),
+                output = outputType
+              )
+            )
+          )
         }
         .recover(_ => fn)

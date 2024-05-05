@@ -9,7 +9,7 @@ class CHFunctionIOSpec extends AnyFreeSpec with Matchers {
   "CHFunctionIO" - {
     "should aggregate Function1 signatures" - {
       "having the same output type" - {
-        val outputType = "foo"
+        val outputType = CHSpecialType.GenericType("foo")
 
         "when they accept all numbers" in {
           val actual = CHFunctionIO.aggregate(

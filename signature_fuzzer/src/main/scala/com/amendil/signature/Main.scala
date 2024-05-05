@@ -18,7 +18,7 @@ import scala.util.Try
   val logger = Logger("Main")
 
   given ExecutionContext = ExecutionContext.fromExecutorService(Executors.newFixedThreadPool(1))
-  given CHClient = CHClient(Settings.ClickHouse.httpUrl)
+  given client: CHClient = CHClient(Settings.ClickHouse.httpUrl)
 
   val runF =
     (for

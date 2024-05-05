@@ -19,6 +19,27 @@ object Fuzzer extends StrictLogging:
         // It requires a new type as the first argument must be the result of a "-State" combinator
         // https://clickhouse.com/docs/en/sql-reference/aggregate-functions/reference/stochasticlinearregression
         Future.successful(fn)
+      case "finalizeAggregation" =>
+        // To be handled at a later time
+        // It requires an aggregated function new type as the first argument must be the result of a "-State" combinator
+        // https://clickhouse.com/docs/en/sql-reference/functions/other-functions#finalizeaggregation
+        Future.successful(fn)
+      case "initializeAggregation" =>
+        // To be handled at a later time
+        // It requires an aggregated function new type for the output
+        // https://clickhouse.com/docs/en/sql-reference/functions/other-functions#initializeaggregation
+        Future.successful(fn)
+      case "isNotDistinctFrom" =>
+        // To be handled at a later time
+        // It requires supporting JOIN ON
+        // https://clickhouse.com/docs/en/sql-reference/statements/select/join#null-values-in-join-keys
+        Future.successful(fn)
+      case "joinGet" | "joinGetOrNull" =>
+        //
+        // To be handled at a later time
+        // It requires a table created with ENGINE = Join(ANY, LEFT, <join_keys>)
+        // https://clickhouse.com/docs/en/sql-reference/functions/other-functions#joinget
+        Future.successful(fn)
       case "__getScalar" =>
         // Internal function
         Future.successful(fn)
@@ -43,7 +64,7 @@ object Fuzzer extends StrictLogging:
             }
         }
 
-  def mergeOutputType(type1: String, type2: String): String =
+  def mergeOutputType(type1: CHType, type2: CHType): CHType =
     lazy val exceptionIfUnknown = {
       val errMsg = s"Unable to determine higher type for $type1 and $type2"
       logger.error(errMsg)
@@ -51,171 +72,168 @@ object Fuzzer extends StrictLogging:
     }
     if type1 == type2 then type1 // Expects both type to be identical, should be the most obvious use case
     else
-      val chFuzzableType1 = CHFuzzableType.getByName(type1)
-      val chFuzzableType2 = CHFuzzableType.getByName(type2)
-
       val mergedType: CHType =
-        if chFuzzableType1 == chFuzzableType2 then chFuzzableType1
-        else if chFuzzableType1 == BooleanType then
-          chFuzzableType2 match
+        if type1 == type2 then type1
+        else if type1 == BooleanType then
+          type2 match
             case UInt8 | UInt16 | UInt32 | UInt64 | UInt128 | UInt256 | Int16 | Int32 | Int64 | Int128 | Int256 =>
-              chFuzzableType2
+              type2
             case _ => throw exceptionIfUnknown
-        else if chFuzzableType2 == BooleanType then
-          chFuzzableType1 match
+        else if type2 == BooleanType then
+          type1 match
             case UInt8 | UInt16 | UInt32 | UInt64 | UInt128 | UInt256 | Int16 | Int32 | Int64 | Int128 | Int256 =>
-              chFuzzableType1
+              type1
             case _ => throw exceptionIfUnknown
-        else if chFuzzableType1 == Int8 then
-          chFuzzableType2 match
+        else if type1 == Int8 then
+          type2 match
             case UInt8                                   => Int16
             case UInt16                                  => Int32
             case UInt32                                  => Int64
             case UInt64                                  => Int128
             case UInt128 | UInt256                       => Int256
-            case Int16 | Int32 | Int64 | Int128 | Int256 => chFuzzableType2
+            case Int16 | Int32 | Int64 | Int128 | Int256 => type2
             case _                                       => throw exceptionIfUnknown
-        else if chFuzzableType2 == Int8 then
-          chFuzzableType1 match
+        else if type2 == Int8 then
+          type1 match
             case UInt8                                   => Int16
             case UInt16                                  => Int32
             case UInt32                                  => Int64
             case UInt64                                  => Int128
             case UInt128 | UInt256                       => Int256
-            case Int16 | Int32 | Int64 | Int128 | Int256 => chFuzzableType1
+            case Int16 | Int32 | Int64 | Int128 | Int256 => type1
             case _                                       => throw exceptionIfUnknown
-        else if chFuzzableType1 == Int16 then
-          chFuzzableType2 match
+        else if type1 == Int16 then
+          type2 match
             case UInt8                           => Int16
             case UInt16                          => Int32
             case UInt32                          => Int64
             case UInt64                          => Int128
             case UInt128 | UInt256               => Int256
-            case Int32 | Int64 | Int128 | Int256 => chFuzzableType2
+            case Int32 | Int64 | Int128 | Int256 => type2
             case _                               => throw exceptionIfUnknown
-        else if chFuzzableType2 == Int16 then
-          chFuzzableType1 match
+        else if type2 == Int16 then
+          type1 match
             case UInt8                           => Int16
             case UInt16                          => Int32
             case UInt32                          => Int64
             case UInt64                          => Int128
             case UInt128 | UInt256               => Int256
-            case Int32 | Int64 | Int128 | Int256 => chFuzzableType1
+            case Int32 | Int64 | Int128 | Int256 => type1
             case _                               => throw exceptionIfUnknown
-        else if chFuzzableType1 == Int32 then
-          chFuzzableType2 match
+        else if type1 == Int32 then
+          type2 match
             case UInt8 | UInt16          => Int32
             case UInt32                  => Int64
             case UInt64                  => Int128
             case UInt128 | UInt256       => Int256
-            case Int64 | Int128 | Int256 => chFuzzableType2
+            case Int64 | Int128 | Int256 => type2
             case _                       => throw exceptionIfUnknown
-        else if chFuzzableType2 == Int32 then
-          chFuzzableType1 match
+        else if type2 == Int32 then
+          type1 match
             case UInt8 | UInt16          => Int32
             case UInt32                  => Int64
             case UInt64                  => Int128
             case UInt128 | UInt256       => Int256
-            case Int64 | Int128 | Int256 => chFuzzableType1
+            case Int64 | Int128 | Int256 => type1
             case _                       => throw exceptionIfUnknown
-        else if chFuzzableType1 == Int64 then
-          chFuzzableType2 match
+        else if type1 == Int64 then
+          type2 match
             case UInt8 | UInt16 | UInt32 => Int64
             case UInt64                  => Int128
             case UInt128 | UInt256       => Int256
-            case Int128 | Int256         => chFuzzableType2
+            case Int128 | Int256         => type2
             case _                       => throw exceptionIfUnknown
-        else if chFuzzableType2 == Int64 then
-          chFuzzableType1 match
+        else if type2 == Int64 then
+          type1 match
             case UInt8 | UInt16 | UInt32 => Int64
             case UInt64                  => Int128
             case UInt128 | UInt256       => Int256
-            case Int128 | Int256         => chFuzzableType1
+            case Int128 | Int256         => type1
             case _                       => throw exceptionIfUnknown
-        else if chFuzzableType1 == Int128 then
-          chFuzzableType2 match
+        else if type1 == Int128 then
+          type2 match
             case UInt8 | UInt16 | UInt32 | UInt64 => Int128
             case UInt128 | UInt256                => Int256
             case Int256                           => Int256
             case _                                => throw exceptionIfUnknown
-        else if chFuzzableType2 == Int128 then
-          chFuzzableType1 match
+        else if type2 == Int128 then
+          type1 match
             case UInt8 | UInt16 | UInt32 | UInt64 => Int128
             case UInt128 | UInt256                => Int256
             case Int256                           => Int256
             case _                                => throw exceptionIfUnknown
-        else if chFuzzableType1 == Int256 then Int256
-        else if chFuzzableType2 == Int256 then Int256
+        else if type1 == Int256 then Int256
+        else if type2 == Int256 then Int256
         // From now on, neither type1 nor type2 can be a signed integer
-        else if chFuzzableType1 == UInt8 then
-          chFuzzableType2 match
-            case UInt16 | UInt32 | UInt64 | UInt128 | UInt256 => chFuzzableType2
+        else if type1 == UInt8 then
+          type2 match
+            case UInt16 | UInt32 | UInt64 | UInt128 | UInt256 => type2
             case _                                            => throw exceptionIfUnknown
-        else if chFuzzableType2 == UInt8 then
-          chFuzzableType1 match
-            case UInt16 | UInt32 | UInt64 | UInt128 | UInt256 => chFuzzableType1
+        else if type2 == UInt8 then
+          type1 match
+            case UInt16 | UInt32 | UInt64 | UInt128 | UInt256 => type1
             case _                                            => throw exceptionIfUnknown
-        else if chFuzzableType1 == UInt16 then
-          chFuzzableType2 match
-            case UInt32 | UInt64 | UInt128 | UInt256 => chFuzzableType2
+        else if type1 == UInt16 then
+          type2 match
+            case UInt32 | UInt64 | UInt128 | UInt256 => type2
             case _                                   => throw exceptionIfUnknown
-        else if chFuzzableType2 == UInt16 then
-          chFuzzableType1 match
-            case UInt32 | UInt64 | UInt128 | UInt256 => chFuzzableType1
+        else if type2 == UInt16 then
+          type1 match
+            case UInt32 | UInt64 | UInt128 | UInt256 => type1
             case _                                   => throw exceptionIfUnknown
-        else if chFuzzableType1 == UInt32 then
-          chFuzzableType2 match
-            case UInt64 | UInt128 | UInt256 => chFuzzableType2
+        else if type1 == UInt32 then
+          type2 match
+            case UInt64 | UInt128 | UInt256 => type2
             case _                          => throw exceptionIfUnknown
-        else if chFuzzableType2 == UInt32 then
-          chFuzzableType1 match
-            case UInt64 | UInt128 | UInt256 => chFuzzableType1
+        else if type2 == UInt32 then
+          type1 match
+            case UInt64 | UInt128 | UInt256 => type1
             case _                          => throw exceptionIfUnknown
-        else if chFuzzableType1 == UInt64 then
-          chFuzzableType2 match
-            case UInt128 | UInt256 => chFuzzableType2
+        else if type1 == UInt64 then
+          type2 match
+            case UInt128 | UInt256 => type2
             case _                 => throw exceptionIfUnknown
-        else if chFuzzableType2 == UInt64 then
-          chFuzzableType1 match
-            case UInt128 | UInt256 => chFuzzableType1
+        else if type2 == UInt64 then
+          type1 match
+            case UInt128 | UInt256 => type1
             case _                 => throw exceptionIfUnknown
-        else if chFuzzableType1 == UInt128 then
-          chFuzzableType2 match
-            case UInt256 => chFuzzableType2
+        else if type1 == UInt128 then
+          type2 match
+            case UInt256 => type2
             case _       => throw exceptionIfUnknown
-        else if chFuzzableType2 == UInt128 then
-          chFuzzableType1 match
-            case UInt256 => chFuzzableType1
+        else if type2 == UInt128 then
+          type1 match
+            case UInt256 => type1
             case _       => throw exceptionIfUnknown
         // From now on, neither type1 nor type2 can be an unsigned integer
-        else if chFuzzableType1 == Float32 then
-          chFuzzableType2 match
+        else if type1 == Float32 then
+          type2 match
             case Float64 => Float64
             case _       => throw exceptionIfUnknown
-        else if chFuzzableType2 == Float32 then
-          chFuzzableType1 match
+        else if type2 == Float32 then
+          type1 match
             case Float64 => Float64
             case _       => throw exceptionIfUnknown
         // From now on, neither type1 nor type2 can be a float number
-        else if chFuzzableType1 == Date then
-          chFuzzableType2 match
-            case Date32 | DateTime | DateTime64 => chFuzzableType2
+        else if type1 == Date then
+          type2 match
+            case Date32 | DateTime | DateTime64 => type2
             case _                              => throw exceptionIfUnknown
-        else if chFuzzableType2 == Date then
-          chFuzzableType1 match
-            case Date32 | DateTime | DateTime64 => chFuzzableType1
+        else if type2 == Date then
+          type1 match
+            case Date32 | DateTime | DateTime64 => type1
             case _                              => throw exceptionIfUnknown
-        else if chFuzzableType1 == DateTime then
-          chFuzzableType2 match
+        else if type1 == DateTime then
+          type2 match
             case DateTime64 => DateTime64
             case _          => throw exceptionIfUnknown
-        else if chFuzzableType2 == Date then
-          chFuzzableType1 match
+        else if type2 == Date then
+          type1 match
             case DateTime64 => DateTime64
             case _          => throw exceptionIfUnknown
         else throw exceptionIfUnknown
 
-      mergedType.name
+      mergedType
 
   /**
     * @param CHFuzzableAbstractTypeList List of CHFuzzableAbstractType that will be used to generate the combinations
@@ -244,7 +262,7 @@ object Fuzzer extends StrictLogging:
 
   private[fuzz] def buildFuzzingValuesArgs(argumentsValues: Seq[Seq[String]]): Seq[String] =
     argumentsValues match
-      case Seq()   => throw IllegalArgumentException("Tried to fuzz an argument without any value")
+      case Seq()   => Seq("")
       case Seq(el) => el
       case Seq(head, tail @ _*) =>
         val subChoices: Seq[String] = buildFuzzingValuesArgs(tail)

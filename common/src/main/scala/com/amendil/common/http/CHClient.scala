@@ -15,12 +15,13 @@ import scala.concurrent.{ExecutionContext, Future}
 
 class CHClient(url: String)(using ec: ExecutionContext):
 
+  System.setProperty("jdk.httpclient.keepalive.timeout", "10")
   private val jsonMapper = JsonMapper.builder().addModule(DefaultScalaModule).build()
 
-  private val client: HttpClient =
+  private lazy val client: HttpClient =
     HttpClient
       .newBuilder()
-      .connectTimeout(Duration.ofMinutes(1))
+      .connectTimeout(Duration.ofSeconds(20))
       .version(Version.HTTP_1_1)
       .build()
 
@@ -45,6 +46,7 @@ class CHClient(url: String)(using ec: ExecutionContext):
           )
         )
         .setHeader("Content-Type", "application/x-www-form-urlencoded")
+        .setHeader("user-agent", "curl/8.4.0")
         .build()
     )
 
@@ -68,6 +70,7 @@ class CHClient(url: String)(using ec: ExecutionContext):
           )
         )
         .setHeader("Content-Type", "application/x-www-form-urlencoded")
+        .setHeader("user-agent", "curl/8.4.0")
         .build()
     )
 
@@ -99,6 +102,15 @@ class CHClient(url: String)(using ec: ExecutionContext):
           // As the query may be invalid, we must retry the call!
           val shouldRetry = body.contains("Too many simultaneous queries.")
           shouldRetry
+      },
+      shouldRetryOnFailure = (e: Exception) => {
+        val shouldRetry =
+          Seq(
+            "java.io.IOException: HTTP/1.1 header parser received no bytes",
+            "java.net.ConnectException: Connection reset by peer"
+          ).contains(e.getMessage)
+
+        shouldRetry
       },
       maxNumberOfAttempts = Int.MaxValue // Never stops querying ClickHouse, we need 100% accuracy
     )

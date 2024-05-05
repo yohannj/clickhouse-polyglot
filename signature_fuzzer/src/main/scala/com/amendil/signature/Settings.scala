@@ -68,6 +68,8 @@ object Settings {
     val supportJson: Boolean = fuzzerSettings.getBoolean("support.json")
     val supportLowCardinality: Boolean = fuzzerSettings.getBoolean("support.lowcardinality")
     val supportNullable: Boolean = fuzzerSettings.getBoolean("support.nullable")
+
+    val skipFuzzingOnArgumentMismatch: Boolean = fuzzerSettings.getBoolean("skip-fuzzing-on-argument-mismatch")
   }
 
 }

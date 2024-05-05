@@ -15,7 +15,7 @@ enum CHFuzzableAbstractType(_fuzzingValues: Seq[String], _chFuzzableTypes: Seq[C
   // Numbers
   case Numbers
       extends CHFuzzableAbstractType(
-        Seq("1", "1::UInt64", "true", "-999999999::Decimal32(0)"),
+        Seq("1", "1::UInt64", "0.5", "true", "-999999999::Decimal32(0)"),
         Seq(
           CHFuzzableType.BooleanType,
           CHFuzzableType.Int8,
@@ -167,6 +167,34 @@ enum CHFuzzableAbstractType(_fuzzingValues: Seq[String], _chFuzzableTypes: Seq[C
         Seq(CHFuzzableType.MultiPolygon)
       )
 
+  // LowCardinality and Nullable
+  case LowCardinalityString
+      extends CHFuzzableAbstractType(
+        CHFuzzableType.LowCardinalityString.fuzzingValues :+ "'a/<@];!~p{jTj={)'::LowCardinality(FixedString(16))",
+        Seq(
+          CHFuzzableType.LowCardinalityFixedString,
+          CHFuzzableType.LowCardinalityString
+        )
+      )
+
+  case LowCardinalityNullableString
+      extends CHFuzzableAbstractType(
+        CHFuzzableType.LowCardinalityNullableString.fuzzingValues :+ "'a/<@];!~p{jTj={)'::LowCardinality(Nullable(FixedString(16)))",
+        Seq(
+          CHFuzzableType.LowCardinalityNullableFixedString,
+          CHFuzzableType.LowCardinalityNullableString
+        )
+      )
+
+  case NullableString
+      extends CHFuzzableAbstractType(
+        CHFuzzableType.NullableString.fuzzingValues :+ "'a/<@];!~p{jTj={)'::Nullable(FixedString(16))",
+        Seq(
+          CHFuzzableType.NullableFixedString,
+          CHFuzzableType.NullableString
+        )
+      )
+
   // Misc
   case Enum
       extends CHFuzzableAbstractType(
@@ -197,13 +225,7 @@ enum CHFuzzableAbstractType(_fuzzingValues: Seq[String], _chFuzzableTypes: Seq[C
         CHFuzzableType.StringType.fuzzingValues :+ "'a/<@];!~p{jTj={)'::FixedString(16)",
         Seq(
           CHFuzzableType.StringType,
-          CHFuzzableType.FixedString,
-          CHFuzzableType.LowCardinalityFixedString,
-          CHFuzzableType.LowCardinalityString,
-          CHFuzzableType.LowCardinalityNullableFixedString,
-          CHFuzzableType.LowCardinalityNullableString,
-          CHFuzzableType.NullableFixedString,
-          CHFuzzableType.NullableString
+          CHFuzzableType.FixedString
         )
       )
   case UUID
@@ -215,7 +237,7 @@ enum CHFuzzableAbstractType(_fuzzingValues: Seq[String], _chFuzzableTypes: Seq[C
   // Array
   case ArrayNumbers
       extends CHFuzzableAbstractType(
-        Seq(s"array(${Numbers.fuzzingValues.head})"),
+        Numbers.fuzzingValues.map(n => s"array($n)"),
         Seq(
           CHFuzzableType.ArrayBoolean,
           CHFuzzableType.ArrayInt8,
@@ -392,7 +414,10 @@ enum CHFuzzableAbstractType(_fuzzingValues: Seq[String], _chFuzzableTypes: Seq[C
   // Tuple1
   case Tuple1Numbers
       extends CHFuzzableAbstractType(
-        Seq(s"tuple(${Numbers.fuzzingValues.head})::Tuple(UInt8)"),
+        Seq(
+          s"tuple(${Numbers.fuzzingValues.head})::Tuple(UInt8)",
+          s"tuple(${Numbers.fuzzingValues.head})::Tuple(a UInt8)"
+        ),
         Seq(
           CHFuzzableType.Tuple1Int8,
           CHFuzzableType.Tuple1Int16,
@@ -416,17 +441,20 @@ enum CHFuzzableAbstractType(_fuzzingValues: Seq[String], _chFuzzableTypes: Seq[C
       )
   case Tuple1Date
       extends CHFuzzableAbstractType(
-        Seq(s"tuple(${Date.fuzzingValues.head})::Tuple(Date)"),
+        Seq(s"tuple(${Date.fuzzingValues.head})::Tuple(Date)", s"tuple(${Date.fuzzingValues.head})::Tuple(a Date)"),
         Seq(CHFuzzableType.Tuple1Date, CHFuzzableType.Tuple1Date32)
       )
   case Tuple1DateTime
       extends CHFuzzableAbstractType(
-        Seq(s"tuple(${DateTime.fuzzingValues.head})::Tuple(DateTime)"),
+        Seq(
+          s"tuple(${DateTime.fuzzingValues.head})::Tuple(DateTime)",
+          s"tuple(${DateTime.fuzzingValues.head})::Tuple(a DateTime)"
+        ),
         Seq(CHFuzzableType.Tuple1DateTime, CHFuzzableType.Tuple1DateTime64)
       )
   case Tuple1IntervalDate
       extends CHFuzzableAbstractType(
-        Seq(CHFuzzableType.Tuple1IntervalDay.fuzzingValues.head),
+        CHFuzzableType.Tuple1IntervalDay.fuzzingValues,
         Seq(
           CHFuzzableType.Tuple1IntervalDay,
           CHFuzzableType.Tuple1IntervalWeek,
@@ -437,7 +465,7 @@ enum CHFuzzableAbstractType(_fuzzingValues: Seq[String], _chFuzzableTypes: Seq[C
       )
   case Tuple1IntervalDateTime
       extends CHFuzzableAbstractType(
-        Seq(CHFuzzableType.Tuple1IntervalNanosecond.fuzzingValues.head),
+        CHFuzzableType.Tuple1IntervalNanosecond.fuzzingValues,
         Seq(
           CHFuzzableType.Tuple1IntervalNanosecond,
           CHFuzzableType.Tuple1IntervalMicrosecond,
@@ -449,50 +477,58 @@ enum CHFuzzableAbstractType(_fuzzingValues: Seq[String], _chFuzzableTypes: Seq[C
       )
   case Tuple1Point
       extends CHFuzzableAbstractType(
-        Seq(CHFuzzableType.Tuple1Point.fuzzingValues.head),
+        CHFuzzableType.Tuple1Point.fuzzingValues,
         Seq(CHFuzzableType.Tuple1Point)
       )
   case Tuple1Ring
-      extends CHFuzzableAbstractType(Seq(CHFuzzableType.Tuple1Ring.fuzzingValues.head), Seq(CHFuzzableType.Tuple1Ring))
+      extends CHFuzzableAbstractType(CHFuzzableType.Tuple1Ring.fuzzingValues, Seq(CHFuzzableType.Tuple1Ring))
   case Tuple1Polygon
       extends CHFuzzableAbstractType(
-        Seq(CHFuzzableType.Tuple1Polygon.fuzzingValues.head),
+        CHFuzzableType.Tuple1Polygon.fuzzingValues,
         Seq(CHFuzzableType.Tuple1Polygon)
       )
   case Tuple1MultiPolygon
       extends CHFuzzableAbstractType(
-        Seq(CHFuzzableType.Tuple1MultiPolygon.fuzzingValues.head),
+        CHFuzzableType.Tuple1MultiPolygon.fuzzingValues,
         Seq(CHFuzzableType.Tuple1MultiPolygon)
       )
   case Tuple1Enum
       extends CHFuzzableAbstractType(
-        Seq(s"tuple(${Enum.fuzzingValues.head})::Tuple(Enum('hello' = 1, 'world' = 2))"),
+        Seq(
+          s"tuple(${Enum.fuzzingValues.head})::Tuple(Enum('hello' = 1, 'world' = 2))",
+          s"tuple(${Enum.fuzzingValues.head})::Tuple(a Enum('hello' = 1, 'world' = 2))"
+        ),
         Seq(CHFuzzableType.Tuple1Enum, CHFuzzableType.Tuple1Enum8, CHFuzzableType.Tuple1Enum16)
       )
   case Tuple1IPv4
       extends CHFuzzableAbstractType(
-        Seq(s"tuple(${IPv4.fuzzingValues.head})::Tuple(IPv4)"),
+        Seq(s"tuple(${IPv4.fuzzingValues.head})::Tuple(IPv4)", s"tuple(${IPv4.fuzzingValues.head})::Tuple(a IPv4)"),
         Seq(CHFuzzableType.Tuple1IPv4)
       )
   case Tuple1IPv6
       extends CHFuzzableAbstractType(
-        Seq(s"tuple(${IPv6.fuzzingValues.head})::Tuple(IPv6)"),
+        Seq(s"tuple(${IPv6.fuzzingValues.head})::Tuple(IPv6)", s"tuple(${IPv6.fuzzingValues.head})::Tuple(a IPv6)"),
         Seq(CHFuzzableType.Tuple1IPv6)
       )
   case Tuple1Json
       extends CHFuzzableAbstractType(
-        CHFuzzableType.Json.fuzzingValues.headOption.map(v => s"tuple($v)::Tuple(JSON)").toSeq,
+        CHFuzzableType.Json.fuzzingValues.headOption.toSeq.flatMap(v =>
+          Seq(s"tuple($v)::Tuple(JSON)", s"tuple($v)::Tuple(a JSON)")
+        ),
         Seq(CHFuzzableType.Tuple1Json)
       )
   // case Tuple1Nothing extends CHFuzzableAbstractType(CHFuzzableType.Tuple1Nothing.fuzzingValues, Seq(CHFuzzableType.Tuple1Nothing))
   case Tuple1String
       extends CHFuzzableAbstractType(
-        Seq(s"tuple(${String.fuzzingValues.head})::Tuple(String)"),
+        Seq(
+          s"tuple(${String.fuzzingValues.head})::Tuple(String)",
+          s"tuple(${String.fuzzingValues.head})::Tuple(a String)"
+        ),
         Seq(CHFuzzableType.Tuple1FixedString, CHFuzzableType.Tuple1String)
       )
   case Tuple1UUID
       extends CHFuzzableAbstractType(
-        Seq(s"tuple(${UUID.fuzzingValues.head})::Tuple(UUID)"),
+        Seq(s"tuple(${UUID.fuzzingValues.head})::Tuple(UUID)", s"tuple(${UUID.fuzzingValues.head})::Tuple(a UUID)"),
         Seq(CHFuzzableType.Tuple1UUID)
       )
 
@@ -509,12 +545,18 @@ enum CHFuzzableAbstractType(_fuzzingValues: Seq[String], _chFuzzableTypes: Seq[C
       )
   case Tuple1ArrayNumbers
       extends CHFuzzableAbstractType(
-        Seq(s"tuple(${ArrayNumbers.fuzzingValues.head})::Tuple(Array(UInt8))"),
+        Seq(
+          s"tuple(${ArrayNumbers.fuzzingValues.head})::Tuple(Array(UInt8))",
+          s"tuple(${ArrayNumbers.fuzzingValues.head})::Tuple(a Array(UInt8))"
+        ),
         Seq(CHFuzzableType.Tuple1ArrayUInt8)
       )
   case Tuple1MapStringInt8
       extends CHFuzzableAbstractType(
-        Seq(s"tuple(${MapStringInt8.fuzzingValues.head})::Tuple(Map(String, Int8))"),
+        Seq(
+          s"tuple(${MapStringInt8.fuzzingValues.head})::Tuple(Map(String, Int8))",
+          s"tuple(${MapStringInt8.fuzzingValues.head})::Tuple(a Map(String, Int8))"
+        ),
         Seq(CHFuzzableType.Tuple1MapStringInt8)
       )
 
@@ -542,6 +584,11 @@ enum CHFuzzableAbstractType(_fuzzingValues: Seq[String], _chFuzzableTypes: Seq[C
       extends CHFuzzableAbstractType(
         CHFuzzableType.SequencePattern.fuzzingValues,
         Seq(CHFuzzableType.SequencePattern)
+      )
+  case ServerPortName
+      extends CHFuzzableAbstractType(
+        Seq("'tcp_port'"),
+        Seq(CHFuzzableType.ServerPortName)
       )
   case TimeZone
       extends CHFuzzableAbstractType(

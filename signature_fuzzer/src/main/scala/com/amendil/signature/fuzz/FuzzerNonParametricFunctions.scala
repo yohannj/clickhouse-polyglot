@@ -38,7 +38,7 @@ object FuzzerNonParametricFunctions extends StrictLogging:
           client
             .execute(query(fn.name, args = "", fuzzOverWindow = false))
             .map((resp: CHResponse) =>
-              val outputType: String = resp.data.head.head.asInstanceOf[String]
+              val outputType = CHType.getByName(resp.data.head.head.asInstanceOf[String])
               Some(CHFunctionIO.Function0(outputType))
             )
             .recover(_ => None)
@@ -47,7 +47,7 @@ object FuzzerNonParametricFunctions extends StrictLogging:
           client
             .execute(query(fn.name, args = "", fuzzOverWindow = true))
             .map((resp: CHResponse) =>
-              val outputType: String = resp.data.head.head.asInstanceOf[String]
+              val outputType = CHType.getByName(resp.data.head.head.asInstanceOf[String])
               Some(CHFunctionIO.Function0(outputType))
             )
             .recover(_ => None)
@@ -138,46 +138,54 @@ object FuzzerNonParametricFunctions extends StrictLogging:
       fnConstructorFiniteArgs: ((InputTypes, OutputType)) => U1,
       fnConstructorInfiniteArgs: ((InputTypes, OutputType)) => U2
   )(using client: CHClient, ec: ExecutionContext): Future[(Seq[CHFunction.Mode], Seq[U1], Seq[U2])] =
-    if fn.atLeastOneSignatureFound then
-      // We know whether the function requires/supports or not `OVER window` so we can bruteforce only one of the valid values
-      fuzzNonParametricSingleMode(
-        fn.name,
-        argCount,
-        fuzzOverWindow = !fn.modes.contains(CHFunction.Mode.NoOverWindow),
-        fnConstructorFiniteArgs,
-        fnConstructorInfiniteArgs
-      ).map((finiteFn, infiniteFn) => (Nil, finiteFn, infiniteFn))
-    else
-      // We don't yet know if the function requires/supports or not `OVER window` so we need to brute force them all
-      // First check without OVER window
-      fuzzNonParametricSingleMode(
-        fn.name,
-        argCount,
-        fuzzOverWindow = false,
-        fnConstructorFiniteArgs,
-        fnConstructorInfiniteArgs
-      ).flatMap((finiteFn, infiniteFn) =>
-        // Success without OVER window, let's try a sample function with OVER window
-        val sampleFn = finiteFn.headOption.orElse(infiniteFn.headOption).get
+    val skipFuzzingF =
+      if Settings.Fuzzer.skipFuzzingOnArgumentMismatch
+      then checkArgMismatch(fn.name, argCount)
+      else Future.successful(false)
 
-        val queries =
-          buildFuzzingValuesArgs(sampleFn.arguments.asInstanceOf[Seq[CHFuzzableType]].map(_.fuzzingValues))
-            .map(args => query(fn.name, args, fuzzOverWindow = true))
-
-        executeInParallelUntilSuccess(queries, client.executeNoResult, Settings.ClickHouse.maxSupportedConcurrency)
-          .map(_ => (Seq(CHFunction.Mode.OverWindow, CHFunction.Mode.NoOverWindow), finiteFn, infiniteFn))
-          .recover(_ => (Seq(CHFunction.Mode.NoOverWindow), finiteFn, infiniteFn))
-      ).recoverWith(_ =>
-        // Failure without OVER window, fuzz with OVER window
+    skipFuzzingF.flatMap(skipFuzzing =>
+      if skipFuzzing then Future.successful((Nil, Nil, Nil))
+      else if fn.atLeastOneSignatureFound then
+        // We know whether the function requires/supports or not `OVER window` so we can bruteforce only one of the valid values
         fuzzNonParametricSingleMode(
           fn.name,
           argCount,
-          fuzzOverWindow = true,
+          fuzzOverWindow = !fn.modes.contains(CHFunction.Mode.NoOverWindow),
           fnConstructorFiniteArgs,
           fnConstructorInfiniteArgs
-        ).map((finiteFn, infiniteFn) => (Seq(CHFunction.Mode.OverWindow), finiteFn, infiniteFn))
-          .recover(_ => (Nil, Nil, Nil)) // Nothing worked
-      )
+        ).map((finiteFn, infiniteFn) => (Nil, finiteFn, infiniteFn))
+      else
+        // We don't yet know if the function requires/supports or not `OVER window` so we need to brute force them all
+        // First check without OVER window
+        fuzzNonParametricSingleMode(
+          fn.name,
+          argCount,
+          fuzzOverWindow = false,
+          fnConstructorFiniteArgs,
+          fnConstructorInfiniteArgs
+        ).flatMap((finiteFn, infiniteFn) =>
+          // Success without OVER window, let's try a sample function with OVER window
+          val sampleFn = finiteFn.headOption.orElse(infiniteFn.headOption).get
+
+          val queries =
+            buildFuzzingValuesArgs(sampleFn.arguments.asInstanceOf[Seq[CHFuzzableType]].map(_.fuzzingValues))
+              .map(args => query(fn.name, args, fuzzOverWindow = true))
+
+          executeInParallelUntilSuccess(queries, client.executeNoResult, Settings.ClickHouse.maxSupportedConcurrency)
+            .map(_ => (Seq(CHFunction.Mode.OverWindow, CHFunction.Mode.NoOverWindow), finiteFn, infiniteFn))
+            .recover(_ => (Seq(CHFunction.Mode.NoOverWindow), finiteFn, infiniteFn))
+        ).recoverWith(_ =>
+          // Failure without OVER window, fuzz with OVER window
+          fuzzNonParametricSingleMode(
+            fn.name,
+            argCount,
+            fuzzOverWindow = true,
+            fnConstructorFiniteArgs,
+            fnConstructorInfiniteArgs
+          ).map((finiteFn, infiniteFn) => (Seq(CHFunction.Mode.OverWindow), finiteFn, infiniteFn))
+            .recover(_ => (Nil, Nil, Nil)) // Nothing worked
+        )
+    )
 
   private def fuzzNonParametricSingleMode[U1 <: CHFunctionIO, U2 <: CHFunctionIO](
       fnName: String,
@@ -256,7 +264,7 @@ object FuzzerNonParametricFunctions extends StrictLogging:
                 .execute(_)
                 .map(_.data.head.head.asInstanceOf[String]),
               Settings.ClickHouse.maxSupportedConcurrencyInnerLoop
-            ).map(outputTypes => (inputTypes, outputTypes.reduce(Fuzzer.mergeOutputType)))
+            ).map(outputTypes => (inputTypes, outputTypes.map(CHType.getByName).reduce(Fuzzer.mergeOutputType)))
           ,
           maxConcurrency = Settings.ClickHouse.maxSupportedConcurrencyOuterLoop
         )
@@ -384,9 +392,27 @@ object FuzzerNonParametricFunctions extends StrictLogging:
     if fuzzOverWindow then s"SELECT toTypeName($fnName($args) OVER w1) WINDOW w1 AS ()"
     else s"SELECT toTypeName($fnName($args))"
 
+  /**
+    * @return true if a NUMBER_OF_ARGUMENTS_DOESNT_MATCH error was returned by ClickHouse, false otherwise
+    */
+  private def checkArgMismatch(
+      fnName: String,
+      argCount: Int
+  )(using client: CHClient, ec: ExecutionContext): Future[Boolean] =
+    client
+      .executeNoResult(
+        query(
+          fnName,
+          Range(0, argCount).mkString(", "),
+          false
+        )
+      )
+      .map(_ => false)
+      .recover(err => err.getMessage().contains("(NUMBER_OF_ARGUMENTS_DOESNT_MATCH)"))
+
   private def toFn[T <: CHFunctionIO](
       io: (InputTypes, OutputType),
-      functionConstructor: (CHFuzzableType, String) => T
+      functionConstructor: (CHFuzzableType, CHType) => T
   ): T =
     io._1 match
       case Seq(arg1) => functionConstructor(arg1, io._2)
@@ -394,7 +420,7 @@ object FuzzerNonParametricFunctions extends StrictLogging:
 
   private def toFn[T <: CHFunctionIO](
       io: (InputTypes, OutputType),
-      functionConstructor: (CHFuzzableType, CHFuzzableType, String) => T
+      functionConstructor: (CHFuzzableType, CHFuzzableType, CHType) => T
   ): T =
     io._1 match
       case Seq(arg1, arg2) => functionConstructor(arg1, arg2, io._2)
@@ -402,7 +428,7 @@ object FuzzerNonParametricFunctions extends StrictLogging:
 
   private def toFn[T <: CHFunctionIO](
       io: (InputTypes, OutputType),
-      functionConstructor: (CHFuzzableType, CHFuzzableType, CHFuzzableType, String) => T
+      functionConstructor: (CHFuzzableType, CHFuzzableType, CHFuzzableType, CHType) => T
   ): T =
     io._1 match
       case Seq(arg1, arg2, arg3) => functionConstructor(arg1, arg2, arg3, io._2)
@@ -410,11 +436,11 @@ object FuzzerNonParametricFunctions extends StrictLogging:
 
   private def toFn[T <: CHFunctionIO](
       io: (InputTypes, OutputType),
-      functionConstructor: (CHFuzzableType, CHFuzzableType, CHFuzzableType, CHFuzzableType, String) => T
+      functionConstructor: (CHFuzzableType, CHFuzzableType, CHFuzzableType, CHFuzzableType, CHType) => T
   ): T =
     io._1 match
       case Seq(arg1, arg2, arg3, arg4) => functionConstructor(arg1, arg2, arg3, arg4, io._2)
       case _                           => throw Exception(s"Expected 4 argument, but found ${io._1.size} arguments")
 
   private type InputTypes = Seq[CHFuzzableType]
-  private type OutputType = String
+  private type OutputType = CHType

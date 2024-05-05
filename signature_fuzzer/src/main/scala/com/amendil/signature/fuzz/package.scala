@@ -94,4 +94,151 @@ package object fuzz {
       e4 <- s4
       e5 <- s5
     yield { (e1, e2, e3, e4, e5) }
+
+  /**
+    * If s1 contains "A" and "B", s2 contains "C" and "D", s3 contains "E", s4 contains "F",
+    * s5 contains "G" and "H", s6 contains "I" and "J" combinations are considered to be:
+    * (A, C, E, F, G, I)
+    * (A, C, E, F, H, I)
+    * (A, D, E, F, G, I)
+    * (A, D, E, F, H, I)
+    * (B, C, E, F, G, I)
+    * (B, C, E, F, H, I)
+    * (B, D, E, F, G, I)
+    * (B, D, E, F, H, I)
+    * (A, C, E, F, G, J)
+    * (A, C, E, F, H, J)
+    * (A, D, E, F, G, J)
+    * (A, D, E, F, H, J)
+    * (B, C, E, F, G, J)
+    * (B, C, E, F, H, J)
+    * (B, D, E, F, G, J)
+    * (B, D, E, F, H, J)
+    *
+    * @param s1 List of elements
+    * @param s2 List of elements
+    * @param s3 List of elements
+    * @param s4 List of elements
+    * @param s5 List of elements
+    * @param s6 List of elements
+    * @return all combinations of elements between s1, s2, s3, s4, s5 and s6
+    */
+  private[fuzz] def crossJoin[T, U, V, W, X, Y](
+      s1: Seq[T],
+      s2: Seq[U],
+      s3: Seq[V],
+      s4: Seq[W],
+      s5: Seq[X],
+      s6: Seq[Y]
+  ): Seq[(T, U, V, W, X, Y)] =
+    for
+      e1 <- s1
+      e2 <- s2
+      e3 <- s3
+      e4 <- s4
+      e5 <- s5
+      e6 <- s6
+    yield { (e1, e2, e3, e4, e5, e6) }
+
+  /**
+    * See doc of crossJoin with less parameters for more information
+    *
+    * @param s1 List of elements
+    * @param s2 List of elements
+    * @param s3 List of elements
+    * @param s4 List of elements
+    * @param s5 List of elements
+    * @param s6 List of elements
+    * @param s7 List of elements
+    * @return all combinations of elements between s1, s2, s3, s4, s5, s6 and s7
+    */
+  private[fuzz] def crossJoin[T, U, V, W, X, Y, Z](
+      s1: Seq[T],
+      s2: Seq[U],
+      s3: Seq[V],
+      s4: Seq[W],
+      s5: Seq[X],
+      s6: Seq[Y],
+      s7: Seq[Z]
+  ): Seq[(T, U, V, W, X, Y, Z)] =
+    for
+      e1 <- s1
+      e2 <- s2
+      e3 <- s3
+      e4 <- s4
+      e5 <- s5
+      e6 <- s6
+      e7 <- s7
+    yield { (e1, e2, e3, e4, e5, e6, e7) }
+
+  /**
+    * See doc of crossJoin with less parameters for more information
+    *
+    * @param s1 List of elements
+    * @param s2 List of elements
+    * @param s3 List of elements
+    * @param s4 List of elements
+    * @param s5 List of elements
+    * @param s6 List of elements
+    * @param s7 List of elements
+    * @param s8 List of elements
+    * @return all combinations of elements between s1, s2, s3, s4, s5, s6, s7 and s8
+    */
+  private[fuzz] def crossJoin[T, U, V, W, X, Y, Z, ZA](
+      s1: Seq[T],
+      s2: Seq[U],
+      s3: Seq[V],
+      s4: Seq[W],
+      s5: Seq[X],
+      s6: Seq[Y],
+      s7: Seq[Z],
+      s8: Seq[ZA]
+  ): Seq[(T, U, V, W, X, Y, Z, ZA)] =
+    for
+      e1 <- s1
+      e2 <- s2
+      e3 <- s3
+      e4 <- s4
+      e5 <- s5
+      e6 <- s6
+      e7 <- s7
+      e8 <- s8
+    yield { (e1, e2, e3, e4, e5, e6, e7, e8) }
+
+  /**
+    * See doc of crossJoin with less parameters for more information
+    *
+    * @param s1 List of elements
+    * @param s2 List of elements
+    * @param s3 List of elements
+    * @param s4 List of elements
+    * @param s5 List of elements
+    * @param s6 List of elements
+    * @param s7 List of elements
+    * @param s8 List of elements
+    * @param s9 List of elements
+    * @return all combinations of elements between s1, s2, s3, s4, s5, s6, s7, s8 and s9
+    */
+  private[fuzz] def crossJoin[T, U, V, W, X, Y, Z, ZA, ZB](
+      s1: Seq[T],
+      s2: Seq[U],
+      s3: Seq[V],
+      s4: Seq[W],
+      s5: Seq[X],
+      s6: Seq[Y],
+      s7: Seq[Z],
+      s8: Seq[ZA],
+      s9: Seq[ZB]
+  ): Seq[(T, U, V, W, X, Y, Z, ZA, ZB)] =
+    for
+      e1 <- s1
+      e2 <- s2
+      e3 <- s3
+      e4 <- s4
+      e5 <- s5
+      e6 <- s6
+      e7 <- s7
+      e8 <- s8
+      e9 <- s9
+    yield { (e1, e2, e3, e4, e5, e6, e7, e8, e9) }
 }

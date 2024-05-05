@@ -66,4 +66,14 @@
         <max_entry_size_in_bytes>1</max_entry_size_in_bytes>
         <max_entry_size_in_rows>1</max_entry_size_in_rows>
     </query_cache>
+
+
+    <!-- Substitutions for parameters of replicated tables.
+          Optional. If you don't use replicated tables, you could omit that.
+
+         See https://clickhouse.com/docs/en/engines/table-engines/mergetree-family/replication/#creating-replicated-tables
+      -->
+    <macros>
+        <log_queries>Value</log_queries>
+    </macros>
 </clickhouse>

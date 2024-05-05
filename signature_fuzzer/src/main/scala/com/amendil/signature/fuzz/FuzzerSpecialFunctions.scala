@@ -43,8 +43,9 @@ object FuzzerSpecialFunctions extends StrictLogging:
       .map { (resp: CHResponse) =>
         fn.copy(
           modes = fn.modes + CHFunction.Mode.NoOverWindow,
-          specialFunction0Ns =
-            Seq(CHFunctionIO.Function0N(CHAggregatedType.Any, resp.data.head.head.asInstanceOf[String]))
+          specialFunction0Ns = Seq(
+            CHFunctionIO.Function0N(CHAggregatedType.Any, CHType.getByName(resp.data.head.head.asInstanceOf[String]))
+          )
         )
       }
       .recover(_ => fn)
