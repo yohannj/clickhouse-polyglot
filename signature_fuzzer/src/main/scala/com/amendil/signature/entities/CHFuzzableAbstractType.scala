@@ -3,6 +3,8 @@ package com.amendil.signature.entities
 import com.amendil.common.entities._
 import com.amendil.signature.Settings
 
+sealed trait CustomStringBasedAbstractType
+
 enum CHFuzzableAbstractType(_fuzzingValues: Seq[String], _chFuzzableTypes: Seq[CHFuzzableType]):
   val chFuzzableTypes: Seq[CHFuzzableType] = _chFuzzableTypes.filter { chType =>
     (Settings.Fuzzer.supportJson || !chType.name.toLowerCase().contains("json")) &&
@@ -15,7 +17,7 @@ enum CHFuzzableAbstractType(_fuzzingValues: Seq[String], _chFuzzableTypes: Seq[C
   // Numbers
   case Numbers
       extends CHFuzzableAbstractType(
-        Seq("1", "1::UInt64", "0.5", "true", "-999999999::Decimal32(0)"),
+        Seq("1", "0.5", "true", "-999999999::Decimal32(0)", "1::UInt32", "1::UInt64", "8"),
         Seq(
           CHFuzzableType.BooleanType,
           CHFuzzableType.Int8,
@@ -237,7 +239,7 @@ enum CHFuzzableAbstractType(_fuzzingValues: Seq[String], _chFuzzableTypes: Seq[C
   // Array
   case ArrayNumbers
       extends CHFuzzableAbstractType(
-        Numbers.fuzzingValues.map(n => s"array($n)"),
+        Numbers.fuzzingValues.map(n => s"array($n)") :+ "array(1, 2, 3, 4, 5, 6, 7, 8)",
         Seq(
           CHFuzzableType.ArrayBoolean,
           CHFuzzableType.ArrayInt8,
@@ -566,11 +568,13 @@ enum CHFuzzableAbstractType(_fuzzingValues: Seq[String], _chFuzzableTypes: Seq[C
         CHFuzzableType.Charset.fuzzingValues,
         Seq(CHFuzzableType.Charset)
       )
+      with CustomStringBasedAbstractType
   case ClickHouseType
       extends CHFuzzableAbstractType(
         CHFuzzableType.ClickHouseType.fuzzingValues,
         Seq(CHFuzzableType.ClickHouseType)
       )
+      with CustomStringBasedAbstractType
   case DateTimeUnit
       extends CHFuzzableAbstractType(
         Seq(
@@ -580,23 +584,34 @@ enum CHFuzzableAbstractType(_fuzzingValues: Seq[String], _chFuzzableTypes: Seq[C
         ),
         Seq(CHFuzzableType.DateUnit, CHFuzzableType.TimeUnit, CHFuzzableType.Time64Unit)
       )
+      with CustomStringBasedAbstractType
   case SequencePattern
       extends CHFuzzableAbstractType(
         CHFuzzableType.SequencePattern.fuzzingValues,
         Seq(CHFuzzableType.SequencePattern)
       )
+      with CustomStringBasedAbstractType
   case ServerPortName
       extends CHFuzzableAbstractType(
         Seq("'tcp_port'"),
         Seq(CHFuzzableType.ServerPortName)
       )
+      with CustomStringBasedAbstractType
+  case SynonymExtensionName
+      extends CHFuzzableAbstractType(
+        CHFuzzableType.SynonymExtensionName.fuzzingValues,
+        Seq(CHFuzzableType.SynonymExtensionName)
+      )
+      with CustomStringBasedAbstractType
   case TimeZone
       extends CHFuzzableAbstractType(
         Seq(CHFuzzableType.TimeZone.fuzzingValues.head),
         Seq(CHFuzzableType.TimeZone)
       )
+      with CustomStringBasedAbstractType
   case WindowFunctionMode
       extends CHFuzzableAbstractType(
         CHFuzzableType.WindowFunctionMode.fuzzingValues,
         Seq(CHFuzzableType.WindowFunctionMode)
       )
+      with CustomStringBasedAbstractType

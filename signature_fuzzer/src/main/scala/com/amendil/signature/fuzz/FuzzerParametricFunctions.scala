@@ -18,8 +18,6 @@ object FuzzerParametricFunctions extends StrictLogging:
   private val parametricAbstractType: Seq[CHFuzzableAbstractType] = CHFuzzableAbstractType.values.toSeq.filterNot {
     abstractType =>
       abstractType.fuzzingValues.isEmpty ||
-      abstractType.fuzzingValues.head.contains("::Array(") ||
-      abstractType.fuzzingValues.head.contains("array(") ||
       abstractType.fuzzingValues.head.contains("::Map(") ||
       abstractType.fuzzingValues.head.contains("map(") ||
       abstractType.fuzzingValues.head.contains("::Tuple(") ||
@@ -47,6 +45,9 @@ object FuzzerParametricFunctions extends StrictLogging:
       (fuzzFunction2Or1NWith0Parameter, argCount * argCount),
       (fuzzFunction3Or2NWith0Parameter, argCount * argCount * argCount),
       (fuzzFunction1Or0NWith1Or0NParameter, paramCount * argCount),
+
+      // Hack the cost to run at the same time as fuzzFunction1Or0NWith1Or0NParameter
+      (fuzzFunction1Or0NWith2Or1NParameterForHardcodedMethods, paramCount * argCount),
       (fuzzFunction2Or1NWith1Or0NParameter, paramCount * argCount * argCount),
       // XXX (fuzzFunction3Or2NWith1Or0NParameter, paramCount * argCount * argCount * argCount),
       // Functions below MUST happen after the "With1Or0NParameter", they are then very easy to compute
@@ -171,6 +172,35 @@ object FuzzerParametricFunctions extends StrictLogging:
         parametric0NFunction0Ns = p0NFn0Ns
       )
     )
+
+  private def fuzzFunction1Or0NWith2Or1NParameterForHardcodedMethods(
+      fn: CHFunctionFuzzResult
+  )(using client: CHClient, ec: ExecutionContext): Future[CHFunctionFuzzResult] =
+    if Seq("quantilesDD", "quantilesGK").contains(fn.name) then
+      logger.debug("fuzzFunction1Or0NWith2Or1NParameterForHardcodedMethods")
+      fuzzParametric(
+        fn,
+        paramCount = 2,
+        argCount = 1,
+        (io: (ParametricFunctionInput, OutputType)) => toFn(io, CHFunctionIO.Parametric2Function1.apply),
+        (io: (ParametricFunctionInput, OutputType)) => toFn(io, CHFunctionIO.Parametric1NFunction1.apply),
+        (io: (ParametricFunctionInput, OutputType)) => toFn(io, CHFunctionIO.Parametric2Function0N.apply),
+        (io: (ParametricFunctionInput, OutputType)) => toFn(io, CHFunctionIO.Parametric1NFunction0N.apply)
+      ).map((modes, p2Fn1s, p1NFn1s, p2Fn0Ns, p1NFn0Ns) =>
+        logger.trace(s"${p2Fn1s.size}")
+        logger.trace(s"${p1NFn1s.size}")
+        logger.trace(s"${p2Fn0Ns.size}")
+        logger.trace(s"${p1NFn0Ns.size}")
+        logger.trace(s"fuzzFunction1Or0NWith2Or1NParameterForHardcodedMethods - fuzz done")
+        fn.copy(
+          modes = fn.modes ++ modes,
+          parametric2Function1s = p2Fn1s,
+          parametric1NFunction1s = p1NFn1s,
+          parametric2Function0Ns = p2Fn0Ns,
+          parametric1NFunction0Ns = p1NFn0Ns
+        )
+      )
+    else Future.successful(fn)
 
   private def fuzzFunction2Or1NWith1Or0NParameter(
       fn: CHFunctionFuzzResult
@@ -762,7 +792,7 @@ object FuzzerParametricFunctions extends StrictLogging:
       using client: CHClient,
       ec: ExecutionContext
   ): Future[Seq[(ParametricFunctionInput, OutputType)]] =
-    // Build all combinations of parametric fonction input having paramCount parameters and argCount arguments
+    // Build all combinations of parametric function input having paramCount parameters and argCount arguments
     // Those combinations are described using AbstractTypes!
     // They are all used to query ClickHouse and we are retrieving here only the ones that succeeded.
     val validCHFuzzableAbstractTypeCombinationsF: Future[Seq[ParametricFunctionAbstractInput]] =
@@ -787,6 +817,9 @@ object FuzzerParametricFunctions extends StrictLogging:
     // Expand abstract types to retrieve all types combinations and their output
     validCHFuzzableAbstractTypeCombinationsF.flatMap:
       (validCHFuzzableAbstractTypeCombinations: Seq[ParametricFunctionAbstractInput]) =>
+        logger.trace(
+          s"fuzzFiniteParamsAndArgsFunction - detected ${validCHFuzzableAbstractTypeCombinations.size} abstract input combinations"
+        )
         if validCHFuzzableAbstractTypeCombinations.isEmpty then Future.successful(Nil)
         else
           assume(
@@ -839,6 +872,11 @@ object FuzzerParametricFunctions extends StrictLogging:
                 (paramTypes, queries)
               }
 
+          logger.trace(
+            s"fuzzFiniteParamsAndArgsFunction - testing ${argumentsAndSqlQuery.size} arguments combinations and " +
+              s"${parametersAndSqlQuery.size} parameters combinations"
+          )
+
           for
             // Fuzz arguments
             outputTypeByArguments: Map[NonParametricArguments, OutputType] <-
@@ -852,6 +890,10 @@ object FuzzerParametricFunctions extends StrictLogging:
                 maxConcurrency = Settings.ClickHouse.maxSupportedConcurrency
               ).map(_.toMap)
 
+            _ = logger.trace(
+              s"fuzzFiniteParamsAndArgsFunction - ${outputTypeByArguments.size} arguments combinations are valid"
+            )
+
             // Fuzz parameters
             validParameters: Seq[ParametricArguments] <-
               executeInParallelOnlySuccess(
@@ -860,6 +902,10 @@ object FuzzerParametricFunctions extends StrictLogging:
                   executeInSequenceUntilSuccess(queries, client.executeNoResult).map(_ => paramTypes),
                 maxConcurrency = Settings.ClickHouse.maxSupportedConcurrency
               )
+
+            _ = logger.trace(
+              s"fuzzFiniteParamsAndArgsFunction - ${validParameters.size} parameters combinations are valid"
+            )
           yield {
             for
               parameters <- validParameters
@@ -868,6 +914,84 @@ object FuzzerParametricFunctions extends StrictLogging:
               ((parameters, arguments), outputType)
             }
           }
+
+  /**
+    * Build all combinations of function input having argCount arguments
+    * Those combinations are described using AbstractTypes!
+    *
+    * Then bruteforce them to find the valid ones.
+    */
+  private def getValidAbstractTypeCombinations(
+      fnName: String,
+      paramCount: Int,
+      argCount: Int,
+      fuzzOverWindow: Boolean
+  )(using client: CHClient, ec: ExecutionContext): Future[Seq[ParametricFunctionAbstractInput]] =
+    for
+      // For performance reasons, we first exclude custom types that also work as String.
+      abstractInputCombinationsNoSpecialType: Seq[ParametricFunctionAbstractInput] <-
+        bruteforceAbstractTypeCombinations(
+          crossJoin(
+            generateCHFuzzableAbstractTypeCombinations(paramCount, parametricAbstractType),
+            generateCHFuzzableAbstractTypeCombinations(argCount)
+          ).filterNot((paramTypes, argTypes) =>
+            paramTypes.exists(_.isInstanceOf[CustomStringBasedAbstractType]) ||
+              argTypes.exists(_.isInstanceOf[CustomStringBasedAbstractType])
+          ),
+          fnName,
+          fuzzOverWindow
+        )
+
+      _ = logger.trace(
+        s"bruteforceAbstractTypeCombinations - detected ${abstractInputCombinationsNoSpecialType.size} abstract input combinations (excluding special types)"
+      )
+
+      // If nothing was found previously, then it might be because we need a custom types.
+      abstractInputCombinations: Seq[ParametricFunctionAbstractInput] <-
+        if abstractInputCombinationsNoSpecialType.nonEmpty then
+          Future.successful(abstractInputCombinationsNoSpecialType)
+        else
+          bruteforceAbstractTypeCombinations(
+            crossJoin(
+              generateCHFuzzableAbstractTypeCombinations(paramCount, parametricAbstractType),
+              generateCHFuzzableAbstractTypeCombinations(argCount)
+            ).filter((paramTypes, argTypes) =>
+              paramTypes.exists(_.isInstanceOf[CustomStringBasedAbstractType]) ||
+                argTypes.exists(_.isInstanceOf[CustomStringBasedAbstractType])
+            ),
+            fnName,
+            fuzzOverWindow
+          )
+
+      _ = logger.trace(
+        s"bruteforceAbstractTypeCombinations - detected ${abstractInputCombinations.size} abstract input combinations"
+      )
+    yield {
+      abstractInputCombinations
+    }
+
+  /**
+    * Query ClickHouse for all given combinations and we returning those that succeeded at least once.
+    */
+  private def bruteforceAbstractTypeCombinations(
+      combinations: Seq[(Seq[CHFuzzableAbstractType], Seq[CHFuzzableAbstractType])],
+      fnName: String,
+      fuzzOverWindow: Boolean
+  )(using client: CHClient, ec: ExecutionContext): Future[Seq[ParametricFunctionAbstractInput]] =
+    executeInParallelOnlySuccess(
+      combinations,
+      (paramTypes: Seq[CHFuzzableAbstractType], nonParamTypes: Seq[CHFuzzableAbstractType]) => {
+        executeInParallelUntilSuccess(
+          crossJoin(
+            buildFuzzingValuesArgs(paramTypes.map(_.fuzzingValues)),
+            buildFuzzingValuesArgs(nonParamTypes.map(_.fuzzingValues))
+          ).map { (paramArgs, nonParamArgs) => query(fnName, paramArgs, nonParamArgs, fuzzOverWindow) },
+          client.executeNoResult,
+          maxConcurrency = Settings.ClickHouse.maxSupportedConcurrencyInnerLoop
+        ).map(_ => (paramTypes, nonParamTypes))
+      },
+      maxConcurrency = Settings.ClickHouse.maxSupportedConcurrencyOuterLoop
+    )
 
   /**
     * For all parametric functions previously found, fuzz if we can add a an additional parameter.
@@ -1040,9 +1164,10 @@ object FuzzerParametricFunctions extends StrictLogging:
     io._1 match
       case (Seq(), Seq(arg1)) => parametricFunctionConstructor(arg1, io._2)
       case _ =>
-        throw Exception(
+        val msg =
           s"Expected 0 parameter and 1 argument, but found ${io._1.parameters.size} parameters and ${io._1.arguments.size} arguments"
-        )
+        logger.error(msg)
+        throw Exception(msg)
 
   private def toFn[T <: CHFunctionIO](
       io: (ParametricFunctionInput, OutputType),
@@ -1051,20 +1176,23 @@ object FuzzerParametricFunctions extends StrictLogging:
     io._1 match
       case (Seq(param1), Seq(arg1)) => parametricFunctionConstructor(param1, arg1, io._2)
       case _ =>
-        throw Exception(
+        val msg =
           s"Expected 1 parameter and 1 argument, but found ${io._1.parameters.size} parameters and ${io._1.arguments.size} arguments"
-        )
+        logger.error(msg)
+        throw Exception(msg)
 
   private def toFn[T <: CHFunctionIO](
       io: (ParametricFunctionInput, OutputType),
       parametricFunctionConstructor: (CHFuzzableType, CHFuzzableType, CHFuzzableType, CHType) => T
   ): T =
     io._1 match
-      case (Seq(param1), Seq(arg1, arg2)) => parametricFunctionConstructor(param1, arg1, arg2, io._2)
+      case (Seq(param1), Seq(arg1, arg2))   => parametricFunctionConstructor(param1, arg1, arg2, io._2)
+      case (Seq(param1, param2), Seq(arg1)) => parametricFunctionConstructor(param1, param2, arg1, io._2)
       case _ =>
-        throw Exception(
-          s"Expected 1 parameter and 2 arguments, but found ${io._1.parameters.size} parameters and ${io._1.arguments.size} arguments"
-        )
+        val msg =
+          s"Expected 1 parameter and 2 arguments (or vice versa), but found ${io._1.parameters.size} parameters and ${io._1.arguments.size} arguments"
+        logger.error(msg)
+        throw Exception(msg)
 
   private def toFn[T <: CHFunctionIO](
       io: (ParametricFunctionInput, OutputType),
@@ -1073,9 +1201,10 @@ object FuzzerParametricFunctions extends StrictLogging:
     io._1 match
       case (Seq(param1), Seq(arg1, arg2, arg3)) => parametricFunctionConstructor(param1, arg1, arg2, arg3, io._2)
       case _ =>
-        throw Exception(
+        val msg =
           s"Expected 1 parameter and 3 arguments, but found ${io._1.parameters.size} parameters and ${io._1.arguments.size} arguments"
-        )
+        logger.error(msg)
+        throw Exception(msg)
 
   private type ParametricArguments = Seq[CHFuzzableType]
   private type NonParametricArguments = Seq[CHFuzzableType]

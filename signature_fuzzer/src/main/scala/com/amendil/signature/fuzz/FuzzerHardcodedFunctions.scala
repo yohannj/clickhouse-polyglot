@@ -699,6 +699,92 @@ object FuzzerHardcodedFunctions extends StrictLogging {
             parametric3Function2s = parametric3Function2
           )
         }
+      case "minSampleSizeContinous" | "minSampleSizeContinuous" =>
+        val fuzzType = CHFuzzableAbstractType.Numbers.chFuzzableTypes.map(t => (t, Seq(t.fuzzingValues.head)))
+        for functions5 <-
+            fuzzSignatures(
+              fn.name,
+              crossJoin(
+                fuzzType,
+                fuzzType,
+                fuzzType,
+                fuzzType,
+                fuzzType
+              ).map(_.toList)
+            ).map { signatures =>
+              signatures.map { io =>
+                io._1 match
+                  case Seq(arg1, arg2, arg3, arg4, arg5) => Function5(arg1, arg2, arg3, arg4, arg5, io._2)
+                  case _                                 => throw Exception(s"Expected 5 arguments, but found ${io._1.size} arguments")
+              }
+            }
+        yield {
+          fn.copy(
+            modes = fn.modes + CHFunction.Mode.NoOverWindow,
+            function5s = functions5
+          )
+        }
+      case "minSampleSizeConversion" =>
+        val fuzzType = CHFuzzableAbstractType.Numbers.chFuzzableTypes.map(t => (t, Seq(t.fuzzingValues.head)))
+        for functions4 <-
+            fuzzSignatures(
+              fn.name,
+              crossJoin(
+                fuzzType,
+                fuzzType,
+                fuzzType,
+                fuzzType
+              ).map(_.toList)
+            ).map { signatures =>
+              signatures.map { io =>
+                io._1 match
+                  case Seq(arg1, arg2, arg3, arg4) => Function4(arg1, arg2, arg3, arg4, io._2)
+                  case _                           => throw Exception(s"Expected 4 arguments, but found ${io._1.size} arguments")
+              }
+            }
+        yield {
+          fn.copy(
+            modes = fn.modes + CHFunction.Mode.NoOverWindow,
+            function4s = functions4
+          )
+        }
+      case "proportionsZTest" =>
+        val number = CHFuzzableAbstractType.Numbers.chFuzzableTypes.map(t => (t, Seq(t.fuzzingValues.head)))
+        val usevarType = Seq((CHFuzzableType.Usevar, CHFuzzableType.Usevar.fuzzingValues))
+
+        for functions6 <-
+            fuzzSignatures(
+              fn.name,
+              crossJoin(
+                number, // successes_x
+                number, // successes_y
+                number, // trials_x
+                number, // trials_y
+                number, // confidence level (float betzeen 0 and 1)
+                usevarType // usevar
+              ).map(_.toList)
+            ).map { signatures =>
+              signatures.map { io =>
+                io._1 match
+                  case Seq(arg1, arg2, arg3, arg4, arg5, arg6) => Function6(arg1, arg2, arg3, arg4, arg5, arg6, io._2)
+                  case _                                       => throw Exception(s"Expected 6 arguments, but found ${io._1.size} arguments")
+              }
+            }
+        yield {
+          fn.copy(
+            modes = fn.modes + CHFunction.Mode.NoOverWindow,
+            function6s = functions6
+          )
+        }
+      case "reinterpret" =>
+        Future.successful(
+          fn.copy(
+            modes = fn.modes + CHFunction.Mode.NoOverWindow,
+            function2s = Seq(
+              Function2(CHAggregatedType.Any, CHFuzzableType.ClickHouseType, CHAggregatedType.Any)
+            )
+          )
+        )
       case "sequenceNextNode" => // TODO Test it similarly to "encrypt"
         // This method has many parameters and arguments. It's not worth to fuzz it.
         import CHFuzzableType._
@@ -754,6 +840,55 @@ object FuzzerHardcodedFunctions extends StrictLogging {
           )
         )
         // format: on
+      case "seriesOutliersDetectTukey" =>
+        val arrayNbTypes = CHFuzzableAbstractType.ArrayNumbers.chFuzzableTypes
+        val nbTypes = CHFuzzableAbstractType.Numbers.chFuzzableTypes
+
+        val seriesType = arrayNbTypes.map(t => (t, t.fuzzingValues))
+        val floatTypes = Seq(
+          (CHFuzzableType.Float32, CHFuzzableType.Float32.fuzzingValues),
+          (CHFuzzableType.Float64, CHFuzzableType.Float64.fuzzingValues)
+        )
+        val kType = nbTypes.map(t => (t, t.fuzzingValues))
+
+        val usevarType = Seq((CHFuzzableType.Usevar, CHFuzzableType.Usevar.fuzzingValues))
+
+        for
+          functions1 <-
+            fuzzSignatures(
+              fn.name,
+              Seq(seriesType)
+            ).map { signatures =>
+              signatures.map { io =>
+                io._1 match
+                  case Seq(arg1) => Function1(arg1, io._2)
+                  case _         => throw Exception(s"Expected 1 argument, but found ${io._1.size} arguments")
+              }
+            }
+
+          functions4 <-
+            fuzzSignatures(
+              fn.name,
+              crossJoin(
+                seriesType,
+                floatTypes,
+                floatTypes,
+                kType
+              ).map(_.toList)
+            ).map { signatures =>
+              signatures.map { io =>
+                io._1 match
+                  case Seq(arg1, arg2, arg3, arg4) => Function4(arg1, arg2, arg3, arg4, io._2)
+                  case _                           => throw Exception(s"Expected 4 arguments, but found ${io._1.size} arguments")
+              }
+            }
+        yield {
+          fn.copy(
+            modes = fn.modes + CHFunction.Mode.NoOverWindow,
+            function1s = functions1,
+            function4s = functions4
+          )
+        }
       case _ =>
         Future.successful(fn)
 

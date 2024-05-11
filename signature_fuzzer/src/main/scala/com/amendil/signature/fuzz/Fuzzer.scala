@@ -19,15 +19,12 @@ object Fuzzer extends StrictLogging:
         // It requires a new type as the first argument must be the result of a "-State" combinator
         // https://clickhouse.com/docs/en/sql-reference/aggregate-functions/reference/stochasticlinearregression
         Future.successful(fn)
-      case "finalizeAggregation" =>
+      case "finalizeAggregation" | "initializeAggregation" | "runningAccumulate" =>
         // To be handled at a later time
-        // It requires an aggregated function new type as the first argument must be the result of a "-State" combinator
+        // It requires an aggregated function CHType
         // https://clickhouse.com/docs/en/sql-reference/functions/other-functions#finalizeaggregation
-        Future.successful(fn)
-      case "initializeAggregation" =>
-        // To be handled at a later time
-        // It requires an aggregated function new type for the output
         // https://clickhouse.com/docs/en/sql-reference/functions/other-functions#initializeaggregation
+        // https://clickhouse.com/docs/en/sql-reference/functions/other-functions#runningaccumulate
         Future.successful(fn)
       case "isNotDistinctFrom" =>
         // To be handled at a later time
@@ -272,25 +269,30 @@ object Fuzzer extends StrictLogging:
       using client: CHClient,
       ec: ExecutionContext
   ): Future[Boolean] =
-    client
-      .executeNoResult(s"SELECT toTypeName($fnName(1)(1))")
-      .map(_ => true) // Coincidence: we used a valid parametric signature for the test
-      .recover { err =>
-        // Those messages were initially found by looking at `!parameters.empty()` in ClickHouse codebase.
-        // The idea is to help detect as early as possible when the function is not parametric for sure.
-        // In case we miss an error message, it is expected for the Fuzzer to be unable to determine any signature,
-        // that way we receive an error log about it and we can update this list.
-        val nonParametricErrorMessages = Seq(
-          s"Aggregate function $fnName cannot have parameters",
-          s"Executable user defined functions with `executable_pool` type does not support parameters",
-          s"Function $fnName cannot be parameterized",
-          s"Function $fnName is not parametric",
-          s"Incorrect number of parameters for aggregate function $fnName, should be 0",
-          s"Parameters are not supported if executable user defined function is not direct"
-        )
+    val hardcodedNonParametricFnNames = Seq("rankCorr")
 
-        !nonParametricErrorMessages.exists(err.getMessage().contains)
-      }
+    if hardcodedNonParametricFnNames.contains(fnName)
+    then Future.successful(false)
+    else
+      client
+        .executeNoResult(s"SELECT toTypeName($fnName(1)(1))")
+        .map(_ => true) // Coincidence: we used a valid parametric signature for the test
+        .recover { err =>
+          // Those messages were initially found by looking at `!parameters.empty()` in ClickHouse codebase.
+          // The idea is to help detect as early as possible when the function is not parametric for sure.
+          // In case we miss an error message, it is expected for the Fuzzer to be unable to determine any signature,
+          // that way we receive an error log about it and we can update this list.
+          val nonParametricErrorMessages = Seq(
+            s"Aggregate function $fnName cannot have parameters",
+            s"Executable user defined functions with `executable_pool` type does not support parameters",
+            s"Function $fnName cannot be parameterized",
+            s"Function $fnName is not parametric",
+            s"Incorrect number of parameters for aggregate function $fnName, should be 0",
+            s"Parameters are not supported if executable user defined function is not direct"
+          )
+
+          !nonParametricErrorMessages.exists(err.getMessage().contains)
+        }
 
   private def generateCHFuzzableAbstractTypeCombinations(
       argCount: Int,

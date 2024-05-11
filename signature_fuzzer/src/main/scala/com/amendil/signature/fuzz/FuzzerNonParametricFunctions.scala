@@ -212,12 +212,14 @@ object FuzzerNonParametricFunctions extends StrictLogging:
   )(using client: CHClient, ec: ExecutionContext): Future[Seq[(InputTypes, OutputType)]] =
     logger.trace(s"fuzzFiniteArgsFunctions - init")
     for
-      // Build all combinations of fonction input having argCount arguments
+      // Build all combinations of function input having argCount arguments
       // Those combinations are described using AbstractTypes!
       // They are all used to query ClickHouse and we are retrieving here only the ones that succeeded.
-      abstractInputCombinations: Seq[Seq[CHFuzzableAbstractType]] <-
+      abstractInputCombinationsNoSpecialType: Seq[Seq[CHFuzzableAbstractType]] <-
         executeInParallelOnlySuccess(
-          generateCHFuzzableAbstractTypeCombinations(argCount),
+          generateCHFuzzableAbstractTypeCombinations(argCount).filterNot(
+            _.exists(_.isInstanceOf[CustomStringBasedAbstractType])
+          ),
           (abstractTypes: Seq[CHFuzzableAbstractType]) => {
             executeInParallelUntilSuccess(
               buildFuzzingValuesArgs(abstractTypes.map(_.fuzzingValues)).map(args =>
@@ -229,6 +231,29 @@ object FuzzerNonParametricFunctions extends StrictLogging:
           },
           maxConcurrency = Settings.ClickHouse.maxSupportedConcurrencyOuterLoop
         )
+      _ = logger.trace(
+        s"fuzzFiniteArgsFunctions - detected ${abstractInputCombinationsNoSpecialType.size} abstract input combinations (excluding special types)"
+      )
+
+      abstractInputCombinations: Seq[Seq[CHFuzzableAbstractType]] <-
+        if abstractInputCombinationsNoSpecialType.nonEmpty then
+          Future.successful(abstractInputCombinationsNoSpecialType)
+        else
+          executeInParallelOnlySuccess(
+            generateCHFuzzableAbstractTypeCombinations(argCount).filter(
+              _.exists(_.isInstanceOf[CustomStringBasedAbstractType])
+            ),
+            (abstractTypes: Seq[CHFuzzableAbstractType]) => {
+              executeInParallelUntilSuccess(
+                buildFuzzingValuesArgs(abstractTypes.map(_.fuzzingValues)).map(args =>
+                  query(fnName, args, fuzzOverWindow)
+                ),
+                client.executeNoResult,
+                maxConcurrency = Settings.ClickHouse.maxSupportedConcurrencyInnerLoop
+              ).map(_ => abstractTypes)
+            },
+            maxConcurrency = Settings.ClickHouse.maxSupportedConcurrencyOuterLoop
+          )
       _ = logger.trace(
         s"fuzzFiniteArgsFunctions - detected ${abstractInputCombinations.size} abstract input combinations"
       )
@@ -274,6 +299,72 @@ object FuzzerNonParametricFunctions extends StrictLogging:
     }
 
   /**
+    * Build all combinations of function input having argCount arguments
+    * Those combinations are described using AbstractTypes!
+    *
+    * Then bruteforce them to find the valid ones.
+    */
+  private def getValidAbstractTypeCombinations(
+      fnName: String,
+      argCount: Int,
+      fuzzOverWindow: Boolean
+  )(using client: CHClient, ec: ExecutionContext): Future[Seq[Seq[CHFuzzableAbstractType]]] =
+    for
+      // For performance reasons, we first exclude custom types that also work as String.
+      abstractInputCombinationsNoSpecialType: Seq[Seq[CHFuzzableAbstractType]] <-
+        bruteforceAbstractTypeCombinations(
+          generateCHFuzzableAbstractTypeCombinations(argCount).filterNot(
+            _.exists(_.isInstanceOf[CustomStringBasedAbstractType])
+          ),
+          fnName,
+          fuzzOverWindow
+        )
+
+      _ = logger.trace(
+        s"bruteforceAbstractTypeCombinations - detected ${abstractInputCombinationsNoSpecialType.size} abstract input combinations (excluding special types)"
+      )
+
+      // If nothing was found previously, then it might be because we need a custom types.
+      abstractInputCombinations: Seq[Seq[CHFuzzableAbstractType]] <-
+        if abstractInputCombinationsNoSpecialType.nonEmpty then
+          Future.successful(abstractInputCombinationsNoSpecialType)
+        else
+          bruteforceAbstractTypeCombinations(
+            generateCHFuzzableAbstractTypeCombinations(argCount).filter(
+              _.exists(_.isInstanceOf[CustomStringBasedAbstractType])
+            ),
+            fnName,
+            fuzzOverWindow
+          )
+
+      _ = logger.trace(
+        s"bruteforceAbstractTypeCombinations - detected ${abstractInputCombinations.size} abstract input combinations"
+      )
+    yield {
+      abstractInputCombinations
+    }
+
+  /**
+    * Query ClickHouse for all given combinations and we returning those that succeeded at least once.
+    */
+  private def bruteforceAbstractTypeCombinations(
+      combinations: Seq[Seq[CHFuzzableAbstractType]],
+      fnName: String,
+      fuzzOverWindow: Boolean
+  )(using client: CHClient, ec: ExecutionContext): Future[Seq[Seq[CHFuzzableAbstractType]]] =
+    executeInParallelOnlySuccess(
+      combinations,
+      (abstractTypes: Seq[CHFuzzableAbstractType]) => {
+        executeInParallelUntilSuccess(
+          buildFuzzingValuesArgs(abstractTypes.map(_.fuzzingValues)).map(args => query(fnName, args, fuzzOverWindow)),
+          client.executeNoResult,
+          maxConcurrency = Settings.ClickHouse.maxSupportedConcurrencyInnerLoop
+        ).map(_ => abstractTypes)
+      },
+      maxConcurrency = Settings.ClickHouse.maxSupportedConcurrencyOuterLoop
+    )
+
+  /**
     * For each abstract input, this method checks for each argument which non-abstract type are valid.
     */
   private def filterFuzzableTypePerArgument(
@@ -310,7 +401,13 @@ object FuzzerNonParametricFunctions extends StrictLogging:
                       queries,
                       client.executeNoResult
                     ).map(_ => fuzzableType)
-                ).map(filteredFuzzableType => (currentArgumentAbstractType, filteredFuzzableType))
+                ).map { filteredFuzzableType =>
+                  if filteredFuzzableType.isEmpty then
+                    logger.error("No individual value found, while we know the combination is valid.")
+                    throw Exception("No individual value found, while we know the combination is valid.")
+
+                  (currentArgumentAbstractType, filteredFuzzableType)
+                }
             ),
           maxConcurrency = Settings.ClickHouse.maxSupportedConcurrency
         )
@@ -399,16 +496,25 @@ object FuzzerNonParametricFunctions extends StrictLogging:
       fnName: String,
       argCount: Int
   )(using client: CHClient, ec: ExecutionContext): Future[Boolean] =
-    client
-      .executeNoResult(
-        query(
-          fnName,
-          Range(0, argCount).mkString(", "),
-          false
+    if fnName.equals("nested") && argCount == 2 then Future.successful(false)
+    else if fnName.equals("arrayEnumerateRanked") then Future.successful(false) // Unsure about the expected arg count
+    else
+      client
+        .executeNoResult(
+          query(
+            fnName,
+            Range(0, argCount).mkString(", "),
+            false
+          )
         )
-      )
-      .map(_ => false)
-      .recover(err => err.getMessage().contains("(NUMBER_OF_ARGUMENTS_DOESNT_MATCH)"))
+        .map(_ => false)
+        .recover { err =>
+          Seq(
+            "(TOO_FEW_ARGUMENTS_FOR_FUNCTION)",
+            "(NUMBER_OF_ARGUMENTS_DOESNT_MATCH)",
+            "(TOO_MANY_ARGUMENTS_FOR_FUNCTION)"
+          ).exists(err.getMessage().contains)
+        }
 
   private def toFn[T <: CHFunctionIO](
       io: (InputTypes, OutputType),

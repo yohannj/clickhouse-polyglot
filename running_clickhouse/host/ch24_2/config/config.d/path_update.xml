@@ -51,6 +51,9 @@
         <public_suffix_list>public_suffix_list.dat</public_suffix_list>
     </top_level_domains_lists>
 
+    <path_to_regions_hierarchy_file>/vagrant/ClickHouse/fuzz/running_clickhouse/host/ch24_2/var/lib/clickhouse/user_files/geo/regions_hierarchy.txt</path_to_regions_hierarchy_file>
+    <path_to_regions_names_files>/vagrant/ClickHouse/fuzz/running_clickhouse/host/ch24_2/var/lib/clickhouse/user_files/geo/</path_to_regions_names_files>
+
     <catboost_lib_path>/vagrant/ClickHouse/fuzz/running_clickhouse/host/ch24_2/var/lib/clickhouse/model/libcatboostmodel.so</catboost_lib_path>
 
     <lemmatizers>

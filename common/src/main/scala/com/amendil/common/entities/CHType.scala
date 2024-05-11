@@ -19,11 +19,16 @@ object CHType extends StrictLogging:
 
   // Utils
   private def root[$: P]: P[CHType] = P(Start ~ any ~ End)
-  private def digits[$: P]: P[Int] = P(CharIn("0-9").rep.!).map(_.toInt)
+  private def digits[$: P]: P[Int] = P(CharsWhileIn("0-9\\-").!).map(_.toInt)
   private def enumElement[$: P]: P[Unit] = (plainString ~ " = " ~ digits).map(_ => (): Unit)
-  private def plainString[$: P]: P[String] = "'" ~ CharsWhile(_ != '\'').! ~ "'"
+  private def escapedString[$: P]: P[String] =
+    "`" ~ CharsWhile(_ != '`').! ~ "`" // TODO an escaped String could have backticks in it
+  private def plainString[$: P]: P[String] =
+    "'" ~ CharsWhile(_ != '\'').! ~ "'" // TODO a plain String could have single quotes in it
   private def tupleElement[$: P]: P[CHType] =
-    ("a " | "confidence_interval_low " | "confidence_interval_high " | "d_statistic " | "p_value " | "u_statistic " | "z_statistic ").? ~ any
+    (escapedString ~ " " ~ any).map((_, chType) => chType) |
+      (CharsWhileIn("A-Za-z0-9_") ~ " " ~ any) |
+      any
 
   // ClickHouse types
   private def any[$: P]: P[CHType] = P(
@@ -34,11 +39,11 @@ object CHType extends StrictLogging:
   private def date[$: P]: P[CHType] = P("Date" ~ !("Time" | "32")).map(_ => CHFuzzableType.Date)
   private def date32[$: P]: P[CHType] = P("Date32").map(_ => CHFuzzableType.Date32)
   private def datetime[$: P]: P[CHType] = P("DateTime" ~ !("(" | "64")).map(_ => CHFuzzableType.DateTime)
-  private def datetime64[$: P]: P[CHType] = P("DateTime64(" ~/ digits ~ ")").map(_ => CHFuzzableType.DateTime64)
+  private def datetime64[$: P]: P[CHType] = P("DateTime64(" ~ digits ~ ")").map(_ => CHFuzzableType.DateTime64)
   private def datetimeTZ[$: P]: P[CHType] = P("DateTime(" ~/ plainString ~ ")").map(_ => CHFuzzableType.DateTime)
   private def datetime64TZ[$: P]: P[CHType] =
-    P("DateTime64(" ~/ digits ~ "," ~ plainString ~ ")").map(_ => CHFuzzableType.DateTime64)
-  private def decimal[$: P]: P[CHType] = P("Decimal(" ~/ digits ~ "," ~/ digits ~ ")").map { (d1, _) =>
+    P("DateTime64(" ~ digits ~ ", " ~ plainString ~ ")").map(_ => CHFuzzableType.DateTime64)
+  private def decimal[$: P]: P[CHType] = P("Decimal(" ~/ digits ~ ", " ~/ digits ~ ")").map { (d1, _) =>
     if d1 <= 9 then CHFuzzableType.Decimal32
     if d1 <= 18 then CHFuzzableType.Decimal64
     if d1 <= 38 then CHFuzzableType.Decimal128
@@ -50,10 +55,10 @@ object CHType extends StrictLogging:
   private def decimal128[$: P]: P[CHType] = P("Decimal128").map(_ => CHFuzzableType.Decimal128)
   private def decimal256[$: P]: P[CHType] = P("Decimal256").map(_ => CHFuzzableType.Decimal256)
   private def enum16[$: P]: P[CHType] =
-    P("Enum16(" ~ enumElement ~ ("," ~ enumElement).rep ~ ")").map(_ => CHFuzzableType.Enum16)
+    P("Enum16(" ~/ enumElement ~ ("," ~ " ".? ~ enumElement).rep ~ ")").map(_ => CHFuzzableType.Enum16)
   private def enum8[$: P]: P[CHType] =
-    P("Enum8(" ~ enumElement ~ ("," ~ enumElement).rep ~ ")").map(_ => CHFuzzableType.Enum8)
-  private def fixedstring[$: P]: P[CHType] = P("FixedString('" ~/ digits ~ "')").map(CHSpecialType.FixedString(_))
+    P("Enum8(" ~/ enumElement ~ ("," ~ " ".? ~ enumElement).rep ~ ")").map(_ => CHFuzzableType.Enum8)
+  private def fixedstring[$: P]: P[CHType] = P("FixedString(" ~/ digits ~ ")").map(_ => CHFuzzableType.FixedString)
   private def float32[$: P]: P[CHType] = P("Float32").map(_ => CHFuzzableType.Float32)
   private def float64[$: P]: P[CHType] = P("Float64").map(_ => CHFuzzableType.Float64)
   private def int128[$: P]: P[CHType] = P("Int128").map(_ => CHFuzzableType.Int128)
@@ -87,7 +92,9 @@ object CHType extends StrictLogging:
   private def ring[$: P]: P[CHType] = P("Ring").map(_ => CHFuzzableType.Ring)
   private def string[$: P]: P[CHType] = P("String").map(_ => CHFuzzableType.StringType)
   private def tuple[$: P]: P[CHType] =
-    P("Tuple(" ~/ tupleElement ~ ("," ~ tupleElement).rep ~ ")").map((head, tail) => CHSpecialType.Tuple(head +: tail))
+    P("Tuple(" ~/ tupleElement ~ ("," ~ " ".? ~ tupleElement).rep ~ ")").map((head, tail) =>
+      CHSpecialType.Tuple(head +: tail)
+    )
   private def uint128[$: P]: P[CHType] = P("UInt128").map(_ => CHFuzzableType.UInt128)
   private def uint16[$: P]: P[CHType] = P("UInt16").map(_ => CHFuzzableType.UInt16)
   private def uint256[$: P]: P[CHType] = P("UInt256").map(_ => CHFuzzableType.UInt256)
@@ -104,8 +111,6 @@ enum CHSpecialType(val name: String) extends CHType:
   case Map(keyType: CHType, valueType: CHType) extends CHSpecialType(s"Map(${keyType.name}, ${valueType.name})")
   case Nullable(innerType: CHType) extends CHSpecialType(s"Nullable(${innerType.name})")
   case Tuple(innerTypes: Seq[CHType]) extends CHSpecialType(s"Tuple(${innerTypes.map(_.name).mkString(", ")})")
-
-  case FixedString(size: Int) extends CHSpecialType(s"FixedString($size)")
 
   case CatboostParameter
       extends CHSpecialType("CatboostParameter") // UIntX, IntX, Float32, Float64, Date, Date32, DateTime
@@ -135,22 +140,22 @@ enum CHFuzzableType(
   case Int8
       extends CHFuzzableType(
         "Int8",
-        Seq("-128::Int8", "127::Int8", "0::Int8", "1::Int8")
+        Seq("-128::Int8", "127::Int8", "0::Int8", "1::Int8", "8::Int8")
       )
   case Int16
       extends CHFuzzableType(
         "Int16",
-        Seq("-32768::Int16", "32767::Int16", "0::Int16", "1::Int16")
+        Seq("-32768::Int16", "32767::Int16", "0::Int16", "1::Int16", "8::Int16")
       )
   case Int32
       extends CHFuzzableType(
         "Int32",
-        Seq("-2147483648::Int32", "2147483647::Int32", "0::Int32", "1::Int32")
+        Seq("-2147483648::Int32", "2147483647::Int32", "0::Int32", "1::Int32", "8::Int32")
       )
   case Int64
       extends CHFuzzableType(
         "Int64",
-        Seq("-9223372036854775808::Int64", "9223372036854775807::Int64", "0::Int64", "1::Int64")
+        Seq("-9223372036854775808::Int64", "9223372036854775807::Int64", "0::Int64", "1::Int64", "8::Int64")
       )
   case Int128
       extends CHFuzzableType(
@@ -159,7 +164,8 @@ enum CHFuzzableType(
           "-170141183460469231731687303715884105728::Int128",
           "170141183460469231731687303715884105727::Int128",
           "0::Int128",
-          "1::Int128"
+          "1::Int128",
+          "8::Int128"
         )
       )
   case Int256
@@ -169,33 +175,34 @@ enum CHFuzzableType(
           "-57896044618658097711785492504343953926634992332820282019728792003956564819968::Int256",
           "57896044618658097711785492504343953926634992332820282019728792003956564819967::Int256",
           "0::Int256",
-          "1::Int256"
+          "1::Int256",
+          "8::Int256"
         )
       )
   case UInt8
       extends CHFuzzableType(
         "UInt8",
-        Seq("0::UInt8", "1::UInt8", "255::UInt8")
+        Seq("0::UInt8", "1::UInt8", "8::UInt8", "255::UInt8")
       )
   case UInt16
       extends CHFuzzableType(
         "UInt16",
-        Seq("0::UInt16", "1::UInt16", "65535::UInt16")
+        Seq("0::UInt16", "1::UInt16", "8::UInt16", "65535::UInt16")
       )
   case UInt32
       extends CHFuzzableType(
         "UInt32",
-        Seq("0::UInt32", "1::UInt32", "4294967295::UInt32")
+        Seq("0::UInt32", "1::UInt32", "8::UInt32", "4294967295::UInt32")
       )
   case UInt64
       extends CHFuzzableType(
         "UInt64",
-        Seq("0::UInt64", "1::UInt64", "18446744073709551615::UInt64")
+        Seq("0::UInt64", "1::UInt64", "8::UInt64", "18446744073709551615::UInt64")
       )
   case UInt128
       extends CHFuzzableType(
         "UInt128",
-        Seq("0::UInt128", "1::UInt128", "340282366920938463463374607431768211455::UInt128")
+        Seq("0::UInt128", "1::UInt128", "8::UInt128", "340282366920938463463374607431768211455::UInt128")
       )
   case UInt256
       extends CHFuzzableType(
@@ -203,6 +210,7 @@ enum CHFuzzableType(
         Seq(
           "0::UInt256",
           "1::UInt256",
+          "8::UInt256",
           "115792089237316195423570985008687907853269984665640564039457584007913129639935::UInt256"
         )
       )
@@ -210,18 +218,20 @@ enum CHFuzzableType(
   case Float32
       extends CHFuzzableType(
         "Float32",
-        Seq("-inf::Float32", "nan::Float32", "0.5::Float32", "0::Float32")
+        Seq("-inf::Float32", "nan::Float32", "0.5::Float32", "0::Float32", "8::Float32")
       )
   case Float64
       extends CHFuzzableType(
         "Float64",
-        Seq("-inf::Float64", "nan::Float64", "0.5::Float64", "0::Float64")
+        Seq("-inf::Float64", "nan::Float64", "0.5::Float64", "0::Float64", "8::Float64")
       )
   case Decimal32
       extends CHFuzzableType(
         "Decimal32",
         Seq(
           "-999999999::Decimal32(0)",
+          "1::Decimal32(0)",
+          "8::Decimal32(0)",
           "999999999::Decimal32(0)",
           "-0.999999999::Decimal32(9)",
           "0.999999999::Decimal32(9)"
@@ -232,6 +242,8 @@ enum CHFuzzableType(
         "Decimal64",
         Seq(
           "-999999999999999999::Decimal64(0)",
+          "1::Decimal64(0)",
+          "8::Decimal64(0)",
           "999999999999999999::Decimal64(0)",
           "-0.999999999999999999::Decimal64(18)",
           "0.999999999999999999::Decimal64(18)",
@@ -246,6 +258,8 @@ enum CHFuzzableType(
         "Decimal128",
         Seq(
           "-999999999999999999999999999999999999::Decimal128(0)",
+          "1::Decimal128(0)",
+          "8::Decimal128(0)",
           "999999999999999999999999999999999999::Decimal128(0)",
           "-0.99999999999999999999999999999999999999::Decimal128(38)",
           "0.99999999999999999999999999999999999999::Decimal128(38)"
@@ -256,6 +270,8 @@ enum CHFuzzableType(
         "Decimal256",
         Seq(
           "-999999999999999999999999999999999999999999999999999999999999999999999999::Decimal256(0)",
+          "1::Decimal256(0)",
+          "8::Decimal256(0)",
           "999999999999999999999999999999999999999999999999999999999999999999999999::Decimal256(0)",
           "-0.9999999999999999999999999999999999999999999999999999999999999999999999999999::Decimal256(76)",
           "0.9999999999999999999999999999999999999999999999999999999999999999999999999999::Decimal256(76)",
@@ -420,7 +436,13 @@ enum CHFuzzableType(
           "'a'::FixedString(1)",
           "'127.0.0.1'::FixedString(9)",
           "'127.0.0.0/8'::FixedString(11)",
-          "'en'::FixedString(2)"
+          "'en'::FixedString(2)",
+          "'11s+22min'::FixedString(9)",
+          "'MULTIPOLYGON(((2 0,10 0,10 10,0 10,2 0),(4 4,5 4,5 5,4 5,4 4)),((-10 -10,-10 -9,-9 10,-10 -10)))'::FixedString(96)",
+          "'POLYGON((2 0,10 0,10 10,0 10,2 0))'::FixedString(34)",
+          "'POINT (1.2 3.4)'::FixedString(15)",
+          "'LINESTRING (1 1, 2 2, 3 3, 1 1)'::FixedString(31)",
+          "'column1 String, column2 UInt32, column3 Array(String)'::FixedString(53)"
         )
       )
   case IPv4 extends CHFuzzableType("IPv4", Seq("'116.106.34.242'::IPv4"))
@@ -442,7 +464,6 @@ enum CHFuzzableType(
       extends CHFuzzableType(
         "String",
         Seq(
-          "'foo'::String",
           "''::String",
           "'127.0.0.1'::String",
           "'01GNB2S2FGN2P93QPXDNB4EN2A'::String",
@@ -454,7 +475,13 @@ enum CHFuzzableType(
           "'a'::String",
           "'127.0.0.1'::String",
           "'127.0.0.0/8'::String",
-          "'en'::String"
+          "'en'::String",
+          "'11s+22min'::String",
+          "'MULTIPOLYGON(((2 0,10 0,10 10,0 10,2 0),(4 4,5 4,5 5,4 5,4 4)),((-10 -10,-10 -9,-9 10,-10 -10)))'",
+          "'POLYGON((2 0,10 0,10 10,0 10,2 0))'",
+          "'POINT (1.2 3.4)'",
+          "'LINESTRING (1 1, 2 2, 3 3, 1 1)'",
+          "'column1 String, column2 UInt32, column3 Array(String)'"
         )
       )
   case UUID
@@ -1112,7 +1139,8 @@ enum CHFuzzableType(
       extends CHFuzzableType(
         "Array(FixedString)",
         Seq(
-          s"[${FixedString.fuzzingValues.mkString(", ")}]::Array(FixedString(32))"
+          s"[${FixedString.fuzzingValues.head}]::Array(FixedString(32))",
+          s"[${FixedString.fuzzingValues.mkString(", ")}]::Array(FixedString(96))"
         )
       )
   case ArrayIPv4 extends CHFuzzableType("Array(IPv4)", Seq(s"[${IPv4.fuzzingValues.mkString(", ")}]::Array(IPv4)"))
@@ -1128,6 +1156,7 @@ enum CHFuzzableType(
       extends CHFuzzableType(
         "Array(String)",
         Seq(
+          s"[${StringType.fuzzingValues.head}]::Array(String)",
           s"[${StringType.fuzzingValues.mkString(", ")}]::Array(String)"
         )
       )
@@ -1299,7 +1328,7 @@ enum CHFuzzableType(
   case MapFixedStringInt8
       extends CHFuzzableType(
         "Map(FixedString, Int8)",
-        FixedString.fuzzingValues.map { fuzzingValue => s"map($fuzzingValue, 1)::Map(FixedString(32), Int8)" }
+        FixedString.fuzzingValues.map { fuzzingValue => s"map($fuzzingValue, 1)::Map(FixedString(96), Int8)" }
       )
   case MapIPv4Int8
       extends CHFuzzableType(
@@ -1728,6 +1757,14 @@ enum CHFuzzableType(
           "'tcp_port_secure'"
         )
       )
+  case SynonymExtensionName
+      extends CHFuzzableType(
+        "SynonymExtensionName",
+        Seq(
+          "'plain_en'",
+          "'wordnet'"
+        )
+      )
   case Time64Unit
       extends CHFuzzableType(
         "Time64Unit",
@@ -1742,6 +1779,11 @@ enum CHFuzzableType(
       extends CHFuzzableType(
         "TimeZone",
         Seq(s"'${CHTimeZone.Asia_Istanbul.name}'") // Using the same timezone as when fuzzing DateTime
+      )
+  case Usevar
+      extends CHFuzzableType(
+        "Usevar",
+        Seq("'pooled'", "'unpooled'")
       )
   case WindowFunctionMode
       extends CHFuzzableType(

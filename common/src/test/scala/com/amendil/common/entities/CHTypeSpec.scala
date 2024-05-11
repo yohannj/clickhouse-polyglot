@@ -8,6 +8,22 @@ class CHFuzzableTypeSpec extends AnyFreeSpec with Matchers {
 
   "CHType" - {
     "should parse" - {
+      "Array(Tuple(bs_9_a String))" in {
+        val actual = CHType.getByName("Array(Tuple(bs_9_a String))")
+        val expected = CHSpecialType.Array(CHSpecialType.Tuple(Seq(CHFuzzableType.StringType)))
+
+        actual shouldBe expected
+      }
+
+      "Array(Tuple(IntervalMillisecond, IntervalQuarter))" in {
+        val actual = CHType.getByName("Array(Tuple(IntervalMillisecond, IntervalQuarter))")
+        val expected = CHSpecialType.Array(
+          CHSpecialType.Tuple(Seq(CHFuzzableType.IntervalMillisecond, CHFuzzableType.IntervalQuarter))
+        )
+
+        actual shouldBe expected
+      }
+
       "DateTime" in {
         val actual = CHType.getByName("DateTime")
         val expected = CHFuzzableType.DateTime
@@ -18,6 +34,62 @@ class CHFuzzableTypeSpec extends AnyFreeSpec with Matchers {
       "DateTime('Asia/Istanbul')" in {
         val actual = CHType.getByName("DateTime('Asia/Istanbul')")
         val expected = CHFuzzableType.DateTime
+
+        actual shouldBe expected
+      }
+
+      "DateTime64(1)" in {
+        val actual = CHType.getByName("DateTime64(1)")
+        val expected = CHFuzzableType.DateTime64
+
+        actual shouldBe expected
+      }
+
+      "DateTime64(1, 'Asia/Istanbul')" in {
+        val actual = CHType.getByName("DateTime64(1, 'Asia/Istanbul')")
+        val expected = CHFuzzableType.DateTime64
+
+        actual shouldBe expected
+      }
+
+      "Decimal(76, 0)" in {
+        val actual = CHType.getByName("Decimal(76, 0)")
+        val expected = CHFuzzableType.Decimal256
+
+        actual shouldBe expected
+      }
+
+      "Decimal(76, 38)" in {
+        val actual = CHType.getByName("Decimal(76, 38)")
+        val expected = CHFuzzableType.Decimal256
+
+        actual shouldBe expected
+      }
+
+      "Decimal(76, 9)" in {
+        val actual = CHType.getByName("Decimal(76, 9)")
+        val expected = CHFuzzableType.Decimal256
+
+        actual shouldBe expected
+      }
+
+      "Enum8('hello' = -128, 'world' = 2)" in {
+        val actual = CHType.getByName("Enum8('hello' = -128, 'world' = 2)")
+        val expected = CHFuzzableType.Enum8
+
+        actual shouldBe expected
+      }
+
+      "FixedString(1)" in {
+        val actual = CHType.getByName("FixedString(1)")
+        val expected = CHFuzzableType.FixedString
+
+        actual shouldBe expected
+      }
+
+      "FixedString(16)" in {
+        val actual = CHType.getByName("FixedString(16)")
+        val expected = CHFuzzableType.FixedString
 
         actual shouldBe expected
       }
