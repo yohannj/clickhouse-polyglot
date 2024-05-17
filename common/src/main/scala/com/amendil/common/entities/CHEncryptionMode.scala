@@ -1,6 +1,6 @@
 package com.amendil.common.entities
 
-enum CHEncryptionMode(val name: String) {
+enum CHEncryptionMode(val name: String):
   case aes_128_cbc extends CHEncryptionMode("aes-128-cbc")
   case aes_128_ctr extends CHEncryptionMode("aes-128-ctr")
   case aes_128_ecb extends CHEncryptionMode("aes-128-ecb")
@@ -16,4 +16,3 @@ enum CHEncryptionMode(val name: String) {
   case aes_256_ecb extends CHEncryptionMode("aes-256-ecb")
   case aes_256_gcm extends CHEncryptionMode("aes-256-gcm")
   case aes_256_ofb extends CHEncryptionMode("aes-256-ofb")
-}

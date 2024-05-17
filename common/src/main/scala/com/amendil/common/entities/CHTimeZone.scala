@@ -5,7 +5,7 @@ package com.amendil.common.entities
 /**
   * Timezones advertised using `SELECT * FROM system.time_zones`
   */
-enum CHTimeZone(val name: String) {
+enum CHTimeZone(val name: String):
   case Africa_Abidjan extends CHTimeZone("Africa/Abidjan")
   case Africa_Accra extends CHTimeZone("Africa/Accra")
   case Africa_Addis_Ababa extends CHTimeZone("Africa/Addis_Ababa")
@@ -603,4 +603,3 @@ enum CHTimeZone(val name: String) {
   case W_SU extends CHTimeZone("W-SU")
   case WET extends CHTimeZone("WET")
   case Zulu extends CHTimeZone("Zulu")
-}

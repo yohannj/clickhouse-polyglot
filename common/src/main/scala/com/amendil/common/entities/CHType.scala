@@ -2,13 +2,14 @@ package com.amendil.common.entities
 
 import com.amendil.common.Settings
 import com.typesafe.scalalogging.StrictLogging
-import fastparse._
-import fastparse.NoWhitespace._
+import fastparse.*
+import fastparse.NoWhitespace.*
 import fastparse.Parsed.{Failure, Success}
 
 import scala.annotation.nowarn
 
-trait CHType { def name: String }
+trait CHType:
+  def name: String
 
 object CHType extends StrictLogging:
 

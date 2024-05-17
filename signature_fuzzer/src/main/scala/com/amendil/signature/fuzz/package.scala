@@ -1,6 +1,6 @@
 package com.amendil.signature
 
-package object fuzz {
+package object fuzz:
 
   /**
     * If s1 contains "A" and "B" and s2 contains "C" and "D", combinations are considered to be:
@@ -17,7 +17,7 @@ package object fuzz {
     for
       e1 <- s1
       e2 <- s2
-    yield { (e1, e2) }
+    yield (e1, e2)
 
   /**
     * If s1 contains "A" and "B", s2 contains "C" and "D", s3 contains "E",
@@ -37,7 +37,7 @@ package object fuzz {
       e1 <- s1
       e2 <- s2
       e3 <- s3
-    yield { (e1, e2, e3) }
+    yield (e1, e2, e3)
 
   /**
     * If s1 contains "A" and "B", s2 contains "C" and "D", s3 contains "E", s4 contains "F"
@@ -59,7 +59,7 @@ package object fuzz {
       e2 <- s2
       e3 <- s3
       e4 <- s4
-    yield { (e1, e2, e3, e4) }
+    yield (e1, e2, e3, e4)
 
   /**
     * If s1 contains "A" and "B", s2 contains "C" and "D", s3 contains "E", s4 contains "F",
@@ -93,7 +93,7 @@ package object fuzz {
       e3 <- s3
       e4 <- s4
       e5 <- s5
-    yield { (e1, e2, e3, e4, e5) }
+    yield (e1, e2, e3, e4, e5)
 
   /**
     * If s1 contains "A" and "B", s2 contains "C" and "D", s3 contains "E", s4 contains "F",
@@ -138,7 +138,7 @@ package object fuzz {
       e4 <- s4
       e5 <- s5
       e6 <- s6
-    yield { (e1, e2, e3, e4, e5, e6) }
+    yield (e1, e2, e3, e4, e5, e6)
 
   /**
     * See doc of crossJoin with less parameters for more information
@@ -169,7 +169,7 @@ package object fuzz {
       e5 <- s5
       e6 <- s6
       e7 <- s7
-    yield { (e1, e2, e3, e4, e5, e6, e7) }
+    yield (e1, e2, e3, e4, e5, e6, e7)
 
   /**
     * See doc of crossJoin with less parameters for more information
@@ -203,7 +203,7 @@ package object fuzz {
       e6 <- s6
       e7 <- s7
       e8 <- s8
-    yield { (e1, e2, e3, e4, e5, e6, e7, e8) }
+    yield (e1, e2, e3, e4, e5, e6, e7, e8)
 
   /**
     * See doc of crossJoin with less parameters for more information
@@ -240,5 +240,4 @@ package object fuzz {
       e7 <- s7
       e8 <- s8
       e9 <- s9
-    yield { (e1, e2, e3, e4, e5, e6, e7, e8, e9) }
-}
+    yield (e1, e2, e3, e4, e5, e6, e7, e8, e9)

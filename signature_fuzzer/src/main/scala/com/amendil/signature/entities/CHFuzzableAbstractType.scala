@@ -1,6 +1,6 @@
 package com.amendil.signature.entities
 
-import com.amendil.common.entities._
+import com.amendil.common.entities.*
 import com.amendil.signature.Settings
 
 sealed trait CustomStringBasedAbstractType

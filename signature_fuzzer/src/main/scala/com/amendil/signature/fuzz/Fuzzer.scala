@@ -1,10 +1,10 @@
 package com.amendil.signature.fuzz
 
 import com.amendil.common.ConcurrencyUtils.executeChain
-import com.amendil.common.entities._
-import com.amendil.common.entities.CHFuzzableType._
+import com.amendil.common.entities.*
+import com.amendil.common.entities.CHFuzzableType.*
 import com.amendil.common.http.CHClient
-import com.amendil.signature.entities._
+import com.amendil.signature.entities.*
 import com.typesafe.scalalogging.StrictLogging
 
 import scala.concurrent.{ExecutionContext, Future}
@@ -60,9 +60,7 @@ object Fuzzer extends StrictLogging:
               sortedFuzzingFunctions = fuzzingFunctionsWithCost.sortBy(_._2).map(_._1)
 
               fuzzedFn <- executeChain(fn, sortedFuzzingFunctions)
-            yield {
-              fuzzedFn
-            }
+            yield fuzzedFn
         }
 
   def mergeOutputType(type1: CHType, type2: CHType): CHType =
@@ -257,7 +255,7 @@ object Fuzzer extends StrictLogging:
       currentArgs: Seq[CHFuzzableType] = Nil
   ): Seq[Seq[CHFuzzableType]] =
     abstractTypes match
-      case Seq(head, tail @ _*) =>
+      case Seq(head, tail*) =>
         head.chFuzzableTypes
           .map(chFuzzableType => generateCHFuzzableTypeCombinations(tail, currentArgs :+ chFuzzableType))
           .flatten
@@ -267,7 +265,7 @@ object Fuzzer extends StrictLogging:
     argumentsValues match
       case Seq()   => Seq("")
       case Seq(el) => el
-      case Seq(head, tail @ _*) =>
+      case Seq(head, tail*) =>
         val subChoices: Seq[String] = buildFuzzingValuesArgs(tail)
         head.flatMap(el => subChoices.map(subChoice => s"$el, $subChoice"))
 

@@ -1,12 +1,12 @@
 package com.amendil.signature.fuzz
 
-import com.amendil.common.ConcurrencyUtils._
-import com.amendil.common.entities._
+import com.amendil.common.ConcurrencyUtils.*
+import com.amendil.common.entities.*
 import com.amendil.common.http.CHClient
 import com.amendil.signature.Settings
-import com.amendil.signature.entities._
-import com.amendil.signature.entities.CHFunctionIO._
-import com.amendil.signature.fuzz.Fuzzer._
+import com.amendil.signature.entities.*
+import com.amendil.signature.entities.CHFunctionIO.*
+import com.amendil.signature.fuzz.Fuzzer.*
 import com.typesafe.scalalogging.StrictLogging
 
 import scala.annotation.targetName
@@ -767,7 +767,7 @@ object FuzzerParametricFunctions extends StrictLogging:
       fnHasInfiniteArgs: Boolean <-
         if functions.isEmpty || argCount == 0 then Future.successful(false)
         else testInfiniteArgsFunctions(fnName, functions.head._1, fuzzOverWindow)
-    yield {
+    yield
       if fnHasInfiniteParams && fnHasInfiniteArgs then
         (Nil, Nil, Nil, functions.map(fnConstructorInfiniteParamsInfiniteArgs))
       else if fnHasInfiniteParams && !fnHasInfiniteArgs then
@@ -775,7 +775,6 @@ object FuzzerParametricFunctions extends StrictLogging:
       else if !fnHasInfiniteParams && fnHasInfiniteArgs then
         (Nil, Nil, functions.map(fnConstructorFiniteParamsInfiniteArgs), Nil)
       else (functions.map(fnConstructorFiniteParamsFiniteArgs), Nil, Nil, Nil)
-    }
 
   /**
     * Test all combination of parametric functions containing paramCount parameters and argCount arguments
@@ -801,7 +800,7 @@ object FuzzerParametricFunctions extends StrictLogging:
           generateCHFuzzableAbstractTypeCombinations(paramCount, parametricAbstractType),
           generateCHFuzzableAbstractTypeCombinations(argCount)
         ),
-        (paramTypes: Seq[CHFuzzableAbstractType], nonParamTypes: Seq[CHFuzzableAbstractType]) => {
+        (paramTypes: Seq[CHFuzzableAbstractType], nonParamTypes: Seq[CHFuzzableAbstractType]) =>
           executeInParallelUntilSuccess(
             crossJoin(
               buildFuzzingValuesArgs(paramTypes.map(_.fuzzingValues)),
@@ -809,8 +808,7 @@ object FuzzerParametricFunctions extends StrictLogging:
             ).map { (paramArgs, nonParamArgs) => query(fnName, paramArgs, nonParamArgs, fuzzOverWindow) },
             client.executeNoResult,
             maxConcurrency = Settings.ClickHouse.maxSupportedConcurrencyInnerLoop
-          ).map(_ => (paramTypes, nonParamTypes))
-        },
+          ).map(_ => (paramTypes, nonParamTypes)),
         maxConcurrency = Settings.ClickHouse.maxSupportedConcurrencyOuterLoop
       )
 
@@ -906,14 +904,10 @@ object FuzzerParametricFunctions extends StrictLogging:
             _ = logger.trace(
               s"fuzzFiniteParamsAndArgsFunction - ${validParameters.size} parameters combinations are valid"
             )
-          yield {
-            for
-              parameters <- validParameters
-              (arguments, outputType) <- outputTypeByArguments.toSeq
-            yield {
-              ((parameters, arguments), outputType)
-            }
-          }
+          yield for
+            parameters <- validParameters
+            (arguments, outputType) <- outputTypeByArguments.toSeq
+          yield ((parameters, arguments), outputType)
 
   /**
     * Build all combinations of function input having argCount arguments
@@ -966,9 +960,7 @@ object FuzzerParametricFunctions extends StrictLogging:
       _ = logger.trace(
         s"bruteforceAbstractTypeCombinations - detected ${abstractInputCombinations.size} abstract input combinations"
       )
-    yield {
-      abstractInputCombinations
-    }
+    yield abstractInputCombinations
 
   /**
     * Query ClickHouse for all given combinations and we returning those that succeeded at least once.
@@ -980,7 +972,7 @@ object FuzzerParametricFunctions extends StrictLogging:
   )(using client: CHClient, ec: ExecutionContext): Future[Seq[ParametricFunctionAbstractInput]] =
     executeInParallelOnlySuccess(
       combinations,
-      (paramTypes: Seq[CHFuzzableAbstractType], nonParamTypes: Seq[CHFuzzableAbstractType]) => {
+      (paramTypes: Seq[CHFuzzableAbstractType], nonParamTypes: Seq[CHFuzzableAbstractType]) =>
         executeInParallelUntilSuccess(
           crossJoin(
             buildFuzzingValuesArgs(paramTypes.map(_.fuzzingValues)),
@@ -988,8 +980,7 @@ object FuzzerParametricFunctions extends StrictLogging:
           ).map { (paramArgs, nonParamArgs) => query(fnName, paramArgs, nonParamArgs, fuzzOverWindow) },
           client.executeNoResult,
           maxConcurrency = Settings.ClickHouse.maxSupportedConcurrencyInnerLoop
-        ).map(_ => (paramTypes, nonParamTypes))
-      },
+        ).map(_ => (paramTypes, nonParamTypes)),
       maxConcurrency = Settings.ClickHouse.maxSupportedConcurrencyOuterLoop
     )
 
@@ -1110,7 +1101,7 @@ object FuzzerParametricFunctions extends StrictLogging:
     val additionalParamTypes = parametricAbstractType.flatMap(_.chFuzzableTypes)
     executeInParallelOnlySuccess(
       additionalParamTypes,
-      additionalParamType => {
+      additionalParamType =>
         val fuzzingValuesParams =
           buildFuzzingValuesArgs((currentParameters :+ additionalParamType).map(_.fuzzingValues))
         val fuzzingValuesArgs = buildFuzzingValuesArgs(arguments.map(_.fuzzingValues))
@@ -1121,7 +1112,7 @@ object FuzzerParametricFunctions extends StrictLogging:
           },
           client.executeNoResult
         ).map(_ => additionalParamType)
-      },
+      ,
       maxConcurrency = Settings.ClickHouse.maxSupportedConcurrency
     ).flatMap { validAdditionalParameters =>
       if validAdditionalParameters.isEmpty then Future.successful((Nil, false))

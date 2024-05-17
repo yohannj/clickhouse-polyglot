@@ -1,10 +1,10 @@
 package com.amendil.signature.entities
 
-import com.amendil.common.entities._
+import com.amendil.common.entities.*
 import org.scalatest.freespec.AnyFreeSpec
 import org.scalatest.matchers.should.Matchers
 
-class CHFuzzableTypeSpec extends AnyFreeSpec with Matchers {
+class CHFuzzableTypeSpec extends AnyFreeSpec with Matchers:
 
   "CHFuzzableAbstractType" - {
     "should list all CHFuzzableType" in {
@@ -21,4 +21,3 @@ class CHFuzzableTypeSpec extends AnyFreeSpec with Matchers {
       duplicates shouldBe Array.empty[CHFuzzableType]
     }
   }
-}

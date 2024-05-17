@@ -1,12 +1,12 @@
 package com.amendil.signature.fuzz
 
-import com.amendil.common.ConcurrencyUtils._
-import com.amendil.common.entities._
+import com.amendil.common.ConcurrencyUtils.*
+import com.amendil.common.entities.*
 import com.amendil.common.http.CHClient
 import com.amendil.signature.Settings
-import com.amendil.signature.entities._
-import com.amendil.signature.entities.CHFunctionIO._
-import com.amendil.signature.fuzz.Fuzzer._
+import com.amendil.signature.entities.*
+import com.amendil.signature.entities.CHFunctionIO.*
+import com.amendil.signature.fuzz.Fuzzer.*
 import com.typesafe.scalalogging.StrictLogging
 
 import scala.concurrent.{ExecutionContext, Future}
@@ -139,7 +139,7 @@ object FuzzerHardcodedFunctions extends StrictLogging {
                   case _                     => throw Exception(s"Expected 3 arguments, but found ${io._1.size} arguments")
               }.distinct
             }
-        yield {
+        yield
           val function3s =
             attributeNamesTypes.flatMap(attributeNamesType =>
               Seq(
@@ -162,7 +162,6 @@ object FuzzerHardcodedFunctions extends StrictLogging {
             modes = fn.modes + CHFunction.Mode.NoOverWindow,
             function3s = function3s
           )
-        }
       case "dictGetOrDefault" =>
         val dictionaryNameType = Seq((CHFuzzableType.DictionaryName, CHFuzzableType.DictionaryName.fuzzingValues))
         val dictionaryColumnsType =
@@ -237,7 +236,7 @@ object FuzzerHardcodedFunctions extends StrictLogging {
                   case _                     => throw Exception(s"Expected 3 arguments, but found ${io._1.size} arguments")
               }.distinct
             }
-        yield {
+        yield
           val function4s =
             attributeNamesTypes.flatMap(attributeNamesType =>
               Seq(
@@ -262,7 +261,6 @@ object FuzzerHardcodedFunctions extends StrictLogging {
             modes = fn.modes + CHFunction.Mode.NoOverWindow,
             function4s = function4s
           )
-        }
       case "dictGetDate" | "dictGetDateTime" | "dictGetFloat42" | "dictGetFloat64" | "dictGetIPv4" | "dictGetIPv6" |
           "dictGetInt16" | "dictGetInt32" | "dictGetInt64" | "dictGetInt8" | "dictGetString" | "dictGetUInt16" |
           "dictGetUInt32" | "dictGetUInt64" | "dictGetUInt8" | "dictGetUUID" =>
@@ -313,12 +311,10 @@ object FuzzerHardcodedFunctions extends StrictLogging {
                   case _                     => throw Exception(s"Expected 3 arguments, but found ${io._1.size} arguments")
               }
             }
-        yield {
-          fn.copy(
-            modes = fn.modes + CHFunction.Mode.NoOverWindow,
-            function3s = function3s
-          )
-        }
+        yield fn.copy(
+          modes = fn.modes + CHFunction.Mode.NoOverWindow,
+          function3s = function3s
+        )
       case "dictGetDateOrDefault" | "dictGetDateTimeOrDefault" | "dictGetFloat32OrDefault" | "dictGetFloat64OrDefault" |
           "dictGetIPv4OrDefault" | "dictGetIPv6OrDefault" | "dictGetInt16OrDefault" | "dictGetInt32OrDefault" |
           "dictGetInt64OrDefault" | "dictGetInt8OrDefault" | "dictGetStringOrDefault" | "dictGetUInt16OrDefault" |
@@ -392,12 +388,10 @@ object FuzzerHardcodedFunctions extends StrictLogging {
                   case _                           => throw Exception(s"Expected 4 arguments, but found ${io._1.size} arguments")
               }
             }
-        yield {
-          fn.copy(
-            modes = fn.modes + CHFunction.Mode.NoOverWindow,
-            function4s = function4s
-          )
-        }
+        yield fn.copy(
+          modes = fn.modes + CHFunction.Mode.NoOverWindow,
+          function4s = function4s
+        )
       case "dictHas" =>
         val dictionaryNameType = Seq((CHFuzzableType.DictionaryName, CHFuzzableType.DictionaryName.fuzzingValues))
         val idExprType = CHFuzzableAbstractType.values.toSeq
@@ -418,7 +412,7 @@ object FuzzerHardcodedFunctions extends StrictLogging {
                   case _               => throw Exception(s"Expected 2 arguments, but found ${io._1.size} arguments")
               }
             }
-        yield {
+        yield
           if outputTypes.nonEmpty then
             fn.copy(
               modes = fn.modes + CHFunction.Mode.NoOverWindow,
@@ -431,7 +425,6 @@ object FuzzerHardcodedFunctions extends StrictLogging {
               )
             )
           else fn
-        }
       case "dictGetChildren" | "dictGetHierarchy" =>
         val dictionaryNameType = Seq((CHFuzzableType.DictionaryName, CHFuzzableType.DictionaryName.fuzzingValues))
         val idExprType = CHFuzzableAbstractType.values.toSeq
@@ -452,12 +445,10 @@ object FuzzerHardcodedFunctions extends StrictLogging {
                   case _               => throw Exception(s"Expected 2 arguments, but found ${io._1.size} arguments")
               }
             }
-        yield {
-          fn.copy(
-            modes = fn.modes + CHFunction.Mode.NoOverWindow,
-            function2s = function2s
-          )
-        }
+        yield fn.copy(
+          modes = fn.modes + CHFunction.Mode.NoOverWindow,
+          function2s = function2s
+        )
       case "dictGetDescendants" =>
         val dictionaryNameType = Seq((CHFuzzableType.DictionaryName, CHFuzzableType.DictionaryName.fuzzingValues))
         val idExprType = CHFuzzableAbstractType.values.toSeq
@@ -478,12 +469,10 @@ object FuzzerHardcodedFunctions extends StrictLogging {
                   case _               => throw Exception(s"Expected 2 arguments, but found ${io._1.size} arguments")
               }
             }
-        yield {
-          fn.copy(
-            modes = fn.modes + CHFunction.Mode.NoOverWindow,
-            function2s = function2s
-          )
-        }
+        yield fn.copy(
+          modes = fn.modes + CHFunction.Mode.NoOverWindow,
+          function2s = function2s
+        )
       case "dictIsIn" =>
         val dictionaryNameType = Seq((CHFuzzableType.DictionaryName, CHFuzzableType.DictionaryName.fuzzingValues))
         val idExprType = CHFuzzableAbstractType.values.toSeq
@@ -505,12 +494,10 @@ object FuzzerHardcodedFunctions extends StrictLogging {
                   case _                     => throw Exception(s"Expected 3 arguments, but found ${io._1.size} arguments")
               }
             }
-        yield {
-          fn.copy(
-            modes = fn.modes + CHFunction.Mode.NoOverWindow,
-            function3s = function3s
-          )
-        }
+        yield fn.copy(
+          modes = fn.modes + CHFunction.Mode.NoOverWindow,
+          function3s = function3s
+        )
       case "encrypt" | "aes_encrypt_mysql" | "decrypt" | "tryDecrypt" | "aes_decrypt_mysql" =>
         val encryptionMode = (CHFuzzableType.EncryptionMode, CHFuzzableType.EncryptionMode.fuzzingValues)
         val str = (
@@ -581,14 +568,12 @@ object FuzzerHardcodedFunctions extends StrictLogging {
                   case _                                 => throw Exception(s"Expected 5 arguments, but found ${io._1.size} arguments")
               }
             }
-        yield {
-          fn.copy(
-            modes = fn.modes + CHFunction.Mode.NoOverWindow,
-            function3s = function3s,
-            function4s = function4s,
-            function5s = function5s
-          )
-        }
+        yield fn.copy(
+          modes = fn.modes + CHFunction.Mode.NoOverWindow,
+          function3s = function3s,
+          function4s = function4s,
+          function5s = function5s
+        )
       case "geoDistance" | "greatCircleAngle" | "greatCircleDistance" =>
         val fuzzType = CHFuzzableAbstractType.Numbers.chFuzzableTypes.map(t => (t, Seq(t.fuzzingValues.head)))
         for function4s <-
@@ -607,12 +592,10 @@ object FuzzerHardcodedFunctions extends StrictLogging {
                   case _                           => throw Exception(s"Expected 4 arguments, but found ${io._1.size} arguments")
               }
             }
-        yield {
-          fn.copy(
-            modes = fn.modes + CHFunction.Mode.NoOverWindow,
-            function4s = function4s
-          )
-        }
+        yield fn.copy(
+          modes = fn.modes + CHFunction.Mode.NoOverWindow,
+          function4s = function4s
+        )
       case "geohashesInBox" =>
         val fuzzType = CHFuzzableAbstractType.Numbers.chFuzzableTypes.map(t => (t, Seq(t.fuzzingValues.head)))
         for function5s <-
@@ -632,12 +615,10 @@ object FuzzerHardcodedFunctions extends StrictLogging {
                   case _                                 => throw Exception(s"Expected 5 arguments, but found ${io._1.size} arguments")
               }
             }
-        yield {
-          fn.copy(
-            modes = fn.modes + CHFunction.Mode.NoOverWindow,
-            function5s = function5s
-          )
-        }
+        yield fn.copy(
+          modes = fn.modes + CHFunction.Mode.NoOverWindow,
+          function5s = function5s
+        )
       case "hasColumnInTable" =>
         for
           function3s <-
@@ -760,15 +741,13 @@ object FuzzerHardcodedFunctions extends StrictLogging {
                   case _                                       => throw Exception(s"Expected 6 arguments, but found ${io._1.size} arguments")
               }
             }
-        yield {
-          fn.copy(
-            modes = fn.modes + CHFunction.Mode.NoOverWindow,
-            function3s = function3s,
-            function4s = function4s,
-            function5s = function5s,
-            function6s = function6s
-          )
-        }
+        yield fn.copy(
+          modes = fn.modes + CHFunction.Mode.NoOverWindow,
+          function3s = function3s,
+          function4s = function4s,
+          function5s = function5s,
+          function6s = function6s
+        )
       case "kolmogorovSmirnovTest" =>
         val alternativeTypes = Seq((CHFuzzableType.TestAlternative, CHFuzzableType.TestAlternative.fuzzingValues))
         val computationMethodTypes = Seq(
@@ -840,14 +819,12 @@ object FuzzerHardcodedFunctions extends StrictLogging {
                     )
               }
             }
-        yield {
-          fn.copy(
-            modes = fn.modes + CHFunction.Mode.NoOverWindow + CHFunction.Mode.OverWindow,
-            parametric0Function2s = parametric0Function2,
-            parametric1Function2s = parametric1Function2,
-            parametric2Function2s = parametric2Function2
-          )
-        }
+        yield fn.copy(
+          modes = fn.modes + CHFunction.Mode.NoOverWindow + CHFunction.Mode.OverWindow,
+          parametric0Function2s = parametric0Function2,
+          parametric1Function2s = parametric1Function2,
+          parametric2Function2s = parametric2Function2
+        )
       case "makeDateTime" =>
         // Actually ends up in OOM
         Future.successful(fn)
@@ -1069,14 +1046,12 @@ object FuzzerHardcodedFunctions extends StrictLogging {
                     )
               }
             }
-        yield {
-          fn.copy(
-            modes = fn.modes + CHFunction.Mode.NoOverWindow + CHFunction.Mode.OverWindow,
-            parametric0Function2s = parametric0Function2,
-            parametric1Function2s = parametric1Function2,
-            parametric2Function2s = parametric2Function2
-          )
-        }
+        yield fn.copy(
+          modes = fn.modes + CHFunction.Mode.NoOverWindow + CHFunction.Mode.OverWindow,
+          parametric0Function2s = parametric0Function2,
+          parametric1Function2s = parametric1Function2,
+          parametric2Function2s = parametric2Function2
+        )
       case "mapApply" => // Any Map working with identity actually
         val typeT = CHSpecialType.GenericType("T")
         val typeU = CHSpecialType.GenericType("U")
@@ -1101,12 +1076,10 @@ object FuzzerHardcodedFunctions extends StrictLogging {
                     Failure(Exception(s"Expected the output type `Map(DateTime, Date)`, but got `${io._2.name}`"))
                   case _ => Failure(Exception(s"Expected 2 arguments, but found ${io._1.size} arguments"))
             }
-        yield {
-          fn.copy(
-            modes = fn.modes + CHFunction.Mode.NoOverWindow,
-            lambdaMapFunction1Opt = lambdaMapFunction1Opt
-          )
-        }
+        yield fn.copy(
+          modes = fn.modes + CHFunction.Mode.NoOverWindow,
+          lambdaMapFunction1Opt = lambdaMapFunction1Opt
+        )
       case "meanZTest" =>
         val floatNumbersType = CHFuzzableAbstractType.Numbers.chFuzzableTypes
           .filter(_.name.toLowerCase().contains("float"))
@@ -1136,12 +1109,10 @@ object FuzzerHardcodedFunctions extends StrictLogging {
                     )
               }
             }
-        yield {
-          fn.copy(
-            modes = fn.modes + CHFunction.Mode.NoOverWindow + CHFunction.Mode.OverWindow,
-            parametric3Function2s = parametric3Function2
-          )
-        }
+        yield fn.copy(
+          modes = fn.modes + CHFunction.Mode.NoOverWindow + CHFunction.Mode.OverWindow,
+          parametric3Function2s = parametric3Function2
+        )
       case "minSampleSizeContinous" | "minSampleSizeContinuous" =>
         for function5s <-
             FuzzerNonParametricFunctions
@@ -1166,12 +1137,10 @@ object FuzzerHardcodedFunctions extends StrictLogging {
                     case _                                 => throw Exception(s"Expected 5 arguments, but found ${io._1.size} arguments")
                 }
               }
-        yield {
-          fn.copy(
-            modes = fn.modes + CHFunction.Mode.NoOverWindow,
-            function5s = function5s
-          )
-        }
+        yield fn.copy(
+          modes = fn.modes + CHFunction.Mode.NoOverWindow,
+          function5s = function5s
+        )
       case "minSampleSizeConversion" =>
         for function4s <-
             FuzzerNonParametricFunctions
@@ -1195,12 +1164,10 @@ object FuzzerHardcodedFunctions extends StrictLogging {
                     case _                           => throw Exception(s"Expected 4 arguments, but found ${io._1.size} arguments")
                 }
               }
-        yield {
-          fn.copy(
-            modes = fn.modes + CHFunction.Mode.NoOverWindow,
-            function4s = function4s
-          )
-        }
+        yield fn.copy(
+          modes = fn.modes + CHFunction.Mode.NoOverWindow,
+          function4s = function4s
+        )
       case "pointInEllipses" =>
         val float64Type: Seq[(CHFuzzableType, Seq[String])] = Seq(
           (CHFuzzableType.Float64, CHFuzzableType.Float64.fuzzingValues)
@@ -1224,12 +1191,10 @@ object FuzzerHardcodedFunctions extends StrictLogging {
                   case _ => throw Exception(s"Expected 6 arguments, but found ${io._1.size} arguments")
               }
             }
-        yield {
-          fn.copy(
-            modes = fn.modes + CHFunction.Mode.NoOverWindow,
-            function2Ns = function2Ns
-          )
-        }
+        yield fn.copy(
+          modes = fn.modes + CHFunction.Mode.NoOverWindow,
+          function2Ns = function2Ns
+        )
       case "proportionsZTest" =>
         val number = CHFuzzableAbstractType.Numbers.chFuzzableTypes.map(t => (t, Seq(t.fuzzingValues.head)))
         val usevarType = Seq((CHFuzzableType.Usevar, CHFuzzableType.Usevar.fuzzingValues))
@@ -1252,12 +1217,10 @@ object FuzzerHardcodedFunctions extends StrictLogging {
                   case _                                       => throw Exception(s"Expected 6 arguments, but found ${io._1.size} arguments")
               }
             }
-        yield {
-          fn.copy(
-            modes = fn.modes + CHFunction.Mode.NoOverWindow,
-            function6s = function6s
-          )
-        }
+        yield fn.copy(
+          modes = fn.modes + CHFunction.Mode.NoOverWindow,
+          function6s = function6s
+        )
       case "reinterpret" =>
         Future.successful(
           fn.copy(
@@ -1269,8 +1232,8 @@ object FuzzerHardcodedFunctions extends StrictLogging {
         )
       case "sequenceNextNode" => // TODO Test it similarly to "encrypt"
         // This method has many parameters and arguments. It's not worth to fuzz it.
-        import CHFuzzableType._
-        import CHSpecialType._
+        import CHFuzzableType.*
+        import CHSpecialType.*
 
         // format: off
         Future.successful(
@@ -1362,13 +1325,11 @@ object FuzzerHardcodedFunctions extends StrictLogging {
                     case _                           => throw Exception(s"Expected 4 arguments, but found ${io._1.size} arguments")
                 }
               }
-        yield {
-          fn.copy(
-            modes = fn.modes + CHFunction.Mode.NoOverWindow,
-            function1s = function1s,
-            function4s = function4s
-          )
-        }
+        yield fn.copy(
+          modes = fn.modes + CHFunction.Mode.NoOverWindow,
+          function1s = function1s,
+          function4s = function4s
+        )
       case "toModifiedJulianDay" =>
         for function1s <-
             fuzzSignatures(
@@ -1384,12 +1345,10 @@ object FuzzerHardcodedFunctions extends StrictLogging {
                   case _         => throw Exception(s"Expected 1 argument, but found ${io._1.size} arguments")
               }
             }
-        yield {
-          fn.copy(
-            modes = fn.modes + CHFunction.Mode.NoOverWindow,
-            function1s = function1s
-          )
-        }
+        yield fn.copy(
+          modes = fn.modes + CHFunction.Mode.NoOverWindow,
+          function1s = function1s
+        )
       case "timeSlots" =>
         val dateTimeTypes = CHFuzzableAbstractType.DateTime.chFuzzableTypes.map(t => (t, t.fuzzingValues))
 
@@ -1445,13 +1404,11 @@ object FuzzerHardcodedFunctions extends StrictLogging {
                   case _                     => throw Exception(s"Expected 3 arguments, but found ${io._1.size} arguments")
               }
             }
-        yield {
-          fn.copy(
-            modes = fn.modes + CHFunction.Mode.NoOverWindow,
-            function2s = function2s,
-            function3s = function3s
-          )
-        }
+        yield fn.copy(
+          modes = fn.modes + CHFunction.Mode.NoOverWindow,
+          function2s = function2s,
+          function3s = function3s
+        )
       case "variantElement" =>
         val variantColumn = Seq((CHFuzzableType.Variant, Seq("123456::Variant(UInt64, String, Array(UInt64))")))
         val typeColumn = Seq(
@@ -1473,7 +1430,7 @@ object FuzzerHardcodedFunctions extends StrictLogging {
                   case _               => throw Exception(s"Expected 2 arguments, but found ${io._1.size} arguments")
               }
             }
-        yield {
+        yield
           val function3s = function2s.map { case Function2(arg1, arg2, _) =>
             Function3(arg1, arg2, CHAggregatedType.Any, CHAggregatedType.Any)
           }
@@ -1483,7 +1440,6 @@ object FuzzerHardcodedFunctions extends StrictLogging {
             function2s = function2s,
             function3s = function3s
           )
-        }
       case "variantType" =>
         val variantColumn = Seq((CHFuzzableType.Variant, Seq("123456::Variant(UInt64, String, Array(UInt64))")))
 
@@ -1498,12 +1454,10 @@ object FuzzerHardcodedFunctions extends StrictLogging {
                   case _         => throw Exception(s"Expected 1 argument, but found ${io._1.size} arguments")
               }
             }
-        yield {
-          fn.copy(
-            modes = fn.modes + CHFunction.Mode.NoOverWindow,
-            function1s = function1s
-          )
-        }
+        yield fn.copy(
+          modes = fn.modes + CHFunction.Mode.NoOverWindow,
+          function1s = function1s
+        )
       case "widthBucket" | "width_bucket" =>
         for function4s <-
             FuzzerNonParametricFunctions
@@ -1526,12 +1480,10 @@ object FuzzerHardcodedFunctions extends StrictLogging {
                     case _                           => throw Exception(s"Expected 4 arguments, but found ${io._1.size} arguments")
                 }
               }
-        yield {
-          fn.copy(
-            modes = fn.modes + CHFunction.Mode.NoOverWindow,
-            function4s = function4s
-          )
-        }
+        yield fn.copy(
+          modes = fn.modes + CHFunction.Mode.NoOverWindow,
+          function4s = function4s
+        )
       case _ =>
         Future.successful(fn)
 

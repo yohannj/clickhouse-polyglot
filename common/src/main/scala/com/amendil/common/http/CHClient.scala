@@ -10,7 +10,7 @@ import java.net.http.HttpClient.Version
 import java.net.http.HttpResponse.BodyHandlers
 import java.nio.charset.StandardCharsets
 import java.time.Duration
-import scala.compat.java8.FutureConverters._
+import scala.compat.java8.FutureConverters.*
 import scala.concurrent.{ExecutionContext, Future}
 
 class CHClient(url: String)(using ec: ExecutionContext):
@@ -116,15 +116,15 @@ class CHClient(url: String)(using ec: ExecutionContext):
         toScala { client.sendAsync(req, BodyHandlers.ofInputStream()) }.map { r =>
           (r.statusCode(), String(r.body().readAllBytes(), StandardCharsets.UTF_8))
         },
-      shouldRetry = (statusCode: Int, body: String) => {
+      shouldRetry = (statusCode: Int, body: String) =>
         if statusCode == HttpURLConnection.HTTP_OK then false
         else
           // When there is an error, sometime it's because too many queries are being sent by ClickHouse.
           // As the query may be invalid, we must retry the call!
           val shouldRetry = body.contains("Too many simultaneous queries.")
           shouldRetry
-      },
-      shouldRetryOnFailure = (e: Exception) => {
+      ,
+      shouldRetryOnFailure = (e: Exception) =>
         val shouldRetry =
           Seq(
             "java.io.IOException: HTTP/1.1 header parser received no bytes",
@@ -132,7 +132,7 @@ class CHClient(url: String)(using ec: ExecutionContext):
           ).contains(e.getMessage)
 
         shouldRetry
-      },
+      ,
       maxNumberOfAttempts = Int.MaxValue // Never stops querying ClickHouse, we need 100% accuracy
     )
 

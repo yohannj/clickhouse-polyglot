@@ -1,11 +1,11 @@
 package com.amendil.signature.fuzz
 
-import com.amendil.common.ConcurrencyUtils._
-import com.amendil.common.entities._
+import com.amendil.common.ConcurrencyUtils.*
+import com.amendil.common.entities.*
 import com.amendil.common.http.CHClient
 import com.amendil.signature.Settings
-import com.amendil.signature.entities._
-import com.amendil.signature.fuzz.Fuzzer._
+import com.amendil.signature.entities.*
+import com.amendil.signature.fuzz.Fuzzer.*
 import com.typesafe.scalalogging.StrictLogging
 
 import scala.concurrent.{ExecutionContext, Future}
@@ -47,16 +47,14 @@ object FuzzerNonParametricFunctions extends StrictLogging:
               Some(CHFunctionIO.Function0(outputType))
             )
             .recover(_ => None)
-      yield {
-        fn.copy(
-          modes = fn.modes ++
-            Seq(
-              fn0Opt.map(_ => CHFunction.Mode.NoOverWindow),
-              windowedFn0Opt.map(_ => CHFunction.Mode.OverWindow)
-            ).flatten,
-          function0Opt = fn0Opt.orElse(windowedFn0Opt)
-        )
-      }
+      yield fn.copy(
+        modes = fn.modes ++
+          Seq(
+            fn0Opt.map(_ => CHFunction.Mode.NoOverWindow),
+            windowedFn0Opt.map(_ => CHFunction.Mode.OverWindow)
+          ).flatten,
+        function0Opt = fn0Opt.orElse(windowedFn0Opt)
+      )
 
   private def fuzzFunction1Or0N(
       fn: CHFunctionFuzzResult
@@ -176,10 +174,9 @@ object FuzzerNonParametricFunctions extends StrictLogging:
       fnHasInfiniteArgs: Boolean <-
         if functions.isEmpty then Future.successful(false)
         else testInfiniteArgsFunctions(fnName, functions.head._1, fuzzOverWindow)
-    yield {
+    yield
       if fnHasInfiniteArgs then (Nil, functions.map(fnConstructorInfiniteArgs))
       else (functions.map(fnConstructorFiniteArgs), Nil)
-    }
 
   private def fuzzFiniteArgsFunctions(
       fnName: String,
@@ -196,15 +193,14 @@ object FuzzerNonParametricFunctions extends StrictLogging:
           generateCHFuzzableAbstractTypeCombinations(argCount).filterNot(
             _.exists(_.isInstanceOf[CustomStringBasedAbstractType])
           ),
-          (abstractTypes: Seq[CHFuzzableAbstractType]) => {
+          (abstractTypes: Seq[CHFuzzableAbstractType]) =>
             executeInParallelUntilSuccess(
               buildFuzzingValuesArgs(abstractTypes.map(_.fuzzingValues)).map(args =>
                 query(fnName, args, fuzzOverWindow)
               ),
               client.executeNoResult,
               maxConcurrency = Settings.ClickHouse.maxSupportedConcurrencyInnerLoop
-            ).map(_ => abstractTypes)
-          },
+            ).map(_ => abstractTypes),
           maxConcurrency = Settings.ClickHouse.maxSupportedConcurrencyOuterLoop
         )
       _ = logger.trace(
@@ -219,15 +215,14 @@ object FuzzerNonParametricFunctions extends StrictLogging:
             generateCHFuzzableAbstractTypeCombinations(argCount).filter(
               _.exists(_.isInstanceOf[CustomStringBasedAbstractType])
             ),
-            (abstractTypes: Seq[CHFuzzableAbstractType]) => {
+            (abstractTypes: Seq[CHFuzzableAbstractType]) =>
               executeInParallelUntilSuccess(
                 buildFuzzingValuesArgs(abstractTypes.map(_.fuzzingValues)).map(args =>
                   query(fnName, args, fuzzOverWindow)
                 ),
                 client.executeNoResult,
                 maxConcurrency = Settings.ClickHouse.maxSupportedConcurrencyInnerLoop
-              ).map(_ => abstractTypes)
-            },
+              ).map(_ => abstractTypes),
             maxConcurrency = Settings.ClickHouse.maxSupportedConcurrencyOuterLoop
           )
       _ = logger.trace(
@@ -235,9 +230,7 @@ object FuzzerNonParametricFunctions extends StrictLogging:
       )
 
       res <- fuzzAbstractInputCombinations(fnName, abstractInputCombinations, fuzzOverWindow)
-    yield {
-      res
-    }
+    yield res
 
   private[fuzz] def fuzzAbstractInputCombinations(
       fnName: String,
@@ -292,9 +285,7 @@ object FuzzerNonParametricFunctions extends StrictLogging:
           maxConcurrency = Settings.ClickHouse.maxSupportedConcurrencyOuterLoop
         )
       _ = logger.trace(s"fuzzAbstractInputCombinations - signatures output detected")
-    yield {
-      res
-    }
+    yield res
 
   /**
     * Build all combinations of function input having argCount arguments
@@ -338,9 +329,7 @@ object FuzzerNonParametricFunctions extends StrictLogging:
       _ = logger.trace(
         s"bruteforceAbstractTypeCombinations - detected ${abstractInputCombinations.size} abstract input combinations"
       )
-    yield {
-      abstractInputCombinations
-    }
+    yield abstractInputCombinations
 
   /**
     * Query ClickHouse for all given combinations and we returning those that succeeded at least once.
@@ -352,13 +341,12 @@ object FuzzerNonParametricFunctions extends StrictLogging:
   )(using client: CHClient, ec: ExecutionContext): Future[Seq[Seq[CHFuzzableAbstractType]]] =
     executeInParallelOnlySuccess(
       combinations,
-      (abstractTypes: Seq[CHFuzzableAbstractType]) => {
+      (abstractTypes: Seq[CHFuzzableAbstractType]) =>
         executeInParallelUntilSuccess(
           buildFuzzingValuesArgs(abstractTypes.map(_.fuzzingValues)).map(args => query(fnName, args, fuzzOverWindow)),
           client.executeNoResult,
           maxConcurrency = Settings.ClickHouse.maxSupportedConcurrencyInnerLoop
-        ).map(_ => abstractTypes)
-      },
+        ).map(_ => abstractTypes),
       maxConcurrency = Settings.ClickHouse.maxSupportedConcurrencyOuterLoop
     )
 

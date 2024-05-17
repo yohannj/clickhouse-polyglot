@@ -16,8 +16,8 @@ object ConcurrencyUtils:
     */
   def executeChain[T, U](element: T, fns: Seq[(T) => Future[T]])(using ec: ExecutionContext): Future[T] =
     fns match
-      case Seq(fn, tail @ _*) => fn(element).flatMap(executeChain(_, tail))
-      case _                  => Future.successful(element)
+      case Seq(fn, tail*) => fn(element).flatMap(executeChain(_, tail))
+      case _              => Future.successful(element)
 
   /**
     * The maxConcurrency is handled by grouping the elements into maxConcurrency partition (or bucket).
@@ -166,7 +166,7 @@ object ConcurrencyUtils:
       using ec: ExecutionContext
   ): Future[Seq[U]] =
     elements match
-      case Seq(head, tail @ _*) =>
+      case Seq(head, tail*) =>
         fn(head)
           .flatMap(res => executeInSequenceOnlySuccess(tail, fn).map(l => l :+ res))
           .recoverWith(_ => executeInSequenceOnlySuccess(tail, fn))
@@ -182,5 +182,5 @@ object ConcurrencyUtils:
       using ec: ExecutionContext
   ): Future[U] =
     elements match
-      case Seq(head, tail @ _*) => fn(head).recoverWith(_ => executeInSequenceUntilSuccess(tail, fn))
-      case _                    => Future.failed(Exception("Executed all elements, but none worked"))
+      case Seq(head, tail*) => fn(head).recoverWith(_ => executeInSequenceUntilSuccess(tail, fn))
+      case _                => Future.failed(Exception("Executed all elements, but none worked"))

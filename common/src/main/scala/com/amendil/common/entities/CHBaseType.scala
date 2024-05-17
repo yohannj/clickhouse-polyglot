@@ -6,7 +6,7 @@ package com.amendil.common.entities
 /**
   * Base type retrieved using `SELECT name FROM system.data_type_families WHERE empty(alias_to) ORDER BY name FORMAT TSV`
   */
-enum CHBaseType(val name: String) {
+enum CHBaseType(val name: String):
   case AggregateFunction extends CHBaseType("AggregateFunction")
   case Array extends CHBaseType("Array")
   case Bool extends CHBaseType("Bool")
@@ -67,4 +67,3 @@ enum CHBaseType(val name: String) {
   case UInt8 extends CHBaseType("UInt8")
   case UUID extends CHBaseType("UUID")
   case Variant extends CHBaseType("Variant")
-}

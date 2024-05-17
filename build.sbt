@@ -67,7 +67,6 @@ lazy val commonSettings = Seq(
     "-Xfatal-warnings",
     "-deprecation",
     "-feature",
-    "-Wunused:imports",
-    "-new-syntax"
+    "-Wunused:imports"
   )
 )

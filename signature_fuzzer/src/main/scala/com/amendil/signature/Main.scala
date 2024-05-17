@@ -1,10 +1,10 @@
 package com.amendil.signature
 
-import com.amendil.common.{ConcurrencyUtils, Settings => CommonSettings}
+import com.amendil.common.{ConcurrencyUtils, Settings as CommonSettings}
 import com.amendil.common.entities.CHFuzzableType
 import com.amendil.common.http.CHClient
 import com.amendil.signature.entities.{CHFunction, CHFunctionFuzzResult, CHFuzzableAbstractType}
-import com.amendil.signature.fuzz._
+import com.amendil.signature.fuzz.*
 import com.typesafe.scalalogging.Logger
 
 import java.io.{File, PrintWriter}
@@ -31,7 +31,7 @@ import scala.util.{Failure, Success, Try}
       functionNamesToFuzz = functionNames.filter { functionName =>
         Settings.Fuzzer.supportJson || !functionName.toLowerCase().contains("json")
       }
-    yield {
+    yield
       assume(Try { chVersion.toDouble }.isSuccess)
 
       val pw = PrintWriter(File(s"res/functions_v${chVersion}.txt.part"))
@@ -83,7 +83,7 @@ import scala.util.{Failure, Success, Try}
         logger.info("Functions we were unable to determine any signature:")
         logger.info(functionsWithoutASignature.sorted.mkString("\"", "\", \"", "\""))
       }
-    }).flatten
+    ).flatten
 
   Try(Await.result(runF, Duration.Inf)) match
     case Failure(exception) =>
@@ -98,7 +98,7 @@ def createDictionaries()(using client: CHClient, ec: ExecutionContext): Future[U
     _ <- createHierarchicalDictionary()
     _ <- createManyTypesDictionary()
     _ <- createRegexpTreeDictionary()
-  yield { (): Unit }
+  yield (): Unit
 
 def createHierarchicalDictionary()(using client: CHClient, ec: ExecutionContext): Future[Unit] =
   for
@@ -124,7 +124,7 @@ def createHierarchicalDictionary()(using client: CHClient, ec: ExecutionContext)
           |LIFETIME(MIN 0 MAX 1000)
           |""".stripMargin.replace("\n", " ")
     )
-  yield { (): Unit }
+  yield (): Unit
 
 def createManyTypesDictionary()(using client: CHClient, ec: ExecutionContext): Future[Unit] =
   val columns =
@@ -164,7 +164,7 @@ def createManyTypesDictionary()(using client: CHClient, ec: ExecutionContext): F
           |LIFETIME(MIN 0 MAX 1000)
           |""".stripMargin.replace("\n", " ")
     )
-  yield { (): Unit }
+  yield (): Unit
 
 def createRegexpTreeDictionary()(using client: CHClient, ec: ExecutionContext): Future[Unit] =
   client.executeNoResultNoSettings(

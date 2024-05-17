@@ -1,10 +1,10 @@
 package com.amendil.signature.entities
 
-import com.amendil.common.entities._
+import com.amendil.common.entities.*
 import org.scalatest.freespec.AnyFreeSpec
 import org.scalatest.matchers.should.Matchers
 
-class CHFunctionIOSpec extends AnyFreeSpec with Matchers {
+class CHFunctionIOSpec extends AnyFreeSpec with Matchers:
 
   "CHFunctionIO" - {
     "should aggregate Function1 signatures" - {
@@ -52,4 +52,3 @@ class CHFunctionIOSpec extends AnyFreeSpec with Matchers {
       }
     }
   }
-}

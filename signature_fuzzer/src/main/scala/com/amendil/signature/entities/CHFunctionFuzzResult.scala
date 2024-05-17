@@ -1,6 +1,6 @@
 package com.amendil.signature.entities
 
-import com.amendil.signature.entities.CHFunctionIO._
+import com.amendil.signature.entities.CHFunctionIO.*
 import com.typesafe.scalalogging.StrictLogging
 
 /**
@@ -113,7 +113,7 @@ final case class CHFunctionFuzzResult(
   val isLambda: Boolean =
     lambdaArrayFunction0NOpt.nonEmpty || lambdaArrayFunction1NOpt.nonEmpty || lambdaMapFunction1Opt.nonEmpty
 
-object CHFunctionFuzzResult {
+object CHFunctionFuzzResult:
   def apply(name: String): CHFunctionFuzzResult =
     CHFunctionFuzzResult(
       name = name,
@@ -193,4 +193,3 @@ object CHFunctionFuzzResult {
       specialParametric2Function2Ns = Nil,
       specialParametric2Function3Ns = Nil
     )
-}

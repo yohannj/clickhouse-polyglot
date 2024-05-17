@@ -4,7 +4,7 @@ import java.util.concurrent.{Executors, ScheduledExecutorService, TimeUnit}
 import scala.concurrent.{ExecutionContext, Future, Promise}
 import scala.util.{Failure, Random, Success}
 
-object Retry {
+object Retry:
   private val scheduledExecutor: ScheduledExecutorService = Executors.newScheduledThreadPool(1)
   private val random = Random()
 
@@ -37,7 +37,7 @@ object Retry {
       attempt: Int = 0,
       previousWaitTimeMs: Long = 0L
   )(using ec: ExecutionContext): Future[T] =
-    lazy val retriedValue = {
+    lazy val retriedValue =
       val waitTimeMs: Long = (Math.min(previousWaitTimeMs * 1.15, 59800) + random.nextInt(200)).toLong
       val p = Promise[T]()
       scheduledExecutor.schedule(
@@ -57,7 +57,6 @@ object Retry {
       )
 
       p.future
-    }
 
     asyncCall().transformWith {
       case Failure(e: Exception) =>
@@ -68,4 +67,3 @@ object Retry {
         if shouldRetry(res) && attempt <= maxNumberOfAttempts then retriedValue
         else Future.successful(res)
     }
-}

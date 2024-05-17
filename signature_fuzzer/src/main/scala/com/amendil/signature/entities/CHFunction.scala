@@ -50,7 +50,6 @@ object CHFunction:
       isExperimental = false // FIXME
     )
 
-  enum Mode {
+  enum Mode:
     case NoOverWindow extends Mode
     case OverWindow extends Mode
-  }

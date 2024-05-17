@@ -1,8 +1,8 @@
 package com.amendil.signature.fuzz
 
-import com.amendil.common.entities._
+import com.amendil.common.entities.*
 import com.amendil.common.http.CHClient
-import com.amendil.signature.entities._
+import com.amendil.signature.entities.*
 import com.typesafe.scalalogging.StrictLogging
 
 import scala.concurrent.{ExecutionContext, Future}

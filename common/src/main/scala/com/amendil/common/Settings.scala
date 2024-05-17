@@ -2,10 +2,10 @@ package com.amendil.common
 
 import com.typesafe.config.ConfigFactory
 
-object Settings {
+object Settings:
   private val config = ConfigFactory.load()
 
-  object Type {
+  object Type:
     private val typeSettings = config.getConfig("type")
 
     val catboostPath: String = typeSettings.getString("catboost-path")
@@ -15,12 +15,9 @@ object Settings {
       FuzzerDictionaryNames.regexpDictionaryName
     )
 
-    object FuzzerDictionaryNames {
+    object FuzzerDictionaryNames:
       private val fuzzerDictionaryNamesSettings = config.getConfig("type.fuzzer-dictionary-names")
 
       val hierarchyDictionaryName: String = fuzzerDictionaryNamesSettings.getString("hierarchy")
       val manyTypesDictionaryName: String = fuzzerDictionaryNamesSettings.getString("many-types")
       val regexpDictionaryName: String = fuzzerDictionaryNamesSettings.getString("regexp")
-    }
-  }
-}

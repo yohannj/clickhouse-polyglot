@@ -2,10 +2,10 @@ package com.amendil.signature
 
 import com.typesafe.config.ConfigFactory
 
-object Settings {
+object Settings:
   private val config = ConfigFactory.load()
 
-  object ClickHouse {
+  object ClickHouse:
     private val chSettings = config.getConfig("clickhouse")
 
     private val hostname: String = chSettings.getString("http.host")
@@ -60,9 +60,8 @@ object Settings {
       * ```
       */
     val maxSupportedConcurrencyInnerLoop: Int = maxSupportedConcurrency / maxSupportedConcurrencyOuterLoop
-  }
 
-  object Fuzzer {
+  object Fuzzer:
     private val fuzzerSettings = config.getConfig("fuzzer")
 
     val supportJson: Boolean = fuzzerSettings.getBoolean("support.json")
@@ -70,6 +69,3 @@ object Settings {
     val supportNullable: Boolean = fuzzerSettings.getBoolean("support.nullable")
 
     val skipFuzzingOnArgumentMismatch: Boolean = fuzzerSettings.getBoolean("skip-fuzzing-on-argument-mismatch")
-  }
-
-}

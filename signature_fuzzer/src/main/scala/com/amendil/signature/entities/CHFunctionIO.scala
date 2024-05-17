@@ -1,6 +1,6 @@
 package com.amendil.signature.entities
 
-import com.amendil.common.entities._
+import com.amendil.common.entities.*
 
 sealed trait CHFunctionIO:
   def kind: String

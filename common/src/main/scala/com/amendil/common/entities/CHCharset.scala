@@ -5,7 +5,7 @@ package com.amendil.common.entities
 /**
   * Charsets supported by ClickHouse
   */
-enum CHCharset(val name: String) {
+enum CHCharset(val name: String):
   case BOCU_1 extends CHCharset("BOCU-1")
   case CESU_8 extends CHCharset("CESU-8")
   case ebcdic_xml_us extends CHCharset("ebcdic-xml-us")
@@ -200,4 +200,3 @@ enum CHCharset(val name: String) {
   case windows_949_2000 extends CHCharset("windows-949-2000")
   case windows_950_2000 extends CHCharset("windows-950-2000")
   case x11_compound_text extends CHCharset("x11-compound-text")
-}
