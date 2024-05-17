@@ -90,6 +90,31 @@ enum CHFuzzableAbstractType(_fuzzingValues: Seq[String], _chFuzzableTypes: Seq[C
         )
       )
 
+  // Bitmap
+  case Bitmap
+      extends CHFuzzableAbstractType(
+        Seq(
+          CHFuzzableType.BitmapInt8,
+          CHFuzzableType.BitmapInt16,
+          CHFuzzableType.BitmapInt32,
+          CHFuzzableType.BitmapInt64,
+          CHFuzzableType.BitmapUInt8,
+          CHFuzzableType.BitmapUInt16,
+          CHFuzzableType.BitmapUInt32,
+          CHFuzzableType.BitmapUInt64
+        ).map(_.fuzzingValues.head),
+        Seq(
+          CHFuzzableType.BitmapInt8,
+          CHFuzzableType.BitmapInt16,
+          CHFuzzableType.BitmapInt32,
+          CHFuzzableType.BitmapInt64,
+          CHFuzzableType.BitmapUInt8,
+          CHFuzzableType.BitmapUInt16,
+          CHFuzzableType.BitmapUInt32,
+          CHFuzzableType.BitmapUInt64
+        )
+      )
+
   // Date
   case Date
       extends CHFuzzableAbstractType(
@@ -224,7 +249,7 @@ enum CHFuzzableAbstractType(_fuzzingValues: Seq[String], _chFuzzableTypes: Seq[C
   // case Nothing extends CHFuzzableAbstractType(CHFuzzableType.NullableNothing.fuzzingValues, Seq(CHFuzzableType.NullableNothing))
   case String
       extends CHFuzzableAbstractType(
-        CHFuzzableType.StringType.fuzzingValues :+ "'a/<@];!~p{jTj={)'::FixedString(16)",
+        CHFuzzableType.StringType.fuzzingValues :+ "'azertyuiop'::FixedString(10)",
         Seq(
           CHFuzzableType.StringType,
           CHFuzzableType.FixedString
@@ -585,6 +610,12 @@ enum CHFuzzableAbstractType(_fuzzingValues: Seq[String], _chFuzzableTypes: Seq[C
         Seq(CHFuzzableType.DateUnit, CHFuzzableType.TimeUnit, CHFuzzableType.Time64Unit)
       )
       with CustomStringBasedAbstractType
+  case DictionaryName
+      extends CHFuzzableAbstractType(
+        CHFuzzableType.DictionaryName.fuzzingValues,
+        Seq(CHFuzzableType.DictionaryName)
+      )
+      with CustomStringBasedAbstractType
   case SequencePattern
       extends CHFuzzableAbstractType(
         CHFuzzableType.SequencePattern.fuzzingValues,
@@ -595,6 +626,15 @@ enum CHFuzzableAbstractType(_fuzzingValues: Seq[String], _chFuzzableTypes: Seq[C
       extends CHFuzzableAbstractType(
         Seq("'tcp_port'"),
         Seq(CHFuzzableType.ServerPortName)
+      )
+      with CustomStringBasedAbstractType
+  case SpecialString
+      extends CHFuzzableAbstractType(
+        CHFuzzableType.SpecialString.fuzzingValues :+ "'a/<@];!~p{jTj={)'::FixedString(16)",
+        Seq(
+          CHFuzzableType.SpecialString,
+          CHFuzzableType.SpecialFixedString
+        )
       )
       with CustomStringBasedAbstractType
   case SynonymExtensionName

@@ -24,6 +24,13 @@ class CHFuzzableTypeSpec extends AnyFreeSpec with Matchers {
         actual shouldBe expected
       }
 
+      "AggregateFunction(groupBitmap, Int8)" in {
+        val actual = CHType.getByName("AggregateFunction(groupBitmap, Int8)")
+        val expected = CHFuzzableType.BitmapInt8
+
+        actual shouldBe expected
+      }
+
       "DateTime" in {
         val actual = CHType.getByName("DateTime")
         val expected = CHFuzzableType.DateTime

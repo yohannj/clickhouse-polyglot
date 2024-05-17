@@ -14,17 +14,17 @@ object Fuzzer extends StrictLogging:
   def fuzz(functionName: String)(using client: CHClient, ec: ExecutionContext): Future[CHFunctionFuzzResult] =
     val fn = CHFunctionFuzzResult(functionName)
     functionName match
-      case "evalMLMethod" =>
+      case "evalMLMethod" | "finalizeAggregation" | "initializeAggregation" | "runningAccumulate" |
+          "uniqThetaIntersect" | "uniqThetaNot" | "uniqThetaUnion" =>
         // To be handled at a later time
-        // It requires a new type as the first argument must be the result of a "-State" combinator
+        // It requires a new type being the result of a "-State" combinator
         // https://clickhouse.com/docs/en/sql-reference/aggregate-functions/reference/stochasticlinearregression
-        Future.successful(fn)
-      case "finalizeAggregation" | "initializeAggregation" | "runningAccumulate" =>
-        // To be handled at a later time
-        // It requires an aggregated function CHType
         // https://clickhouse.com/docs/en/sql-reference/functions/other-functions#finalizeaggregation
         // https://clickhouse.com/docs/en/sql-reference/functions/other-functions#initializeaggregation
         // https://clickhouse.com/docs/en/sql-reference/functions/other-functions#runningaccumulate
+        // https://clickhouse.com/docs/en/sql-reference/functions/uniqtheta-functions#uniqthetaintersect
+        // https://clickhouse.com/docs/en/sql-reference/functions/uniqtheta-functions#uniqthetanot
+        // https://clickhouse.com/docs/en/sql-reference/functions/uniqtheta-functions#uniqthetaunion
         Future.successful(fn)
       case "isNotDistinctFrom" =>
         // To be handled at a later time
@@ -32,10 +32,14 @@ object Fuzzer extends StrictLogging:
         // https://clickhouse.com/docs/en/sql-reference/statements/select/join#null-values-in-join-keys
         Future.successful(fn)
       case "joinGet" | "joinGetOrNull" =>
-        //
         // To be handled at a later time
         // It requires a table created with ENGINE = Join(ANY, LEFT, <join_keys>)
         // https://clickhouse.com/docs/en/sql-reference/functions/other-functions#joinget
+        Future.successful(fn)
+      case "transactionLatestSnapshot" | "transactionOldestSnapshot" =>
+        // To be handled at a later time
+        // It requires the experimental "transactions" feature
+        // https://clickhouse.com/docs/en/guides/developer/transactional#requirements
         Future.successful(fn)
       case "__getScalar" =>
         // Internal function
@@ -62,25 +66,27 @@ object Fuzzer extends StrictLogging:
         }
 
   def mergeOutputType(type1: CHType, type2: CHType): CHType =
-    lazy val exceptionIfUnknown = {
-      val errMsg = s"Unable to determine higher type for $type1 and $type2"
-      logger.error(errMsg)
-      IllegalArgumentException(errMsg)
-    }
     if type1 == type2 then type1 // Expects both type to be identical, should be the most obvious use case
     else
       val mergedType: CHType =
         if type1 == type2 then type1
+        else if type1.isInstanceOf[CHSpecialType.Array] && type2.isInstanceOf[CHSpecialType.Array] then
+          CHSpecialType.Array(
+            mergeOutputType(
+              type1.asInstanceOf[CHSpecialType.Array].innerType,
+              type2.asInstanceOf[CHSpecialType.Array].innerType
+            )
+          )
         else if type1 == BooleanType then
           type2 match
             case UInt8 | UInt16 | UInt32 | UInt64 | UInt128 | UInt256 | Int16 | Int32 | Int64 | Int128 | Int256 =>
               type2
-            case _ => throw exceptionIfUnknown
+            case _ => CHAggregatedType.Any
         else if type2 == BooleanType then
           type1 match
             case UInt8 | UInt16 | UInt32 | UInt64 | UInt128 | UInt256 | Int16 | Int32 | Int64 | Int128 | Int256 =>
               type1
-            case _ => throw exceptionIfUnknown
+            case _ => CHAggregatedType.Any
         else if type1 == Int8 then
           type2 match
             case UInt8                                   => Int16
@@ -89,7 +95,7 @@ object Fuzzer extends StrictLogging:
             case UInt64                                  => Int128
             case UInt128 | UInt256                       => Int256
             case Int16 | Int32 | Int64 | Int128 | Int256 => type2
-            case _                                       => throw exceptionIfUnknown
+            case _                                       => CHAggregatedType.Any
         else if type2 == Int8 then
           type1 match
             case UInt8                                   => Int16
@@ -98,7 +104,7 @@ object Fuzzer extends StrictLogging:
             case UInt64                                  => Int128
             case UInt128 | UInt256                       => Int256
             case Int16 | Int32 | Int64 | Int128 | Int256 => type1
-            case _                                       => throw exceptionIfUnknown
+            case _                                       => CHAggregatedType.Any
         else if type1 == Int16 then
           type2 match
             case UInt8                           => Int16
@@ -107,7 +113,7 @@ object Fuzzer extends StrictLogging:
             case UInt64                          => Int128
             case UInt128 | UInt256               => Int256
             case Int32 | Int64 | Int128 | Int256 => type2
-            case _                               => throw exceptionIfUnknown
+            case _                               => CHAggregatedType.Any
         else if type2 == Int16 then
           type1 match
             case UInt8                           => Int16
@@ -116,7 +122,7 @@ object Fuzzer extends StrictLogging:
             case UInt64                          => Int128
             case UInt128 | UInt256               => Int256
             case Int32 | Int64 | Int128 | Int256 => type1
-            case _                               => throw exceptionIfUnknown
+            case _                               => CHAggregatedType.Any
         else if type1 == Int32 then
           type2 match
             case UInt8 | UInt16          => Int32
@@ -124,7 +130,7 @@ object Fuzzer extends StrictLogging:
             case UInt64                  => Int128
             case UInt128 | UInt256       => Int256
             case Int64 | Int128 | Int256 => type2
-            case _                       => throw exceptionIfUnknown
+            case _                       => CHAggregatedType.Any
         else if type2 == Int32 then
           type1 match
             case UInt8 | UInt16          => Int32
@@ -132,103 +138,103 @@ object Fuzzer extends StrictLogging:
             case UInt64                  => Int128
             case UInt128 | UInt256       => Int256
             case Int64 | Int128 | Int256 => type1
-            case _                       => throw exceptionIfUnknown
+            case _                       => CHAggregatedType.Any
         else if type1 == Int64 then
           type2 match
             case UInt8 | UInt16 | UInt32 => Int64
             case UInt64                  => Int128
             case UInt128 | UInt256       => Int256
             case Int128 | Int256         => type2
-            case _                       => throw exceptionIfUnknown
+            case _                       => CHAggregatedType.Any
         else if type2 == Int64 then
           type1 match
             case UInt8 | UInt16 | UInt32 => Int64
             case UInt64                  => Int128
             case UInt128 | UInt256       => Int256
             case Int128 | Int256         => type1
-            case _                       => throw exceptionIfUnknown
+            case _                       => CHAggregatedType.Any
         else if type1 == Int128 then
           type2 match
             case UInt8 | UInt16 | UInt32 | UInt64 => Int128
             case UInt128 | UInt256                => Int256
             case Int256                           => Int256
-            case _                                => throw exceptionIfUnknown
+            case _                                => CHAggregatedType.Any
         else if type2 == Int128 then
           type1 match
             case UInt8 | UInt16 | UInt32 | UInt64 => Int128
             case UInt128 | UInt256                => Int256
             case Int256                           => Int256
-            case _                                => throw exceptionIfUnknown
+            case _                                => CHAggregatedType.Any
         else if type1 == Int256 then Int256
         else if type2 == Int256 then Int256
         // From now on, neither type1 nor type2 can be a signed integer
         else if type1 == UInt8 then
           type2 match
             case UInt16 | UInt32 | UInt64 | UInt128 | UInt256 => type2
-            case _                                            => throw exceptionIfUnknown
+            case _                                            => CHAggregatedType.Any
         else if type2 == UInt8 then
           type1 match
             case UInt16 | UInt32 | UInt64 | UInt128 | UInt256 => type1
-            case _                                            => throw exceptionIfUnknown
+            case _                                            => CHAggregatedType.Any
         else if type1 == UInt16 then
           type2 match
             case UInt32 | UInt64 | UInt128 | UInt256 => type2
-            case _                                   => throw exceptionIfUnknown
+            case _                                   => CHAggregatedType.Any
         else if type2 == UInt16 then
           type1 match
             case UInt32 | UInt64 | UInt128 | UInt256 => type1
-            case _                                   => throw exceptionIfUnknown
+            case _                                   => CHAggregatedType.Any
         else if type1 == UInt32 then
           type2 match
             case UInt64 | UInt128 | UInt256 => type2
-            case _                          => throw exceptionIfUnknown
+            case _                          => CHAggregatedType.Any
         else if type2 == UInt32 then
           type1 match
             case UInt64 | UInt128 | UInt256 => type1
-            case _                          => throw exceptionIfUnknown
+            case _                          => CHAggregatedType.Any
         else if type1 == UInt64 then
           type2 match
             case UInt128 | UInt256 => type2
-            case _                 => throw exceptionIfUnknown
+            case _                 => CHAggregatedType.Any
         else if type2 == UInt64 then
           type1 match
             case UInt128 | UInt256 => type1
-            case _                 => throw exceptionIfUnknown
+            case _                 => CHAggregatedType.Any
         else if type1 == UInt128 then
           type2 match
             case UInt256 => type2
-            case _       => throw exceptionIfUnknown
+            case _       => CHAggregatedType.Any
         else if type2 == UInt128 then
           type1 match
             case UInt256 => type1
-            case _       => throw exceptionIfUnknown
+            case _       => CHAggregatedType.Any
         // From now on, neither type1 nor type2 can be an unsigned integer
         else if type1 == Float32 then
           type2 match
             case Float64 => Float64
-            case _       => throw exceptionIfUnknown
+            case _       => CHAggregatedType.Any
         else if type2 == Float32 then
           type1 match
             case Float64 => Float64
-            case _       => throw exceptionIfUnknown
+            case _       => CHAggregatedType.Any
         // From now on, neither type1 nor type2 can be a float number
         else if type1 == Date then
           type2 match
             case Date32 | DateTime | DateTime64 => type2
-            case _                              => throw exceptionIfUnknown
+            case _                              => CHAggregatedType.Any
         else if type2 == Date then
           type1 match
             case Date32 | DateTime | DateTime64 => type1
-            case _                              => throw exceptionIfUnknown
+            case _                              => CHAggregatedType.Any
         else if type1 == DateTime then
           type2 match
             case DateTime64 => DateTime64
-            case _          => throw exceptionIfUnknown
+            case _          => CHAggregatedType.Any
         else if type2 == Date then
           type1 match
             case DateTime64 => DateTime64
-            case _          => throw exceptionIfUnknown
-        else throw exceptionIfUnknown
+            case _          => CHAggregatedType.Any
+        else CHAggregatedType.Any
 
       mergedType
 

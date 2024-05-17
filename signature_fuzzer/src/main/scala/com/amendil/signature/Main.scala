@@ -1,6 +1,6 @@
 package com.amendil.signature
 
-import com.amendil.common.ConcurrencyUtils
+import com.amendil.common.{ConcurrencyUtils, Settings => CommonSettings}
 import com.amendil.common.entities.CHFuzzableType
 import com.amendil.common.http.CHClient
 import com.amendil.signature.entities.{CHFunction, CHFunctionFuzzResult, CHFuzzableAbstractType}
@@ -12,7 +12,7 @@ import java.util.concurrent.Executors
 import scala.collection.mutable.ArraySeq
 import scala.concurrent.{Await, ExecutionContext, Future}
 import scala.concurrent.duration.Duration
-import scala.util.Try
+import scala.util.{Failure, Success, Try}
 
 @main def app: Unit =
   val logger = Logger("Main")
@@ -22,7 +22,8 @@ import scala.util.Try
 
   val runF =
     (for
-      _ <- ensuringFuzzingValuesAreValid()
+      // _ <- ensuringFuzzingValuesAreValid()
+      _ <- createDictionaries()
 
       chVersion <- getCHVersion()
       // functionNames <- getCHFunctions()
@@ -84,7 +85,101 @@ import scala.util.Try
       }
     }).flatten
 
-  Await.result(runF, Duration.Inf)
+  Try(Await.result(runF, Duration.Inf)) match
+    case Failure(exception) =>
+      logger.error(exception.getMessage())
+      exception.printStackTrace()
+      sys.exit(1)
+    case Success(_) =>
+      sys.exit(0)
+
+def createDictionaries()(using client: CHClient, ec: ExecutionContext): Future[Unit] =
+  for
+    _ <- createHierarchicalDictionary()
+    _ <- createManyTypesDictionary()
+    _ <- createRegexpTreeDictionary()
+  yield { (): Unit }
+
+def createHierarchicalDictionary()(using client: CHClient, ec: ExecutionContext): Future[Unit] =
+  for
+    _ <- client.executeNoResultNoSettings(
+      s"""|CREATE TABLE IF NOT EXISTS ${CommonSettings.Type.FuzzerDictionaryNames.hierarchyDictionaryName}_source_table
+          |(
+          |    childId UInt64,
+          |    parentId UInt64
+          |)
+          |ENGINE = MergeTree()
+          |ORDER BY childId""".stripMargin.replace("\n", " ")
+    )
+
+    _ <- client.executeNoResultNoSettings(
+      s"""|CREATE DICTIONARY IF NOT EXISTS ${CommonSettings.Type.FuzzerDictionaryNames.hierarchyDictionaryName}
+          |(
+          |    childId UInt64,
+          |    parentId UInt64 HIERARCHICAL
+          |)
+          |PRIMARY KEY childId
+          |SOURCE(CLICKHOUSE(TABLE '${CommonSettings.Type.FuzzerDictionaryNames.hierarchyDictionaryName}_source_table'))
+          |LAYOUT(FLAT())
+          |LIFETIME(MIN 0 MAX 1000)
+          |""".stripMargin.replace("\n", " ")
+    )
+  yield { (): Unit }
+
+def createManyTypesDictionary()(using client: CHClient, ec: ExecutionContext): Future[Unit] =
+  val columns =
+    """|(
+       |    id UInt64,
+       |    dateValue Date,
+       |    dateTimeValue DateTime,
+       |    float32Value Float32,
+       |    float64Value Float64,
+       |    int16Value Int16,
+       |    int32Value Int32,
+       |    int64Value Int64,
+       |    int8Value Int8,
+       |    iPv4Value IPv4,
+       |    iPv6Value IPv6,
+       |    stringValue String,
+       |    uint16Value UInt16,
+       |    uint32Value UInt32,
+       |    uint64Value UInt64,
+       |    uint8Value UInt8,
+       |    uuidValue UUID
+       |)""".stripMargin.replace("\n", " ")
+  for
+    _ <- client.executeNoResultNoSettings(
+      s"""|CREATE TABLE IF NOT EXISTS ${CommonSettings.Type.FuzzerDictionaryNames.manyTypesDictionaryName}_source_table
+          |$columns
+          |ENGINE = MergeTree()
+          |ORDER BY id""".stripMargin.replace("\n", " ")
+    )
+
+    _ <- client.executeNoResultNoSettings(
+      s"""|CREATE DICTIONARY IF NOT EXISTS ${CommonSettings.Type.FuzzerDictionaryNames.manyTypesDictionaryName}
+          |$columns
+          |PRIMARY KEY id
+          |SOURCE(CLICKHOUSE(TABLE '${CommonSettings.Type.FuzzerDictionaryNames.manyTypesDictionaryName}_source_table'))
+          |LAYOUT(FLAT())
+          |LIFETIME(MIN 0 MAX 1000)
+          |""".stripMargin.replace("\n", " ")
+    )
+  yield { (): Unit }
+
+def createRegexpTreeDictionary()(using client: CHClient, ec: ExecutionContext): Future[Unit] =
+  client.executeNoResultNoSettings(
+    s"""|CREATE DICTIONARY IF NOT EXISTS ${CommonSettings.Type.FuzzerDictionaryNames.regexpDictionaryName}
+        |(
+        |    regexp String,
+        |    name String,
+        |    version String
+        |)
+        |PRIMARY KEY regexp
+        |SOURCE(YAMLRegExpTree(PATH '/Users/yohann/workspace/ClickHouse-fuzzer/running_clickhouse/host/ch24_2/var/lib/clickhouse/user_files/regexp_tree.yaml'))
+        |LAYOUT(regexp_tree)
+        |LIFETIME(MIN 0 MAX 1000)
+        |""".stripMargin.replace("\n", " ")
+  )
 
 def ensuringFuzzingValuesAreValid()(using client: CHClient, ec: ExecutionContext): Future[Unit] =
   Future

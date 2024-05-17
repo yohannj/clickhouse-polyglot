@@ -2,9 +2,7 @@ package com.amendil.common.http
 
 import java.util.concurrent.{Executors, ScheduledExecutorService, TimeUnit}
 import scala.concurrent.{ExecutionContext, Future, Promise}
-import scala.util.Random
-import scala.util.Failure
-import scala.util.Success
+import scala.util.{Failure, Random, Success}
 
 object Retry {
   private val scheduledExecutor: ScheduledExecutorService = Executors.newScheduledThreadPool(1)

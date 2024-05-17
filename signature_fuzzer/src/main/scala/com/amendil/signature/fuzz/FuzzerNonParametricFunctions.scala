@@ -21,10 +21,6 @@ object FuzzerNonParametricFunctions extends StrictLogging:
       (fuzzFunction1Or0N, elemCount),
       (fuzzFunction2Or1N, elemCount * elemCount),
       (fuzzFunction3Or2N, elemCount * elemCount * elemCount)
-      // TODO: Uncomment fuzzFunction4Or3N once all functions are found
-      // The combinatory is HUGE, we will have to tests and see if there are possible optimisations
-      // Maybe limit it to only functions for which we know of a function3?
-      // (fuzzFunction4Or3N, elemCount * elemCount * elemCount * elemCount)
     )
 
   private def fuzzFunction0(
@@ -110,26 +106,6 @@ object FuzzerNonParametricFunctions extends StrictLogging:
       ).map((modes, fn3s, fn2Ns) =>
         logger.trace(s"fuzzFunction3Or2N - fuzz done")
         fn.copy(modes = fn.modes ++ modes, function3s = fn3s, function2Ns = fn2Ns)
-      )
-
-  private def fuzzFunction4Or3N(
-      fn: CHFunctionFuzzResult
-  )(using client: CHClient, ec: ExecutionContext): Future[CHFunctionFuzzResult] =
-    logger.debug("fuzzFunction4Or3N")
-    if fn.isLambda || fn.isSpecialInfiniteFunction || fn.function0Ns.nonEmpty || fn.function1Ns.nonEmpty ||
-      fn.function2Ns.nonEmpty || (fn.function1s
-        .filterNot(_.arg1.name.startsWith("Tuple"))
-        .nonEmpty && fn.function3s.isEmpty)
-    then Future.successful(fn)
-    else
-      fuzzNonParametric(
-        fn,
-        argCount = 4,
-        (io: (InputTypes, OutputType)) => toFn(io, CHFunctionIO.Function4.apply),
-        (io: (InputTypes, OutputType)) => toFn(io, CHFunctionIO.Function3N.apply)
-      ).map((modes, fn4s, fn3Ns) =>
-        logger.trace(s"fuzzFunction4Or3N - fuzz done")
-        fn.copy(modes = fn.modes ++ modes, function4s = fn4s, function3Ns = fn3Ns)
       )
 
   private def fuzzNonParametric[U1 <: CHFunctionIO, U2 <: CHFunctionIO](
@@ -258,11 +234,24 @@ object FuzzerNonParametricFunctions extends StrictLogging:
         s"fuzzFiniteArgsFunctions - detected ${abstractInputCombinations.size} abstract input combinations"
       )
 
+      res <- fuzzAbstractInputCombinations(fnName, abstractInputCombinations, fuzzOverWindow)
+    yield {
+      res
+    }
+
+  private[fuzz] def fuzzAbstractInputCombinations(
+      fnName: String,
+      abstractInputCombinations: Seq[Seq[CHFuzzableAbstractType]],
+      fuzzOverWindow: Boolean,
+      returnFirstOutputTypeFound: Boolean = false
+  )(using client: CHClient, ec: ExecutionContext): Future[Seq[(InputTypes, OutputType)]] =
+    logger.trace(s"fuzzAbstractInputCombinations - init")
+    for
       abstractInputCombinationsWithValidFuzzableTypes: Seq[Seq[(CHFuzzableAbstractType, Seq[CHFuzzableType])]] <-
         filterFuzzableTypePerArgument(fnName, abstractInputCombinations, fuzzOverWindow)
 
       _ = logger.trace(
-        s"fuzzFiniteArgsFunctions - found ${abstractInputCombinationsWithValidFuzzableTypes.flatten.map(_._2.size).sum} " +
+        s"fuzzAbstractInputCombinations - found ${abstractInputCombinationsWithValidFuzzableTypes.flatten.map(_._2.size).sum} " +
           s"fuzzable types in the different combinations"
       )
 
@@ -274,7 +263,7 @@ object FuzzerNonParametricFunctions extends StrictLogging:
           fuzzOverWindow
         )
 
-      _ = logger.trace(s"fuzzFiniteArgsFunctions - detected ${inputSignatures.size} input signatures")
+      _ = logger.trace(s"fuzzAbstractInputCombinations - detected ${inputSignatures.size} input signatures")
 
       res <-
         executeInParallelOnlySuccess(
@@ -283,17 +272,26 @@ object FuzzerNonParametricFunctions extends StrictLogging:
             val queries =
               buildFuzzingValuesArgs(inputTypes.map(_.fuzzingValues)).map(args => query(fnName, args, fuzzOverWindow))
 
-            executeInParallelOnlySuccess(
-              queries,
-              client
-                .execute(_)
-                .map(_.data.head.head.asInstanceOf[String]),
-              Settings.ClickHouse.maxSupportedConcurrencyInnerLoop
-            ).map(outputTypes => (inputTypes, outputTypes.map(CHType.getByName).reduce(Fuzzer.mergeOutputType)))
+            if returnFirstOutputTypeFound then
+              executeInParallelUntilSuccess(
+                queries,
+                client
+                  .execute(_)
+                  .map(_.data.head.head.asInstanceOf[String]),
+                Settings.ClickHouse.maxSupportedConcurrencyInnerLoop
+              ).map(outputType => (inputTypes, CHType.getByName(outputType)))
+            else
+              executeInParallelOnlySuccess(
+                queries,
+                client
+                  .execute(_)
+                  .map(_.data.head.head.asInstanceOf[String]),
+                Settings.ClickHouse.maxSupportedConcurrencyInnerLoop
+              ).map(outputTypes => (inputTypes, outputTypes.map(CHType.getByName).reduce(Fuzzer.mergeOutputType)))
           ,
           maxConcurrency = Settings.ClickHouse.maxSupportedConcurrencyOuterLoop
         )
-      _ = logger.trace(s"fuzzFiniteArgsFunctions - signatures output detected")
+      _ = logger.trace(s"fuzzAbstractInputCombinations - signatures output detected")
     yield {
       res
     }
@@ -324,7 +322,7 @@ object FuzzerNonParametricFunctions extends StrictLogging:
         s"bruteforceAbstractTypeCombinations - detected ${abstractInputCombinationsNoSpecialType.size} abstract input combinations (excluding special types)"
       )
 
-      // If nothing was found previously, then it might be because we need a custom types.
+      // If nothing was found previously, then it might be because we need a custom types that also work as String.
       abstractInputCombinations: Seq[Seq[CHFuzzableAbstractType]] <-
         if abstractInputCombinationsNoSpecialType.nonEmpty then
           Future.successful(abstractInputCombinationsNoSpecialType)
@@ -381,7 +379,7 @@ object FuzzerNonParametricFunctions extends StrictLogging:
         executeInParallel( // For each abstract input
           abstractInputs,
           (abstractInput: Seq[CHFuzzableAbstractType]) =>
-            executeInSequence( // For each argument (identified by its index)
+            executeInParallel( // For each argument (identified by its index)
               Range.apply(0, abstractInput.size),
               (idx: Int) =>
                 val indexedInput = abstractInput.zipWithIndex
@@ -403,13 +401,17 @@ object FuzzerNonParametricFunctions extends StrictLogging:
                     ).map(_ => fuzzableType)
                 ).map { filteredFuzzableType =>
                   if filteredFuzzableType.isEmpty then
-                    logger.error("No individual value found, while we know the combination is valid.")
-                    throw Exception("No individual value found, while we know the combination is valid.")
+                    val errorMsg =
+                      s"No individual value found for argument idx $idx, while we know the combination [${abstractInput.mkString(", ")}] is valid."
+                    logger.error(errorMsg)
+                    throw Exception(errorMsg)
 
                   (currentArgumentAbstractType, filteredFuzzableType)
                 }
+              ,
+              maxConcurrency = abstractInputs.head.size
             ),
-          maxConcurrency = Settings.ClickHouse.maxSupportedConcurrency
+          maxConcurrency = Settings.ClickHouse.maxSupportedConcurrency / abstractInputs.head.size
         )
     else Future.successful(Nil)
 

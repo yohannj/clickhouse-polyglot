@@ -2,9 +2,9 @@ package com.amendil.common.entities
 
 import com.amendil.common.Settings
 import com.typesafe.scalalogging.StrictLogging
-import fastparse._, NoWhitespace._
-import fastparse.Parsed.Success
-import fastparse.Parsed.Failure
+import fastparse._
+import fastparse.NoWhitespace._
+import fastparse.Parsed.{Failure, Success}
 
 trait CHType { def name: String }
 
@@ -32,8 +32,25 @@ object CHType extends StrictLogging:
 
   // ClickHouse types
   private def any[$: P]: P[CHType] = P(
-    array | bool | date | date32 | datetime | datetime64 | datetimeTZ | datetime64TZ | decimal | decimal32 | decimal64 | decimal128 | decimal256 | enum16 | enum8 | fixedstring | float32 | float64 | int128 | int16 | int256 | int32 | int64 | int8 | intervalday | intervalhour | intervalmicrosecond | intervalmillisecond | intervalminute | intervalmonth | intervalnanosecond | intervalquarter | intervalsecond | intervalweek | intervalyear | ipv4 | ipv6 | json | lowcardinality | map | multipolygon | nullable | point | polygon | ring | string | tuple | uint128 | uint16 | uint256 | uint32 | uint64 | uint8 | uuid
+    aggregateFunction | array | bool | date | date32 | datetime | datetime64 | datetimeTZ | datetime64TZ | decimal | decimal32 | decimal64 | decimal128 | decimal256 | enum16 | enum8 | fixedstring | float32 | float64 | int128 | int16 | int256 | int32 | int64 | int8 | intervalday | intervalhour | intervalmicrosecond | intervalmillisecond | intervalminute | intervalmonth | intervalnanosecond | intervalquarter | intervalsecond | intervalweek | intervalyear | ipv4 | ipv6 | json | lowcardinality | map | multipolygon | nullable | point | polygon | ring | string | tuple | uint128 | uint16 | uint256 | uint32 | uint64 | uint8 | uuid
   )
+  // AggregateFunction(groupBitmap, Int8)
+  private def aggregateFunction[$: P]: P[CHType] =
+    P("AggregateFunction(" ~/ CharsWhile(_ != ',').! ~ ", " ~ any ~ ")").map { (fnName, innerType) =>
+      fnName match
+        case "groupBitmap" =>
+          innerType match
+            case CHFuzzableType.Int8   => CHFuzzableType.BitmapInt8
+            case CHFuzzableType.Int16  => CHFuzzableType.BitmapInt16
+            case CHFuzzableType.Int32  => CHFuzzableType.BitmapInt32
+            case CHFuzzableType.Int64  => CHFuzzableType.BitmapInt64
+            case CHFuzzableType.UInt8  => CHFuzzableType.BitmapUInt8
+            case CHFuzzableType.UInt16 => CHFuzzableType.BitmapUInt16
+            case CHFuzzableType.UInt32 => CHFuzzableType.BitmapUInt32
+            case CHFuzzableType.UInt64 => CHFuzzableType.BitmapUInt64
+            case _                     => CHSpecialType.AggregateFunction(fnName, innerType)
+        case _ => CHSpecialType.AggregateFunction(fnName, innerType)
+    }
   private def array[$: P]: P[CHType] = P("Array(" ~/ any ~ ")").map(CHSpecialType.Array(_))
   private def bool[$: P]: P[CHType] = P("Bool").map(_ => CHFuzzableType.BooleanType)
   private def date[$: P]: P[CHType] = P("Date" ~ !("Time" | "32")).map(_ => CHFuzzableType.Date)
@@ -104,6 +121,8 @@ object CHType extends StrictLogging:
   private def uuid[$: P]: P[CHType] = P("UUID").map(_ => CHFuzzableType.UUID)
 
 enum CHSpecialType(val name: String) extends CHType:
+  case AggregateFunction(fnName: String, innerType: CHType)
+      extends CHSpecialType(s"AggregateFunction($fnName, ${innerType.name})")
   case Array(innerType: CHType) extends CHSpecialType(s"Array(${innerType.name})")
   case GenericType(typeName: String) extends CHSpecialType(typeName)
   case LambdaType(outputType: CHType) extends CHSpecialType(s"Lambda(${outputType.name})")
@@ -111,6 +130,7 @@ enum CHSpecialType(val name: String) extends CHType:
   case Map(keyType: CHType, valueType: CHType) extends CHSpecialType(s"Map(${keyType.name}, ${valueType.name})")
   case Nullable(innerType: CHType) extends CHSpecialType(s"Nullable(${innerType.name})")
   case Tuple(innerTypes: Seq[CHType]) extends CHSpecialType(s"Tuple(${innerTypes.map(_.name).mkString(", ")})")
+  case TupleN(innerType: CHType) extends CHSpecialType(s"TupleN(${innerType.name})")
 
   case CatboostParameter
       extends CHSpecialType("CatboostParameter") // UIntX, IntX, Float32, Float64, Date, Date32, DateTime
@@ -286,6 +306,48 @@ enum CHFuzzableType(
         )
       )
 
+  // Bitmap
+  case BitmapInt8
+      extends CHFuzzableType(
+        "Bitmap(Int8)",
+        Seq("bitmapBuild([1::Int8])")
+      )
+  case BitmapInt16
+      extends CHFuzzableType(
+        "Bitmap(Int16)",
+        Seq("bitmapBuild([1::Int16])")
+      )
+  case BitmapInt32
+      extends CHFuzzableType(
+        "Bitmap(Int32)",
+        Seq("bitmapBuild([1::Int32])")
+      )
+  case BitmapInt64
+      extends CHFuzzableType(
+        "Bitmap(Int64)",
+        Seq("bitmapBuild([1::Int64])")
+      )
+  case BitmapUInt8
+      extends CHFuzzableType(
+        "Bitmap(UInt8)",
+        Seq("bitmapBuild([1::UInt8])")
+      )
+  case BitmapUInt16
+      extends CHFuzzableType(
+        "Bitmap(UInt16)",
+        Seq("bitmapBuild([1::UInt16])")
+      )
+  case BitmapUInt32
+      extends CHFuzzableType(
+        "Bitmap(UInt32)",
+        Seq("bitmapBuild([1::UInt32])")
+      )
+  case BitmapUInt64
+      extends CHFuzzableType(
+        "Bitmap(UInt64)",
+        Seq("bitmapBuild([1::UInt64])")
+      )
+
   // Date
   case Date
       extends CHFuzzableType(
@@ -426,23 +488,9 @@ enum CHFuzzableType(
       extends CHFuzzableType(
         "FixedString",
         Seq(
-          "'azertyuiop'::FixedString(10)",
           "''::FixedString(1)",
-          "'01GNB2S2FGN2P93QPXDNB4EN2A'::FixedString(26)",
-          "'a/<@];!~p{jTj={)'::FixedString(16)",
-          "'(.)'::FixedString(3)",
-          "'SELECT 1'::FixedString(10)",
-          "'log_queries'::FixedString(16)",
           "'a'::FixedString(1)",
-          "'127.0.0.1'::FixedString(9)",
-          "'127.0.0.0/8'::FixedString(11)",
-          "'en'::FixedString(2)",
-          "'11s+22min'::FixedString(9)",
-          "'MULTIPOLYGON(((2 0,10 0,10 10,0 10,2 0),(4 4,5 4,5 5,4 5,4 4)),((-10 -10,-10 -9,-9 10,-10 -10)))'::FixedString(96)",
-          "'POLYGON((2 0,10 0,10 10,0 10,2 0))'::FixedString(34)",
-          "'POINT (1.2 3.4)'::FixedString(15)",
-          "'LINESTRING (1 1, 2 2, 3 3, 1 1)'::FixedString(31)",
-          "'column1 String, column2 UInt32, column3 Array(String)'::FixedString(53)"
+          "'azertyuiop'::FixedString(10)"
         )
       )
   case IPv4 extends CHFuzzableType("IPv4", Seq("'116.106.34.242'::IPv4"))
@@ -465,23 +513,7 @@ enum CHFuzzableType(
         "String",
         Seq(
           "''::String",
-          "'127.0.0.1'::String",
-          "'01GNB2S2FGN2P93QPXDNB4EN2A'::String",
-          "'public_suffix_list'::String",
-          s"'${Settings.Type.catboostPath}'::String",
-          "'(.)'::String",
-          "'SELECT 1'::String",
-          "'log_queries'::String",
-          "'a'::String",
-          "'127.0.0.1'::String",
-          "'127.0.0.0/8'::String",
-          "'en'::String",
-          "'11s+22min'::String",
-          "'MULTIPOLYGON(((2 0,10 0,10 10,0 10,2 0),(4 4,5 4,5 5,4 5,4 4)),((-10 -10,-10 -9,-9 10,-10 -10)))'",
-          "'POLYGON((2 0,10 0,10 10,0 10,2 0))'",
-          "'POINT (1.2 3.4)'",
-          "'LINESTRING (1 1, 2 2, 3 3, 1 1)'",
-          "'column1 String, column2 UInt32, column3 Array(String)'"
+          "'a'::String"
         )
       )
   case UUID
@@ -919,105 +951,120 @@ enum CHFuzzableType(
       extends CHFuzzableType(
         "Array(Bool)",
         Seq(
-          s"[${BooleanType.fuzzingValues.mkString(", ")}]::Array(Bool)"
+          s"[${BooleanType.fuzzingValues.mkString(", ")}]::Array(Bool)",
+          s"[${BooleanType.fuzzingValues.head}]::Array(Bool)"
         )
       )
   case ArrayInt8
       extends CHFuzzableType(
         "Array(Int8)",
         Seq(
-          s"[${Int8.fuzzingValues.mkString(", ")}]::Array(Int8)"
+          s"[${Int8.fuzzingValues.mkString(", ")}]::Array(Int8)",
+          s"[${Int8.fuzzingValues.head}]::Array(Int8)"
         )
       )
   case ArrayInt16
       extends CHFuzzableType(
         "Array(Int16)",
         Seq(
-          s"[${Int16.fuzzingValues.mkString(", ")}]::Array(Int16)"
+          s"[${Int16.fuzzingValues.mkString(", ")}]::Array(Int16)",
+          s"[${Int16.fuzzingValues.head}]::Array(Int16)"
         )
       )
   case ArrayInt32
       extends CHFuzzableType(
         "Array(Int32)",
         Seq(
-          s"[${Int32.fuzzingValues.mkString(", ")}]::Array(Int32)"
+          s"[${Int32.fuzzingValues.mkString(", ")}]::Array(Int32)",
+          s"[${Int32.fuzzingValues.head}]::Array(Int32)"
         )
       )
   case ArrayInt64
       extends CHFuzzableType(
         "Array(Int64)",
         Seq(
-          s"[${Int64.fuzzingValues.mkString(", ")}]::Array(Int64)"
+          s"[${Int64.fuzzingValues.mkString(", ")}]::Array(Int64)",
+          s"[${Int64.fuzzingValues.head}]::Array(Int64)"
         )
       )
   case ArrayInt128
       extends CHFuzzableType(
         "Array(Int128)",
         Seq(
-          s"[${Int128.fuzzingValues.mkString(", ")}]::Array(Int128)"
+          s"[${Int128.fuzzingValues.mkString(", ")}]::Array(Int128)",
+          s"[${Int128.fuzzingValues.head}]::Array(Int128)"
         )
       )
   case ArrayInt256
       extends CHFuzzableType(
         "Array(Int256)",
         Seq(
-          s"[${Int256.fuzzingValues.mkString(", ")}]::Array(Int256)"
+          s"[${Int256.fuzzingValues.mkString(", ")}]::Array(Int256)",
+          s"[${Int256.fuzzingValues.head}]::Array(Int256)"
         )
       )
   case ArrayUInt8
       extends CHFuzzableType(
         "Array(UInt8)",
         Seq(
-          s"[${UInt8.fuzzingValues.mkString(", ")}]::Array(UInt8)"
+          s"[${UInt8.fuzzingValues.mkString(", ")}]::Array(UInt8)",
+          s"[${UInt8.fuzzingValues.head}]::Array(UInt8)"
         )
       )
   case ArrayUInt16
       extends CHFuzzableType(
         "Array(UInt16)",
         Seq(
-          s"[${UInt16.fuzzingValues.mkString(", ")}]::Array(UInt16)"
+          s"[${UInt16.fuzzingValues.mkString(", ")}]::Array(UInt16)",
+          s"[${UInt16.fuzzingValues.head}]::Array(UInt16)"
         )
       )
   case ArrayUInt32
       extends CHFuzzableType(
         "Array(UInt32)",
         Seq(
-          s"[${UInt32.fuzzingValues.mkString(", ")}]::Array(UInt32)"
+          s"[${UInt32.fuzzingValues.mkString(", ")}]::Array(UInt32)",
+          s"[${UInt32.fuzzingValues.head}]::Array(UInt32)"
         )
       )
   case ArrayUInt64
       extends CHFuzzableType(
         "Array(UInt64)",
         Seq(
-          s"[${UInt64.fuzzingValues.mkString(", ")}]::Array(UInt64)"
+          s"[${UInt64.fuzzingValues.mkString(", ")}]::Array(UInt64)",
+          s"[${UInt64.fuzzingValues.head}]::Array(UInt64)"
         )
       )
   case ArrayUInt128
       extends CHFuzzableType(
         "Array(UInt128)",
         Seq(
-          s"[${UInt128.fuzzingValues.mkString(", ")}]::Array(UInt128)"
+          s"[${UInt128.fuzzingValues.mkString(", ")}]::Array(UInt128)",
+          s"[${UInt128.fuzzingValues.head}]::Array(UInt128)"
         )
       )
   case ArrayUInt256
       extends CHFuzzableType(
         "Array(UInt256)",
         Seq(
-          s"[${UInt256.fuzzingValues.mkString(", ")}]::Array(UInt256)"
+          s"[${UInt256.fuzzingValues.mkString(", ")}]::Array(UInt256)",
+          s"[${UInt256.fuzzingValues.head}]::Array(UInt256)"
         )
       )
   case ArrayFloat32
       extends CHFuzzableType(
         "Array(Float32)",
         Seq(
-          s"[${Float32.fuzzingValues.mkString(", ")}]::Array(Float32)"
+          s"[${Float32.fuzzingValues.mkString(", ")}]::Array(Float32)",
+          s"[${Float32.fuzzingValues.head}]::Array(Float32)"
         )
       )
   case ArrayFloat64
       extends CHFuzzableType(
         "Array(Float64)",
         Seq(
-          s"[${Float64.fuzzingValues.mkString(", ")}]::Array(Float64)"
+          s"[${Float64.fuzzingValues.mkString(", ")}]::Array(Float64)",
+          s"[${Float64.fuzzingValues.head}]::Array(Float64)"
         )
       )
   case ArrayDecimal32
@@ -1052,14 +1099,16 @@ enum CHFuzzableType(
       extends CHFuzzableType(
         "Array(Date)",
         Seq(
-          s"[${Date.fuzzingValues.mkString(", ")}]::Array(Date)"
+          s"[${Date.fuzzingValues.mkString(", ")}]::Array(Date)",
+          s"[${Date.fuzzingValues.head}]::Array(Date)"
         )
       )
   case ArrayDate32
       extends CHFuzzableType(
         "Array(Date32)",
         Seq(
-          s"[${Date32.fuzzingValues.mkString(", ")}]::Array(Date32)"
+          s"[${Date32.fuzzingValues.mkString(", ")}]::Array(Date32)",
+          s"[${Date32.fuzzingValues.head}]::Array(Date32)"
         )
       )
   case ArrayDateTime
@@ -1143,13 +1192,28 @@ enum CHFuzzableType(
           s"[${FixedString.fuzzingValues.mkString(", ")}]::Array(FixedString(96))"
         )
       )
-  case ArrayIPv4 extends CHFuzzableType("Array(IPv4)", Seq(s"[${IPv4.fuzzingValues.mkString(", ")}]::Array(IPv4)"))
-  case ArrayIPv6 extends CHFuzzableType("Array(IPv6)", Seq(s"[${IPv6.fuzzingValues.mkString(", ")}]::Array(IPv6)"))
+  case ArrayIPv4
+      extends CHFuzzableType(
+        "Array(IPv4)",
+        Seq(
+          s"[${IPv4.fuzzingValues.mkString(", ")}]::Array(IPv4)",
+          s"[${IPv4.fuzzingValues.head}]::Array(IPv4)"
+        )
+      )
+  case ArrayIPv6
+      extends CHFuzzableType(
+        "Array(IPv6)",
+        Seq(
+          s"[${IPv6.fuzzingValues.mkString(", ")}]::Array(IPv6)",
+          s"[${IPv6.fuzzingValues.head}]::Array(IPv6)"
+        )
+      )
   case ArrayJson
       extends CHFuzzableType(
         "Array(JSON)",
         Seq(
-          s"[${Json.fuzzingValues.mkString(", ")}]::Array(JSON)"
+          s"[${Json.fuzzingValues.mkString(", ")}]::Array(JSON)",
+          s"[${Json.fuzzingValues.head}]::Array(JSON)"
         )
       )
   case ArrayString
@@ -1163,7 +1227,10 @@ enum CHFuzzableType(
   case ArrayUUID
       extends CHFuzzableType(
         "Array(UUID)",
-        Seq(s"[${UUID.fuzzingValues.mkString(", ")}]::Array(UUID)")
+        Seq(
+          s"[${UUID.fuzzingValues.mkString(", ")}]::Array(UUID)",
+          s"[${UUID.fuzzingValues.head}]::Array(UUID)"
+        )
       )
 
   // Map
@@ -1716,6 +1783,11 @@ enum CHFuzzableType(
         "ClickHouseType",
         CHBaseType.values.toSeq.map(baseType => s"'${baseType.name}'")
       )
+  case DictionaryName
+      extends CHFuzzableType(
+        "DictionaryName",
+        Settings.Type.dictionaryNames.map(dictName => s"'$dictName'")
+      )
   case DateUnit
       extends CHFuzzableType(
         "DateUnit",
@@ -1757,6 +1829,70 @@ enum CHFuzzableType(
           "'tcp_port_secure'"
         )
       )
+  // Separate from FixedString because those values are specific to some functions.
+  // This will improve performances in many cases.
+  case SpecialFixedString
+      extends CHFuzzableType(
+        "FixedString",
+        Seq(
+          "'01GNB2S2FGN2P93QPXDNB4EN2A'::FixedString(26)",
+          "'public_suffix_list'::FixedString(18)",
+          "'a/<@];!~p{jTj={)'::FixedString(16)",
+          "'(.)'::FixedString(3)",
+          "'SELECT 1'::FixedString(10)",
+          "'log_queries'::FixedString(16)",
+          "'127.0.0.1'::FixedString(9)",
+          "'127.0.0.0/8'::FixedString(11)",
+          "'en'::FixedString(2)",
+          "'11s+22min'::FixedString(9)",
+          "'MULTIPOLYGON(((2 0,10 0,10 10,0 10,2 0),(4 4,5 4,5 5,4 5,4 4)),((-10 -10,-10 -9,-9 10,-10 -10)))'::FixedString(96)",
+          "'POLYGON((2 0,10 0,10 10,0 10,2 0))'::FixedString(34)",
+          "'POINT (1.2 3.4)'::FixedString(15)",
+          "'LINESTRING (1 1, 2 2, 3 3, 1 1)'::FixedString(31)",
+          "'column1 String, column2 UInt32, column3 Array(String)'::FixedString(53)",
+          "'id'::FixedString(53)",
+          "'dateValue'::FixedString(53)",
+          "'dateTimeValue'::FixedString(53)",
+          "'float32Value'::FixedString(53)",
+          "'float64Value'::FixedString(53)",
+          "'int16Value'::FixedString(53)",
+          "'int32Value'::FixedString(53)",
+          "'int64Value'::FixedString(53)",
+          "'int8Value'::FixedString(53)",
+          "'iPv4Value'::FixedString(53)",
+          "'iPv6Value'::FixedString(53)",
+          "'stringValue'::FixedString(53)",
+          "'uint16Value'::FixedString(53)",
+          "'uint32Value'::FixedString(53)",
+          "'uint64Value'::FixedString(53)",
+          "'uint8Value'::FixedString(53)",
+          "'uuidValue'::FixedString(53)"
+        )
+      )
+  // Separate from String because those values are specific to some functions.
+  // This will improve performances in many cases.
+  case SpecialString
+      extends CHFuzzableType(
+        "String",
+        Seq(
+          s"'${Settings.Type.catboostPath}'::String",
+          "'01GNB2S2FGN2P93QPXDNB4EN2A'::String",
+          "'public_suffix_list'::String",
+          "'a/<@];!~p{jTj={)'::String",
+          "'(.)'::String",
+          "'SELECT 1'::String",
+          "'log_queries'::String",
+          "'127.0.0.1'::String",
+          "'127.0.0.0/8'::String",
+          "'en'::String",
+          "'11s+22min'::String",
+          "'MULTIPOLYGON(((2 0,10 0,10 10,0 10,2 0),(4 4,5 4,5 5,4 5,4 4)),((-10 -10,-10 -9,-9 10,-10 -10)))'",
+          "'POLYGON((2 0,10 0,10 10,0 10,2 0))'",
+          "'POINT (1.2 3.4)'",
+          "'LINESTRING (1 1, 2 2, 3 3, 1 1)'",
+          "'column1 String, column2 UInt32, column3 Array(String)'"
+        )
+      )
   case SynonymExtensionName
       extends CHFuzzableType(
         "SynonymExtensionName",
@@ -1784,6 +1920,13 @@ enum CHFuzzableType(
       extends CHFuzzableType(
         "Usevar",
         Seq("'pooled'", "'unpooled'")
+      )
+  // Variant could be the union of any kind of types
+  // To avoid no-voluntary usage of this type, no values are provided
+  case Variant
+      extends CHFuzzableType(
+        "Variant",
+        Nil
       )
   case WindowFunctionMode
       extends CHFuzzableType(

@@ -14,6 +14,7 @@ services:
       - ${PWD}/config/titanic.catboost.bin:/etc/clickhouse-server/model/titanic.catboost.bin
       - ${PWD}/config/lemmatizer_en.bin:/var/lib/clickhouse/user_files/lemmatizer_en.bin
       - ${PWD}/config/synonym_en.txt:/var/lib/clickhouse/user_files/synonym_en.txt
+      - ${PWD}/config/regexp_tree.yaml.txt:/var/lib/clickhouse/user_files/regexp_tree.yaml.txt
       - ${PWD}/config/wordnet/adj.exc:/var/lib/clickhouse/user_files/wordnet/adj.exc
       - ${PWD}/config/wordnet/adv.exc:/var/lib/clickhouse/user_files/wordnet/adv.exc
       - ${PWD}/config/wordnet/cntlist:/var/lib/clickhouse/user_files/wordnet/cntlist

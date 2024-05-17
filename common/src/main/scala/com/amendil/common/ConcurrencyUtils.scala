@@ -101,9 +101,9 @@ object ConcurrencyUtils:
     *
     * @return A Future.Success if one call worked, Future.Failure otherwise
     */
-  def executeInParallelUntilSuccess[T](elements: Seq[T], fn: (T) => Future[?], maxConcurrency: Int)(
+  def executeInParallelUntilSuccess[T, U](elements: Seq[T], fn: (T) => Future[U], maxConcurrency: Int)(
       using ec: ExecutionContext
-  ): Future[Unit] =
+  ): Future[U] =
     val partitionSize =
       if elements.size == 0 || maxConcurrency < 1 then 1
       else Math.ceil(elements.size.toFloat / maxConcurrency).toInt
@@ -116,14 +116,19 @@ object ConcurrencyUtils:
         executeInSequenceUntilSuccess(
           subElements,
           el =>
-            if status.get then Future.successful((): Unit)
-            else fn(el).map(_ => status.set(true))
-        ).map(_ => (): Unit).recover(_ => (): Unit)
+            if status.get then Future.successful(None)
+            else
+              fn(el).map { res =>
+                status.set(true)
+                Some(res)
+              }
+        ).recover(_ => None)
       }
 
-    Future.sequence(futures).map { _ =>
-      if status.get then (): Unit
-      else throw Exception("Executed all elements, but none worked")
+    Future.sequence(futures).map { results =>
+      results.flatten.headOption match
+        case Some(res) => res
+        case None      => throw Exception("Executed all elements, but none worked")
     }
 
   /**
@@ -173,9 +178,9 @@ object ConcurrencyUtils:
     *
     * @return A Future.Success if one call worked, Future.Failure otherwise
     */
-  def executeInSequenceUntilSuccess[T](elements: Seq[T], fn: (T) => Future[?])(
+  def executeInSequenceUntilSuccess[T, U](elements: Seq[T], fn: (T) => Future[U])(
       using ec: ExecutionContext
-  ): Future[Unit] =
+  ): Future[U] =
     elements match
-      case Seq(head, tail @ _*) => fn(head).map(_ => (): Unit).recoverWith(_ => executeInSequenceUntilSuccess(tail, fn))
+      case Seq(head, tail @ _*) => fn(head).recoverWith(_ => executeInSequenceUntilSuccess(tail, fn))
       case _                    => Future.failed(Exception("Executed all elements, but none worked"))

@@ -74,6 +74,27 @@ class CHClient(url: String)(using ec: ExecutionContext):
         .build()
     )
 
+  /**
+    * Query ClickHouse on its HTTP interface.
+    *
+    * This function is aimed at non-SELECT queries
+    *
+    * @param query Query to send to ClickHouse
+    * @return Future.successful when ClickHouse executed successfully the query, Future.failure otherwise.
+    */
+  def executeNoResultNoSettings(query: String): Future[Unit] =
+    executeNoResult(
+      HttpRequest
+        .newBuilder()
+        .uri(URI(s"$url"))
+        .POST(
+          HttpRequest.BodyPublishers.ofString(query)
+        )
+        .setHeader("Content-Type", "application/x-www-form-urlencoded")
+        .setHeader("user-agent", "curl/8.4.0")
+        .build()
+    )
+
   private def executeAndParseJson(req: HttpRequest): Future[CHResponse] =
     execute(req).flatMap { (statusCode: Int, body: String) =>
       if statusCode == HttpURLConnection.HTTP_OK then Future.successful(jsonMapper.readValue(body, classOf[CHResponse]))
@@ -120,6 +141,7 @@ object CHClient:
     "allow_experimental_funnel_functions=1",
     "allow_experimental_object_type=1",
     "allow_experimental_nlp_functions=1",
+    "allow_experimental_variant_type=1",
     "allow_introspection_functions=1",
     "allow_suspicious_low_cardinality_types=1",
     "decimal_check_overflow=0",
