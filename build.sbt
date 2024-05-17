@@ -1,5 +1,5 @@
 val javaVersion = "17"
-val scala3Version = "3.3.1"
+val scala3Version = "3.4.2"
 
 lazy val root = project
   .in(file("."))
@@ -42,11 +42,11 @@ lazy val dependencies = new {
   private val scalatestV = "3.2.18"
 
   // Logging
-  val logbackClassic = "ch.qos.logback" % "logback-classic" % "1.5.3"
+  val logbackClassic = "ch.qos.logback" % "logback-classic" % "1.5.6"
   val scalaLogging = "com.typesafe.scala-logging" %% "scala-logging" % "3.9.5"
 
   // Http
-  val jacksonModuleScala = "com.fasterxml.jackson.module" %% "jackson-module-scala" % "2.17.0"
+  val jacksonModuleScala = "com.fasterxml.jackson.module" %% "jackson-module-scala" % "2.17.1"
 
   // Misc
   val config = "com.typesafe" % "config" % "1.4.3"

@@ -6,12 +6,15 @@ import fastparse._
 import fastparse.NoWhitespace._
 import fastparse.Parsed.{Failure, Success}
 
+import scala.annotation.nowarn
+
 trait CHType { def name: String }
 
 object CHType extends StrictLogging:
 
   def getByName(name: String): CHType =
-    parse(name.replaceAll("\n\\s+", ""), root) match
+    // nowarn reason: https://github.com/scala/scala3/issues/19872
+    parse(name.replaceAll("\n\\s+", ""), root: @nowarn) match
       case Success(value, _) => value
       case Failure(label, idx, extra) =>
         logger.warn(s"Failed to parse type $name: label: $label, idx: $idx")

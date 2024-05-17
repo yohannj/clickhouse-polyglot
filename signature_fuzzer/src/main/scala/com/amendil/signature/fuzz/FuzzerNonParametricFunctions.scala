@@ -29,7 +29,7 @@ object FuzzerNonParametricFunctions extends StrictLogging:
     logger.debug("fuzzFunction0")
     if fn.isLambda then Future.successful(fn)
     else
-      for {
+      for
         fn0Opt <-
           client
             .execute(query(fn.name, args = "", fuzzOverWindow = false))
@@ -47,7 +47,7 @@ object FuzzerNonParametricFunctions extends StrictLogging:
               Some(CHFunctionIO.Function0(outputType))
             )
             .recover(_ => None)
-      } yield {
+      yield {
         fn.copy(
           modes = fn.modes ++
             Seq(
