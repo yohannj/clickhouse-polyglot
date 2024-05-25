@@ -22,47 +22,50 @@ import scala.util.{Failure, Success, Try}
 
   val runF =
     (for
-      // _ <- ensuringFuzzingValuesAreValid()
+      _ <- ensuringFuzzingValuesAreValid()
       _ <- createDictionaries()
 
       chVersion <- getCHVersion()
-      // functionNames <- getCHFunctions()
-      functionNames <- Future.successful(unknownFunctions)
-      functionNamesToFuzz = functionNames.filter { functionName =>
-        Settings.Fuzzer.supportJson || !functionName.toLowerCase().contains("json")
+      // functions <- getCHFunctions()
+      functions =
+        unknownFunctions.map(
+          CHFunctionFuzzResult(_, isAggregate = false, aliasTo = "")
+        )
+      functionsToFuzz = functions.filter { fn =>
+        Settings.Fuzzer.supportJson || !fn.name.toLowerCase().contains("json")
       }
     yield
       assume(Try { chVersion.toDouble }.isSuccess)
 
       val pw = PrintWriter(File(s"res/functions_v${chVersion}.txt.part"))
-      val functionCount = functionNames.size
+      val functionCount = functionsToFuzz.size
 
       val functionsFuzzResultsF: Future[Seq[CHFunctionFuzzResult]] =
         ConcurrencyUtils
           .executeInSequence(
-            functionNames.zipWithIndex,
-            (functionName: String, idx: Int) =>
+            functionsToFuzz.zipWithIndex,
+            (function: CHFunctionFuzzResult, idx: Int) =>
               if idx % Math.max(functionCount / 20, 1) == 0 then
                 logger.info(s"===============================================================")
                 logger.info(s"${100 * idx / functionCount}%")
                 logger.info(s"===============================================================")
-              logger.info(functionName)
+              logger.info(function.name)
 
-              if !functionName.toLowerCase.contains("json") then
-                Fuzzer
-                  .fuzz(functionName)
-                  .recover { err =>
-                    logger.error(s"Failed to fuzz function $functionName: ${err.getMessage()}")
-                    CHFunctionFuzzResult(functionName)
-                  }
-                  .map { (fuzzResult: CHFunctionFuzzResult) =>
-                    if !fuzzResult.atLeastOneSignatureFound then
-                      logger.error(s"No signatures found for method $functionName")
-                    pw.write(s"${CHFunction.fromCHFunctionFuzzResult(fuzzResult, "x64").asString()}\n")
-                    pw.flush()
-                    fuzzResult
-                  }
-              else Future.successful(CHFunctionFuzzResult(name = functionName))
+              Fuzzer
+                .fuzz(function)
+                .recover { err =>
+                  if err.getCause() == null then
+                    logger.error(s"Failed to fuzz function ${function.name}: ${err.getMessage()}")
+                  else logger.error(s"Failed to fuzz function ${function.name}: ${err.getCause().getMessage()}")
+                  function
+                }
+                .map { (fuzzResult: CHFunctionFuzzResult) =>
+                  if !fuzzResult.atLeastOneSignatureFound then
+                    logger.error(s"No signatures found for method ${function.name}")
+                  pw.write(s"${CHFunction.fromCHFunctionFuzzResult(fuzzResult).asString()}\n")
+                  pw.flush()
+                  fuzzResult
+                }
           )
           .recover(err =>
             pw.close()
@@ -197,10 +200,20 @@ def ensuringFuzzingValuesAreValid()(using client: CHClient, ec: ExecutionContext
       if errors.nonEmpty then throw Exception(s"Invalid fuzzing value founds.\n${errors.mkString("\n")}")
     }
 
-def getCHFunctions()(using client: CHClient, ec: ExecutionContext): Future[Seq[String]] =
+def getCHFunctions()(using client: CHClient, ec: ExecutionContext): Future[Seq[CHFunctionFuzzResult]] =
   client
-    .execute("SELECT name, is_aggregate FROM system.functions")
-    .map(_.data.map(_.head.asInstanceOf[String]).sorted)
+    .execute("SELECT name, is_aggregate, alias_to FROM system.functions")
+    .map(
+      _.data
+        .map { row =>
+          CHFunctionFuzzResult(
+            name = row(0).asInstanceOf[String],
+            isAggregate = row(1).asInstanceOf[Int] == 1,
+            aliasTo = row(2).asInstanceOf[String]
+          )
+        }
+        .sortBy(_.name)
+    )
 
 def getCHVersion()(using client: CHClient, ec: ExecutionContext): Future[String] =
   client

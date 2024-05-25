@@ -4,7 +4,6 @@ import com.amendil.signature.entities.CHFunction.indent
 
 final case class CHFunction(
     name: String,
-    supportedPlatforms: Seq[String],
     signatures: Seq[CHFunctionIO],
     modes: Seq[CHFunction.Mode],
     isExperimental: Boolean
@@ -20,7 +19,6 @@ final case class CHFunction(
           .mkString("\n")
 
       s"""|$name
-          |${indent}Supported platforms: ${supportedPlatforms.sorted.mkString(", ")}
           |${indent}Is experimental: ${if isExperimental then "Yes" else "No"}
           |${indent}Modes: ${modes.mkString(", ")}
           |${indent}Signatures:
@@ -30,7 +28,7 @@ object CHFunction:
   val indent = "    "
 
   // TODO: Write tests
-  def fromCHFunctionFuzzResult(fuzzResult: CHFunctionFuzzResult, platform: String): CHFunction =
+  def fromCHFunctionFuzzResult(fuzzResult: CHFunctionFuzzResult): CHFunction =
     val signatures =
       // productIterator is an internal method in all "case class" to iterate over its constructor arguments
       fuzzResult.productIterator.toSeq.flatMap {
@@ -44,7 +42,6 @@ object CHFunction:
 
     CHFunction(
       name = fuzzResult.name,
-      supportedPlatforms = Seq(platform),
       signatures = signatures,
       modes = fuzzResult.modes.toSeq.sortWith(_.ordinal < _.ordinal),
       isExperimental = false // FIXME

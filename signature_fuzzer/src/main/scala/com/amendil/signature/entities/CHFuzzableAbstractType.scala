@@ -17,7 +17,7 @@ enum CHFuzzableAbstractType(_fuzzingValues: Seq[String], _chFuzzableTypes: Seq[C
   // Numbers
   case Numbers
       extends CHFuzzableAbstractType(
-        Seq("1", "0.5", "true", "-999999999::Decimal32(0)", "1::UInt32", "1::UInt64", "8"),
+        Seq("1", "0.5", "true", "-999999999::Decimal32(0)", "8", "1::UInt16", "1::UInt32", "1::Int64", "1::UInt64"),
         Seq(
           CHFuzzableType.BooleanType,
           CHFuzzableType.Int8,
@@ -359,92 +359,102 @@ enum CHFuzzableAbstractType(_fuzzingValues: Seq[String], _chFuzzableTypes: Seq[C
       extends CHFuzzableAbstractType(Seq(s"[${UUID.fuzzingValues.head}]::Array(UUID)"), Seq(CHFuzzableType.ArrayUUID))
 
   // Map
-  case MapNumbersInt8
+  case MapNumbersInt
       extends CHFuzzableAbstractType(
         Seq(s"map(${Numbers.fuzzingValues.head}, 1)"),
         Seq(
-          CHFuzzableType.MapBooleanInt8,
-          CHFuzzableType.MapInt8Int8,
-          CHFuzzableType.MapInt16Int8,
-          CHFuzzableType.MapInt32Int8,
-          CHFuzzableType.MapInt64Int8,
-          CHFuzzableType.MapInt128Int8,
-          CHFuzzableType.MapInt256Int8,
-          CHFuzzableType.MapUInt8Int8,
-          CHFuzzableType.MapUInt16Int8,
-          CHFuzzableType.MapUInt32Int8,
-          CHFuzzableType.MapUInt64Int8,
-          CHFuzzableType.MapUInt128Int8,
-          CHFuzzableType.MapUInt256Int8
+          CHFuzzableType.MapBooleanInt,
+          CHFuzzableType.MapInt8Int,
+          CHFuzzableType.MapInt16Int,
+          CHFuzzableType.MapInt32Int,
+          CHFuzzableType.MapInt64Int,
+          CHFuzzableType.MapInt128Int,
+          CHFuzzableType.MapInt256Int,
+          CHFuzzableType.MapUInt8Int,
+          CHFuzzableType.MapUInt16Int,
+          CHFuzzableType.MapUInt32Int,
+          CHFuzzableType.MapUInt64Int,
+          CHFuzzableType.MapUInt128Int,
+          CHFuzzableType.MapUInt256Int
         )
       )
 
-  case MapDateInt8
+  case MapDateInt
       extends CHFuzzableAbstractType(
-        Seq(CHFuzzableType.MapDateInt8.fuzzingValues.head),
-        Seq(CHFuzzableType.MapDateInt8, CHFuzzableType.MapDate32Int8)
+        Seq(CHFuzzableType.MapDateInt.fuzzingValues.head, CHFuzzableType.MapDate32Int.fuzzingValues.head),
+        Seq(CHFuzzableType.MapDateInt, CHFuzzableType.MapDate32Int)
       )
-  case MapDateTimeInt8
+  case MapDateTimeInt
       extends CHFuzzableAbstractType(
-        Seq(CHFuzzableType.MapDateTimeInt8.fuzzingValues.head),
-        Seq(CHFuzzableType.MapDateTimeInt8)
+        Seq(CHFuzzableType.MapDateTimeInt.fuzzingValues.head),
+        Seq(CHFuzzableType.MapDateTimeInt)
       )
-  case MapIntervalDateInt8
+  case MapIntervalDateInt
       extends CHFuzzableAbstractType(
-        Seq(CHFuzzableType.MapIntervalDayInt8.fuzzingValues.head),
         Seq(
-          CHFuzzableType.MapIntervalDayInt8,
-          CHFuzzableType.MapIntervalWeekInt8,
-          CHFuzzableType.MapIntervalMonthInt8,
-          CHFuzzableType.MapIntervalQuarterInt8,
-          CHFuzzableType.MapIntervalYearInt8
+          CHFuzzableType.MapIntervalDayInt.fuzzingValues.head,
+          CHFuzzableType.MapIntervalWeekInt.fuzzingValues.head,
+          CHFuzzableType.MapIntervalMonthInt.fuzzingValues.head,
+          CHFuzzableType.MapIntervalQuarterInt.fuzzingValues.head,
+          CHFuzzableType.MapIntervalYearInt.fuzzingValues.head
+        ),
+        Seq(
+          CHFuzzableType.MapIntervalDayInt,
+          CHFuzzableType.MapIntervalWeekInt,
+          CHFuzzableType.MapIntervalMonthInt,
+          CHFuzzableType.MapIntervalQuarterInt,
+          CHFuzzableType.MapIntervalYearInt
         )
       )
-  case MapIntervalDateTimeInt8
+  case MapIntervalDateTimeInt
       extends CHFuzzableAbstractType(
-        Seq(CHFuzzableType.MapIntervalNanosecondInt8.fuzzingValues.head),
         Seq(
-          CHFuzzableType.MapIntervalNanosecondInt8,
-          CHFuzzableType.MapIntervalMicrosecondInt8,
-          CHFuzzableType.MapIntervalMillisecondInt8,
-          CHFuzzableType.MapIntervalSecondInt8,
-          CHFuzzableType.MapIntervalMinuteInt8,
-          CHFuzzableType.MapIntervalHourInt8
+          CHFuzzableType.MapIntervalNanosecondInt.fuzzingValues.head,
+          CHFuzzableType.MapIntervalMicrosecondInt.fuzzingValues.head,
+          CHFuzzableType.MapIntervalMillisecondInt.fuzzingValues.head,
+          CHFuzzableType.MapIntervalSecondInt.fuzzingValues.head,
+          CHFuzzableType.MapIntervalMinuteInt.fuzzingValues.head,
+          CHFuzzableType.MapIntervalHourInt.fuzzingValues.head
+        ),
+        Seq(
+          CHFuzzableType.MapIntervalNanosecondInt,
+          CHFuzzableType.MapIntervalMicrosecondInt,
+          CHFuzzableType.MapIntervalMillisecondInt,
+          CHFuzzableType.MapIntervalSecondInt,
+          CHFuzzableType.MapIntervalMinuteInt,
+          CHFuzzableType.MapIntervalHourInt
         )
       )
-  case MapEnumInt8
+  case MapEnumInt
       extends CHFuzzableAbstractType(
-        Seq(s"map(${Enum.fuzzingValues.head}, 1)"),
-        Seq(CHFuzzableType.MapEnumInt8, CHFuzzableType.MapEnum8Int8, CHFuzzableType.MapEnum16Int8)
+        CHFuzzableType.MapEnumInt.fuzzingValues ++ CHFuzzableType.MapEnum8Int.fuzzingValues ++ CHFuzzableType.MapEnum16Int.fuzzingValues,
+        Seq(CHFuzzableType.MapEnumInt, CHFuzzableType.MapEnum8Int, CHFuzzableType.MapEnum16Int)
       )
-  case MapIPv4Int8
+  case MapIPv4Int
       extends CHFuzzableAbstractType(
-        Seq(s"map(${IPv4.fuzzingValues.head}, 1)::Map(IPv4, Int8)"),
-        Seq(CHFuzzableType.MapIPv4Int8)
+        Seq(CHFuzzableType.MapIPv4Int.fuzzingValues.head),
+        Seq(CHFuzzableType.MapIPv4Int)
       )
-  case MapIPv6Int8
+  case MapIPv6Int
       extends CHFuzzableAbstractType(
-        Seq(s"map(${IPv6.fuzzingValues.head}, 1)::Map(IPv6, Int8)"),
-        Seq(CHFuzzableType.MapIPv6Int8)
+        Seq(CHFuzzableType.MapIPv6Int.fuzzingValues.head),
+        Seq(CHFuzzableType.MapIPv6Int)
       )
-  case MapStringInt8
+  case MapStringInt
       extends CHFuzzableAbstractType(
-        Seq(s"map(${String.fuzzingValues.head}, 1)::Map(String, Int8)"),
-        Seq(CHFuzzableType.MapFixedStringInt8, CHFuzzableType.MapStringInt8)
+        Seq(CHFuzzableType.MapFixedStringInt.fuzzingValues.head, CHFuzzableType.MapStringInt.fuzzingValues.head),
+        Seq(CHFuzzableType.MapFixedStringInt, CHFuzzableType.MapStringInt)
       )
-  case MapUUIDInt8
+  case MapUUIDInt
       extends CHFuzzableAbstractType(
-        Seq(s"map(${UUID.fuzzingValues.head}, 1)::Map(UUID, Int8)"),
-        Seq(CHFuzzableType.MapUUIDInt8)
+        Seq(CHFuzzableType.MapUUIDInt.fuzzingValues.head),
+        Seq(CHFuzzableType.MapUUIDInt)
       )
 
   // Tuple1
   case Tuple1Numbers
       extends CHFuzzableAbstractType(
-        Seq(
-          s"tuple(${Numbers.fuzzingValues.head})::Tuple(UInt8)",
-          s"tuple(${Numbers.fuzzingValues.head})::Tuple(a UInt8)"
-        ),
+        CHFuzzableType.Tuple1UInt8.fuzzingValues,
         Seq(
           CHFuzzableType.Tuple1Int8,
           CHFuzzableType.Tuple1Int16,
@@ -560,10 +570,10 @@ enum CHFuzzableAbstractType(_fuzzingValues: Seq[String], _chFuzzableTypes: Seq[C
       )
 
   // Nested
-  case ArrayMapStringInt8
+  case ArrayMapStringInt
       extends CHFuzzableAbstractType(
-        Seq(s"[${MapStringInt8.fuzzingValues.head}]::Array(Map(String, Int8))"),
-        Seq(CHFuzzableType.ArrayMapStringInt8)
+        Seq(s"[${MapStringInt.fuzzingValues.head}]::Array(Map(String, Int8))"),
+        Seq(CHFuzzableType.ArrayMapStringInt)
       )
   case ArrayTuple1Numbers
       extends CHFuzzableAbstractType(
@@ -573,18 +583,18 @@ enum CHFuzzableAbstractType(_fuzzingValues: Seq[String], _chFuzzableTypes: Seq[C
   case Tuple1ArrayNumbers
       extends CHFuzzableAbstractType(
         Seq(
-          s"tuple(${ArrayNumbers.fuzzingValues.head})::Tuple(Array(UInt8))",
-          s"tuple(${ArrayNumbers.fuzzingValues.head})::Tuple(a Array(UInt8))"
+          s"tuple(${CHFuzzableType.ArrayUInt8.fuzzingValues.head})::Tuple(Array(UInt8))",
+          s"tuple(${CHFuzzableType.ArrayUInt8.fuzzingValues.head})::Tuple(a Array(UInt8))"
         ),
         Seq(CHFuzzableType.Tuple1ArrayUInt8)
       )
-  case Tuple1MapStringInt8
+  case Tuple1MapStringInt
       extends CHFuzzableAbstractType(
         Seq(
-          s"tuple(${MapStringInt8.fuzzingValues.head})::Tuple(Map(String, Int8))",
-          s"tuple(${MapStringInt8.fuzzingValues.head})::Tuple(a Map(String, Int8))"
+          s"tuple(${MapStringInt.fuzzingValues.head})::Tuple(Map(String, Int8))",
+          s"tuple(${MapStringInt.fuzzingValues.head})::Tuple(a Map(String, Int8))"
         ),
-        Seq(CHFuzzableType.Tuple1MapStringInt8)
+        Seq(CHFuzzableType.Tuple1MapStringInt)
       )
 
   // Special
@@ -628,6 +638,17 @@ enum CHFuzzableAbstractType(_fuzzingValues: Seq[String], _chFuzzableTypes: Seq[C
         Seq(CHFuzzableType.ServerPortName)
       )
       with CustomStringBasedAbstractType
+  case SpecialUInt64
+      extends CHFuzzableAbstractType(
+        Seq("599686042433355775::UInt64"),
+        Seq(
+          CHFuzzableType.SpecialUInt64,
+          CHFuzzableType.SpecialLowCardinalityUInt64,
+          CHFuzzableType.SpecialLowCardinalityNullableUInt64,
+          CHFuzzableType.SpecialNullableUInt64
+        )
+      )
+      with CustomStringBasedAbstractType
   case SpecialString
       extends CHFuzzableAbstractType(
         CHFuzzableType.SpecialString.fuzzingValues :+ "'a/<@];!~p{jTj={)'::FixedString(16)",
@@ -635,6 +656,12 @@ enum CHFuzzableAbstractType(_fuzzingValues: Seq[String], _chFuzzableTypes: Seq[C
           CHFuzzableType.SpecialString,
           CHFuzzableType.SpecialFixedString
         )
+      )
+      with CustomStringBasedAbstractType
+  case SpecialArrayString
+      extends CHFuzzableAbstractType(
+        Seq(s"[${SpecialString.fuzzingValues.head}]::Array(String)"),
+        Seq(CHFuzzableType.SpecialArrayFixedString, CHFuzzableType.SpecialArrayString)
       )
       with CustomStringBasedAbstractType
   case SynonymExtensionName

@@ -11,6 +11,7 @@ sealed trait CHFunctionIO:
   def isParametric: Boolean = false
   def output: CHType
 
+  // Overriden by LambdaArrayFunction1N1
   def asString(): String =
     val parametersStr = parameters.map(_.name).mkString(", ") + (if hasInfiniteParameter then "..." else "")
     val argumentsStr = arguments.map(_.name).mkString(", ") + (if hasInfiniteArgument then "..." else "")
@@ -146,6 +147,19 @@ object CHFunctionIO:
   ) extends CHFunctionNIO:
     val kind = "lambdaArrayFunction1N"
     override val arguments = Seq(lambdaArg, arg1, argN)
+
+  case class LambdaArrayFunction1N1(
+      lambdaArg: CHSpecialType.LambdaType,
+      arg1: CHSpecialType.Array,
+      argN: CHSpecialType.Array,
+      arg2: CHType,
+      output: CHType
+  ) extends CHFunctionIO:
+    val kind = "LambdaArrayFunction1N1"
+    override val arguments = Seq(lambdaArg, arg1, argN, arg2)
+
+    override def asString(): String =
+      s"(${lambdaArg.name}, ${arg1.name}, ${argN.name}..., ${arg2.name}) => ${output.name}".stripMargin
 
   case class LambdaMapFunction1(lambdaArg: CHSpecialType.LambdaType, arg1: CHSpecialType.Map, output: CHType)
       extends CHFunctionIO:

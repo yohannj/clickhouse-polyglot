@@ -11,6 +11,8 @@ import com.typesafe.scalalogging.StrictLogging
   */
 final case class CHFunctionFuzzResult(
     name: String,
+    isAggregate: Boolean,
+    aliasTo: String,
     modes: Set[CHFunction.Mode],
     function0Ns: Seq[Function0N],
     function1Ns: Seq[Function1N],
@@ -28,6 +30,7 @@ final case class CHFunctionFuzzResult(
     function9s: Seq[Function9],
     lambdaArrayFunction0NOpt: Option[LambdaArrayFunction0N],
     lambdaArrayFunction1NOpt: Option[LambdaArrayFunction1N],
+    lambdaArrayFunction1N1Opt: Option[LambdaArrayFunction1N1],
     lambdaMapFunction1Opt: Option[LambdaMapFunction1],
     parametric0NFunction0Ns: Seq[Parametric0NFunction0N],
     parametric0NFunction1Ns: Seq[Parametric0NFunction1N],
@@ -89,7 +92,7 @@ final case class CHFunctionFuzzResult(
 ) extends StrictLogging:
   logger.trace(s"CHFunctionFuzzResult - init constructor")
 
-  private val functions =
+  val functions =
     // productIterator is an internal method in all "case class" to iterate over its constructor arguments
     productIterator.toSeq
       .collect {
@@ -111,12 +114,14 @@ final case class CHFunctionFuzzResult(
     specialFunction0Ns.nonEmpty || specialParametric2Function2Ns.nonEmpty || specialParametric2Function3Ns.nonEmpty
 
   val isLambda: Boolean =
-    lambdaArrayFunction0NOpt.nonEmpty || lambdaArrayFunction1NOpt.nonEmpty || lambdaMapFunction1Opt.nonEmpty
+    lambdaArrayFunction0NOpt.nonEmpty || lambdaArrayFunction1NOpt.nonEmpty || lambdaArrayFunction1N1Opt.nonEmpty || lambdaMapFunction1Opt.nonEmpty
 
 object CHFunctionFuzzResult:
-  def apply(name: String): CHFunctionFuzzResult =
+  def apply(name: String, isAggregate: Boolean, aliasTo: String): CHFunctionFuzzResult =
     CHFunctionFuzzResult(
       name = name,
+      isAggregate = isAggregate,
+      aliasTo = aliasTo,
       modes = Set.empty,
       function0Ns = Nil,
       function1Ns = Nil,
@@ -134,6 +139,7 @@ object CHFunctionFuzzResult:
       function9s = Nil,
       lambdaArrayFunction0NOpt = None,
       lambdaArrayFunction1NOpt = None,
+      lambdaArrayFunction1N1Opt = None,
       lambdaMapFunction1Opt = None,
       parametric0NFunction0Ns = Nil,
       parametric0NFunction1Ns = Nil,

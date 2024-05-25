@@ -142,6 +142,7 @@ object CHClient:
     "allow_experimental_object_type=1",
     "allow_experimental_nlp_functions=1",
     "allow_experimental_variant_type=1",
+    "allow_get_client_http_header=1",
     "allow_introspection_functions=1",
     "allow_suspicious_low_cardinality_types=1",
     "decimal_check_overflow=0",

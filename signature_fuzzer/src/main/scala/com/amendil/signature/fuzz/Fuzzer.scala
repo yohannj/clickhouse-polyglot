@@ -11,9 +11,12 @@ import scala.concurrent.{ExecutionContext, Future}
 
 object Fuzzer extends StrictLogging:
 
-  def fuzz(functionName: String)(using client: CHClient, ec: ExecutionContext): Future[CHFunctionFuzzResult] =
-    val fn = CHFunctionFuzzResult(functionName)
-    functionName match
+  def fuzz(fn: CHFunctionFuzzResult)(using client: CHClient, ec: ExecutionContext): Future[CHFunctionFuzzResult] =
+    fn.name match
+      case "randBinomial" | "hop" | "hopStart" | "hopEnd" | "windowID" =>
+        // To be handled at a later time
+        // Known issues
+        Future.successful(fn)
       case "evalMLMethod" | "finalizeAggregation" | "initializeAggregation" | "runningAccumulate" |
           "uniqThetaIntersect" | "uniqThetaNot" | "uniqThetaUnion" =>
         // To be handled at a later time
@@ -49,7 +52,7 @@ object Fuzzer extends StrictLogging:
           if res.atLeastOneSignatureFound then Future.successful(res)
           else
             for
-              isParametric <- checkIsParametric(fn.name)
+              isParametric <- checkIsParametric(fn)
               fuzzingFunctionsWithCost: Seq[(CHFunctionFuzzResult => Future[CHFunctionFuzzResult], Long)] =
                 if isParametric then FuzzerParametricFunctions.fuzzingFunctionWithCost
                 else
@@ -269,17 +272,17 @@ object Fuzzer extends StrictLogging:
         val subChoices: Seq[String] = buildFuzzingValuesArgs(tail)
         head.flatMap(el => subChoices.map(subChoice => s"$el, $subChoice"))
 
-  private def checkIsParametric(fnName: String)(
+  private def checkIsParametric(fn: CHFunctionFuzzResult)(
       using client: CHClient,
       ec: ExecutionContext
   ): Future[Boolean] =
     val hardcodedNonParametricFnNames = Seq("rankCorr")
 
-    if hardcodedNonParametricFnNames.contains(fnName)
+    if hardcodedNonParametricFnNames.contains(fn.name) || hardcodedNonParametricFnNames.contains(fn.aliasTo)
     then Future.successful(false)
     else
       client
-        .executeNoResult(s"SELECT toTypeName($fnName(1)(1))")
+        .executeNoResult(s"SELECT toTypeName(${fn.name}(1)(1))")
         .map(_ => true) // Coincidence: we used a valid parametric signature for the test
         .recover { err =>
           // Those messages were initially found by looking at `!parameters.empty()` in ClickHouse codebase.
@@ -287,12 +290,17 @@ object Fuzzer extends StrictLogging:
           // In case we miss an error message, it is expected for the Fuzzer to be unable to determine any signature,
           // that way we receive an error log about it and we can update this list.
           val nonParametricErrorMessages = Seq(
-            s"Aggregate function $fnName cannot have parameters",
+            s"Aggregate function ${fn.name} cannot have parameters",
+            s"Aggregate function ${fn.aliasTo} cannot have parameters",
             s"Executable user defined functions with `executable_pool` type does not support parameters",
-            s"Function $fnName cannot be parameterized",
-            s"Function $fnName is not parametric",
-            s"Incorrect number of parameters for aggregate function $fnName, should be 0",
-            s"Parameters are not supported if executable user defined function is not direct"
+            s"Function ${fn.name} cannot be parameterized",
+            s"Function ${fn.aliasTo} cannot be parameterized",
+            s"Function ${fn.name} is not parametric",
+            s"Function ${fn.aliasTo} is not parametric",
+            s"Incorrect number of parameters for aggregate function ${fn.name}, should be 0",
+            s"Incorrect number of parameters for aggregate function ${fn.aliasTo}, should be 0",
+            s"Parameters are not supported if executable user defined function is not direct",
+            s"Expected one of: token, "
           )
 
           !nonParametricErrorMessages.exists(err.getMessage().contains)

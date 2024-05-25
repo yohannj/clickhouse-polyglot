@@ -101,6 +101,13 @@ class CHFuzzableTypeSpec extends AnyFreeSpec with Matchers:
         actual shouldBe expected
       }
 
+      "Nullable(Nothing)" in {
+        val actual = CHType.getByName("Nullable(Nothing)")
+        val expected = CHSpecialType.Nullable(CHSpecialType.Nothing)
+
+        actual shouldBe expected
+      }
+
       "Tuple(d_statistic Float64)" in {
         val actual = CHType.getByName("Tuple(d_statistic Float64)")
         val expected = CHSpecialType.Tuple(Seq(CHFuzzableType.Float64))

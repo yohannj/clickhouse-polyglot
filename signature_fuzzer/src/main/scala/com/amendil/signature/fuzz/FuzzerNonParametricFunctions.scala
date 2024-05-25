@@ -82,7 +82,10 @@ object FuzzerNonParametricFunctions extends StrictLogging:
         fn,
         argCount = 2,
         (io: (InputTypes, OutputType)) => toFn(io, CHFunctionIO.Function2.apply),
-        (io: (InputTypes, OutputType)) => toFn(io, CHFunctionIO.Function1N.apply)
+        (io: (InputTypes, OutputType)) => toFn(io, CHFunctionIO.Function1N.apply),
+        argsOfPreviouslyFoundSignatureOpt = fn.functions
+          .find(_.isInstanceOf[CHFunctionIO.Function1])
+          .map(f => f.asInstanceOf[CHFunctionIO.Function1].arguments.map(_.asInstanceOf[CHFuzzableType]))
       ).map((modes, fn2s, fn1Ns) =>
         logger.trace(s"fuzzFunction2Or1N - fuzz done")
         fn.copy(modes = fn.modes ++ modes, function2s = fn2s, function1Ns = fn1Ns)
@@ -100,7 +103,10 @@ object FuzzerNonParametricFunctions extends StrictLogging:
         fn,
         argCount = 3,
         (io: (InputTypes, OutputType)) => toFn(io, CHFunctionIO.Function3.apply),
-        (io: (InputTypes, OutputType)) => toFn(io, CHFunctionIO.Function2N.apply)
+        (io: (InputTypes, OutputType)) => toFn(io, CHFunctionIO.Function2N.apply),
+        argsOfPreviouslyFoundSignatureOpt = fn.functions
+          .find(_.isInstanceOf[CHFunctionIO.Function2])
+          .map(f => f.asInstanceOf[CHFunctionIO.Function2].arguments.map(_.asInstanceOf[CHFuzzableType]))
       ).map((modes, fn3s, fn2Ns) =>
         logger.trace(s"fuzzFunction3Or2N - fuzz done")
         fn.copy(modes = fn.modes ++ modes, function3s = fn3s, function2Ns = fn2Ns)
@@ -110,11 +116,12 @@ object FuzzerNonParametricFunctions extends StrictLogging:
       fn: CHFunctionFuzzResult,
       argCount: Int,
       fnConstructorFiniteArgs: ((InputTypes, OutputType)) => U1,
-      fnConstructorInfiniteArgs: ((InputTypes, OutputType)) => U2
+      fnConstructorInfiniteArgs: ((InputTypes, OutputType)) => U2,
+      argsOfPreviouslyFoundSignatureOpt: Option[Seq[CHFuzzableType]] = None
   )(using client: CHClient, ec: ExecutionContext): Future[(Seq[CHFunction.Mode], Seq[U1], Seq[U2])] =
     val skipFuzzingF =
       if Settings.Fuzzer.skipFuzzingOnArgumentMismatch
-      then checkArgMismatch(fn.name, argCount)
+      then checkArgMismatch(fn.name, argCount, argsOfPreviouslyFoundSignatureOpt)
       else Future.successful(false)
 
     skipFuzzingF.flatMap(skipFuzzing =>
@@ -484,16 +491,26 @@ object FuzzerNonParametricFunctions extends StrictLogging:
     */
   private def checkArgMismatch(
       fnName: String,
-      argCount: Int
+      argCount: Int,
+      argsOfPreviouslyFoundSignatureOpt: Option[Seq[CHFuzzableType]]
   )(using client: CHClient, ec: ExecutionContext): Future[Boolean] =
     if fnName.equals("nested") && argCount == 2 then Future.successful(false)
     else if fnName.equals("arrayEnumerateRanked") then Future.successful(false) // Unsure about the expected arg count
     else
+      val args = argsOfPreviouslyFoundSignatureOpt match
+        case None =>
+          Range(0, argCount)
+        case Some(argsOfPreviouslyFoundSignature) =>
+          argsOfPreviouslyFoundSignature.map(_.fuzzingValues.head) ++ Range(
+            0,
+            argCount - argsOfPreviouslyFoundSignature.size
+          )
+
       client
         .executeNoResult(
           query(
             fnName,
-            Range(0, argCount).mkString(", "),
+            args.mkString(", "),
             false
           )
         )

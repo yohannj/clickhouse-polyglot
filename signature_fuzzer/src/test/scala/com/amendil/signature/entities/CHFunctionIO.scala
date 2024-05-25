@@ -35,7 +35,7 @@ class CHFunctionIOSpec extends AnyFreeSpec with Matchers:
               CHFuzzableType.Decimal256
             ).map(CHFunctionIO.Function1(_, outputType))
           )
-          val expected = Seq(CHFunctionIO.Function1(CHAggregatedType.Numbers, outputType))
+          val expected = Seq(CHFunctionIO.Function1(CHAggregatedType.Number, outputType))
 
           actual shouldBe expected
         }
