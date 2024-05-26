@@ -287,7 +287,7 @@ object FuzzerNonParametricFunctions extends StrictLogging:
                   .execute(_)
                   .map(_.data.head.head.asInstanceOf[String]),
                 Settings.ClickHouse.maxSupportedConcurrencyInnerLoop
-              ).map(outputTypes => (inputTypes, outputTypes.map(CHType.getByName).reduce(Fuzzer.mergeOutputType)))
+              ).map(outputTypes => (inputTypes, outputTypes.map(CHType.getByName).reduce(CHType.mergeOutputType)))
           ,
           maxConcurrency = Settings.ClickHouse.maxSupportedConcurrencyOuterLoop
         )

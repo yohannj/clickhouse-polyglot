@@ -7,6 +7,117 @@ import org.scalatest.matchers.should.Matchers
 class CHFuzzableTypeSpec extends AnyFreeSpec with Matchers:
 
   "CHType" - {
+    "should merge" - {
+      "input types" - {
+        "to DecimalLike" in {
+          val actual = CHType.mergeInputTypes(CHFuzzableType.values.filter(_.name.startsWith("Decimal")).toSet)
+          val expected = Set(CHAggregatedType.DecimalLike)
+
+          actual shouldBe expected
+        }
+        "to Float" in {
+          val actual = CHType.mergeInputTypes(Set(CHFuzzableType.Float32, CHFuzzableType.Float64))
+          val expected = Set(CHAggregatedType.Float)
+
+          actual shouldBe expected
+        }
+        "to Int" in {
+          val intTypes = CHFuzzableType.values.filter(_.name.startsWith("Int")).filterNot(_.name.startsWith("Interval"))
+          val actual1 = CHType.mergeInputTypes(intTypes.toSet)
+          val actual2 = CHType.mergeInputTypes(intTypes.toSet + CHFuzzableType.BooleanType)
+          val expected = Set(CHAggregatedType.Int)
+
+          actual1 shouldBe expected
+          actual2 shouldBe expected
+        }
+        "to IntMax64Bits" in {
+          val actual1 = CHType.mergeInputTypes(
+            Set(CHFuzzableType.Int8, CHFuzzableType.Int16, CHFuzzableType.Int32, CHFuzzableType.Int64)
+          )
+          val actual2 = CHType.mergeInputTypes(
+            Set(
+              CHFuzzableType.BooleanType,
+              CHFuzzableType.Int8,
+              CHFuzzableType.Int16,
+              CHFuzzableType.Int32,
+              CHFuzzableType.Int64
+            )
+          )
+          val expected = Set(CHAggregatedType.IntMax64Bits)
+
+          actual1 shouldBe expected
+          actual2 shouldBe expected
+        }
+        "to NonDecimal" in {
+          val actual1 = CHType.mergeInputTypes(Set(CHAggregatedType.Int, CHAggregatedType.UInt, CHAggregatedType.Float))
+          val actual2 = CHType.mergeInputTypes(
+            Set(
+              CHAggregatedType.NonDecimalNorFloatMax64Bits,
+              CHFuzzableType.Int128,
+              CHFuzzableType.Int256,
+              CHFuzzableType.UInt128,
+              CHFuzzableType.UInt256,
+              CHAggregatedType.Float
+            )
+          )
+          val actual3 = CHType.mergeInputTypes(
+            Set(
+              CHAggregatedType.NonDecimalMax64Bits,
+              CHFuzzableType.Int128,
+              CHFuzzableType.Int256,
+              CHFuzzableType.UInt128,
+              CHFuzzableType.UInt256
+            )
+          )
+          val expected = Set(CHAggregatedType.NonDecimal)
+
+          actual1 shouldBe expected
+          actual2 shouldBe expected
+          actual3 shouldBe expected
+        }
+        "to NonDecimalMax64Bits" in {
+          val actual1 = CHType.mergeInputTypes(
+            Set(CHAggregatedType.IntMax64Bits, CHAggregatedType.UIntMax64Bits, CHAggregatedType.Float)
+          )
+          val actual2 =
+            CHType.mergeInputTypes(Set(CHAggregatedType.NonDecimalNorFloatMax64Bits, CHAggregatedType.Float))
+          val expected = Set(CHAggregatedType.NonDecimalMax64Bits)
+
+          actual1 shouldBe expected
+          actual2 shouldBe expected
+        }
+        "to NonDecimalNorFloatMax64Bits" in {
+          val actual = CHType.mergeInputTypes(Set(CHAggregatedType.IntMax64Bits, CHAggregatedType.UIntMax64Bits))
+          val expected = Set(CHAggregatedType.NonDecimalNorFloatMax64Bits)
+
+          actual shouldBe expected
+        }
+        "to Number" in {
+          val actual = CHType.mergeInputTypes(Set(CHAggregatedType.NonDecimal, CHAggregatedType.DecimalLike))
+          val expected = Set(CHAggregatedType.Number)
+
+          actual shouldBe expected
+        }
+        "to UInt" in {
+          val actual1 = CHType.mergeInputTypes(CHFuzzableType.values.filter(_.name.startsWith("UInt")).toSet)
+          val actual2 =
+            CHType.mergeInputTypes(Set(CHAggregatedType.UIntMax64Bits, CHFuzzableType.UInt128, CHFuzzableType.UInt256))
+          val expected = Set(CHAggregatedType.UInt)
+
+          actual1 shouldBe expected
+          actual2 shouldBe expected
+        }
+        "to UIntMax64Bits" in {
+          val actual = CHType.mergeInputTypes(
+            Set(CHFuzzableType.UInt8, CHFuzzableType.UInt16, CHFuzzableType.UInt32, CHFuzzableType.UInt64)
+          )
+          val expected = Set(CHAggregatedType.UIntMax64Bits)
+
+          actual shouldBe expected
+        }
+      }
+    }
+
     "should parse" - {
       "Array(Tuple(bs_9_a String))" in {
         val actual = CHType.getByName("Array(Tuple(bs_9_a String))")

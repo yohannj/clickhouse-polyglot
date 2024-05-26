@@ -530,7 +530,7 @@ object FuzzerHardcodedFunctions extends StrictLogging {
                 Function2(
                   CHFuzzableType.DictionaryName,
                   CHAggregatedType.Any,
-                  outputTypes.reduce(Fuzzer.mergeOutputType)
+                  outputTypes.reduce(CHType.mergeOutputType)
                 )
               )
             )
@@ -1857,7 +1857,7 @@ object FuzzerHardcodedFunctions extends StrictLogging {
           )
 
         executeInSequenceOnlySuccess(queries, client.execute(_).map(_.data.head.head.asInstanceOf[String])).map(
-          outputTypes => (inputTypes.map(_._1), outputTypes.map(CHType.getByName).reduce(Fuzzer.mergeOutputType))
+          outputTypes => (inputTypes.map(_._1), outputTypes.map(CHType.getByName).reduce(CHType.mergeOutputType))
         )
       ,
       maxConcurrency = Settings.ClickHouse.maxSupportedConcurrency
@@ -1895,7 +1895,7 @@ object FuzzerHardcodedFunctions extends StrictLogging {
             (
               inputParams.map(_._1),
               inputArgs.map(_._1),
-              outputTypes.map(CHType.getByName).reduce(Fuzzer.mergeOutputType)
+              outputTypes.map(CHType.getByName).reduce(CHType.mergeOutputType)
             )
         )
     )

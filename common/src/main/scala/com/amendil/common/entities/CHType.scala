@@ -13,6 +13,215 @@ trait CHType:
 
 object CHType extends StrictLogging:
 
+  def mergeInputTypes(types: Set[CHType]): Set[CHType] =
+    var mergedTypes = types
+
+    // Handle Special types
+    var toMerge = true
+    while toMerge do
+      val newMergedTypes = specialTypesSubstitutionRules.foldLeft(mergedTypes) {
+        case (currentTypes, (subTypes, aggregatedType)) =>
+          if subTypes.forall(currentTypes.contains) then currentTypes.removedAll(subTypes) + aggregatedType
+          else currentTypes
+      }
+
+      toMerge = mergedTypes.size != newMergedTypes.size
+      mergedTypes = newMergedTypes
+
+    // Remove boolean when there is another kind of number being supported
+    if mergedTypes.contains(CHFuzzableType.BooleanType) && mergedTypes.exists(allNumbersTypes.contains) then
+      mergedTypes -= CHFuzzableType.BooleanType
+
+    // Handle numbers
+    toMerge = true
+    while toMerge do
+      val newMergedTypes = numberSubstitutionRules.foldLeft(mergedTypes) {
+        case (currentTypes, (subTypes, aggregatedType)) =>
+          if subTypes.forall(currentTypes.contains) then currentTypes.removedAll(subTypes) + aggregatedType
+          else currentTypes
+      }
+
+      toMerge = mergedTypes.size != newMergedTypes.size
+      mergedTypes = newMergedTypes
+
+    mergedTypes
+
+  def mergeOutputType(type1: CHType, type2: CHType): CHType =
+    import CHAggregatedType.*
+    import CHFuzzableType.*
+
+    if type1 == type2 then type1 // Expects both type to be identical, should be the most obvious use case
+    else
+      val mergedType: CHType =
+        if type1 == type2 then type1
+        else if type1.isInstanceOf[CHSpecialType.Array] && type2.isInstanceOf[CHSpecialType.Array] then
+          CHSpecialType.Array(
+            mergeOutputType(
+              type1.asInstanceOf[CHSpecialType.Array].innerType,
+              type2.asInstanceOf[CHSpecialType.Array].innerType
+            )
+          )
+        else if type1 == BooleanType then
+          type2 match
+            case UInt8 | UInt16 | UInt32 | UInt64 | UInt128 | UInt256 | Int16 | Int32 | Int64 | Int128 | Int256 =>
+              type2
+            case _ => Any
+        else if type2 == BooleanType then
+          type1 match
+            case UInt8 | UInt16 | UInt32 | UInt64 | UInt128 | UInt256 | Int16 | Int32 | Int64 | Int128 | Int256 =>
+              type1
+            case _ => Any
+        else if type1 == Int8 then
+          type2 match
+            case UInt8                                   => Int16
+            case UInt16                                  => Int32
+            case UInt32                                  => Int64
+            case UInt64                                  => Int128
+            case UInt128 | UInt256                       => Int256
+            case Int16 | Int32 | Int64 | Int128 | Int256 => type2
+            case _                                       => Any
+        else if type2 == Int8 then
+          type1 match
+            case UInt8                                   => Int16
+            case UInt16                                  => Int32
+            case UInt32                                  => Int64
+            case UInt64                                  => Int128
+            case UInt128 | UInt256                       => Int256
+            case Int16 | Int32 | Int64 | Int128 | Int256 => type1
+            case _                                       => Any
+        else if type1 == Int16 then
+          type2 match
+            case UInt8                           => Int16
+            case UInt16                          => Int32
+            case UInt32                          => Int64
+            case UInt64                          => Int128
+            case UInt128 | UInt256               => Int256
+            case Int32 | Int64 | Int128 | Int256 => type2
+            case _                               => Any
+        else if type2 == Int16 then
+          type1 match
+            case UInt8                           => Int16
+            case UInt16                          => Int32
+            case UInt32                          => Int64
+            case UInt64                          => Int128
+            case UInt128 | UInt256               => Int256
+            case Int32 | Int64 | Int128 | Int256 => type1
+            case _                               => Any
+        else if type1 == Int32 then
+          type2 match
+            case UInt8 | UInt16          => Int32
+            case UInt32                  => Int64
+            case UInt64                  => Int128
+            case UInt128 | UInt256       => Int256
+            case Int64 | Int128 | Int256 => type2
+            case _                       => Any
+        else if type2 == Int32 then
+          type1 match
+            case UInt8 | UInt16          => Int32
+            case UInt32                  => Int64
+            case UInt64                  => Int128
+            case UInt128 | UInt256       => Int256
+            case Int64 | Int128 | Int256 => type1
+            case _                       => Any
+        else if type1 == Int64 then
+          type2 match
+            case UInt8 | UInt16 | UInt32 => Int64
+            case UInt64                  => Int128
+            case UInt128 | UInt256       => Int256
+            case Int128 | Int256         => type2
+            case _                       => Any
+        else if type2 == Int64 then
+          type1 match
+            case UInt8 | UInt16 | UInt32 => Int64
+            case UInt64                  => Int128
+            case UInt128 | UInt256       => Int256
+            case Int128 | Int256         => type1
+            case _                       => Any
+        else if type1 == Int128 then
+          type2 match
+            case UInt8 | UInt16 | UInt32 | UInt64 => Int128
+            case UInt128 | UInt256                => Int256
+            case Int256                           => Int256
+            case _                                => Any
+        else if type2 == Int128 then
+          type1 match
+            case UInt8 | UInt16 | UInt32 | UInt64 => Int128
+            case UInt128 | UInt256                => Int256
+            case Int256                           => Int256
+            case _                                => Any
+        else if type1 == Int256 then Int256
+        else if type2 == Int256 then Int256
+        // From now on, neither type1 nor type2 can be a signed integer
+        else if type1 == UInt8 then
+          type2 match
+            case UInt16 | UInt32 | UInt64 | UInt128 | UInt256 => type2
+            case _                                            => Any
+        else if type2 == UInt8 then
+          type1 match
+            case UInt16 | UInt32 | UInt64 | UInt128 | UInt256 => type1
+            case _                                            => Any
+        else if type1 == UInt16 then
+          type2 match
+            case UInt32 | UInt64 | UInt128 | UInt256 => type2
+            case _                                   => Any
+        else if type2 == UInt16 then
+          type1 match
+            case UInt32 | UInt64 | UInt128 | UInt256 => type1
+            case _                                   => Any
+        else if type1 == UInt32 then
+          type2 match
+            case UInt64 | UInt128 | UInt256 => type2
+            case _                          => Any
+        else if type2 == UInt32 then
+          type1 match
+            case UInt64 | UInt128 | UInt256 => type1
+            case _                          => Any
+        else if type1 == UInt64 then
+          type2 match
+            case UInt128 | UInt256 => type2
+            case _                 => Any
+        else if type2 == UInt64 then
+          type1 match
+            case UInt128 | UInt256 => type1
+            case _                 => Any
+        else if type1 == UInt128 then
+          type2 match
+            case UInt256 => type2
+            case _       => Any
+        else if type2 == UInt128 then
+          type1 match
+            case UInt256 => type1
+            case _       => Any
+        // From now on, neither type1 nor type2 can be an unsigned integer
+        else if type1 == Float32 then
+          type2 match
+            case Float64 => Float64
+            case _       => Any
+        else if type2 == Float32 then
+          type1 match
+            case Float64 => Float64
+            case _       => Any
+        // From now on, neither type1 nor type2 can be a float number
+        else if type1 == Date then
+          type2 match
+            case Date32 | DateTime | DateTime64 => type2
+            case _                              => Any
+        else if type2 == Date then
+          type1 match
+            case Date32 | DateTime | DateTime64 => type1
+            case _                              => Any
+        else if type1 == DateTime then
+          type2 match
+            case DateTime64 => DateTime64
+            case _          => Any
+        else if type2 == Date then
+          type1 match
+            case DateTime64 => DateTime64
+            case _          => Any
+        else Any
+
+      mergedType
+
   def getByName(name: String): CHType =
     // nowarn reason: https://github.com/scala/scala3/issues/19872
     parse(name.replaceAll("\n\\s+", ""), root: @nowarn) match
@@ -22,6 +231,61 @@ object CHType extends StrictLogging:
         throw IllegalArgumentException(s"Failed to parse type $name: label: $label, idx: $idx")
 
   // Utils
+  // format: off
+  private val numberSubstitutionRules = Map(
+    (Set(CHFuzzableType.Decimal32, CHFuzzableType.Decimal64, CHFuzzableType.Decimal128, CHFuzzableType.Decimal256), CHAggregatedType.DecimalLike),
+    (Set(CHFuzzableType.Float32, CHFuzzableType.Float64), CHAggregatedType.Float),
+    (Set(CHAggregatedType.IntMax64Bits, CHFuzzableType.Int128, CHFuzzableType.Int256), CHAggregatedType.Int),
+    (Set(CHFuzzableType.Int8, CHFuzzableType.Int16, CHFuzzableType.Int32, CHFuzzableType.Int64), CHAggregatedType.IntMax64Bits),
+    (Set(CHAggregatedType.Float, CHAggregatedType.Int, CHAggregatedType.UInt), CHAggregatedType.NonDecimal),
+    (Set(CHAggregatedType.NonDecimalMax64Bits, CHFuzzableType.Int128, CHFuzzableType.Int256, CHFuzzableType.UInt128, CHFuzzableType.UInt256), CHAggregatedType.NonDecimal),
+    (Set(CHAggregatedType.NonDecimalNorFloatMax64Bits, CHAggregatedType.Float), CHAggregatedType.NonDecimalMax64Bits),
+    (Set(CHAggregatedType.IntMax64Bits, CHAggregatedType.UIntMax64Bits), CHAggregatedType.NonDecimalNorFloatMax64Bits),
+    (Set(CHAggregatedType.DecimalLike, CHAggregatedType.NonDecimal), CHAggregatedType.Number),
+    (Set(CHAggregatedType.UIntMax64Bits, CHFuzzableType.UInt128, CHFuzzableType.UInt256), CHAggregatedType.UInt),
+    (Set(CHFuzzableType.UInt8, CHFuzzableType.UInt16, CHFuzzableType.UInt32, CHFuzzableType.UInt64), CHAggregatedType.UIntMax64Bits)
+  )
+
+  private val specialTypesSubstitutionRules = Map(
+    (Set(CHFuzzableType.ArrayFixedString, CHFuzzableType.SpecialArrayFixedString), CHFuzzableType.ArrayFixedString),
+    (Set(CHFuzzableType.ArrayString, CHFuzzableType.SpecialArrayString), CHFuzzableType.ArrayString),
+    (Set(CHFuzzableType.FixedString, CHFuzzableType.SpecialFixedString), CHFuzzableType.FixedString),
+    (Set(CHFuzzableType.LowCardinalityNullableUInt64, CHFuzzableType.SpecialLowCardinalityNullableUInt64), CHFuzzableType.LowCardinalityNullableUInt64),
+    (Set(CHFuzzableType.LowCardinalityUInt64, CHFuzzableType.SpecialLowCardinalityUInt64), CHFuzzableType.LowCardinalityUInt64),
+    (Set(CHFuzzableType.NullableUInt64, CHFuzzableType.SpecialNullableUInt64), CHFuzzableType.NullableUInt64),
+    (Set(CHFuzzableType.StringType, CHFuzzableType.Charset), CHFuzzableType.StringType),
+    (Set(CHFuzzableType.StringType, CHFuzzableType.ClickHouseType), CHFuzzableType.StringType),
+    (Set(CHFuzzableType.StringType, CHFuzzableType.DateUnit), CHFuzzableType.StringType),
+    (Set(CHFuzzableType.StringType, CHFuzzableType.DictionaryName), CHFuzzableType.StringType),
+    (Set(CHFuzzableType.StringType, CHFuzzableType.EncryptionMode), CHFuzzableType.StringType),
+    (Set(CHFuzzableType.StringType, CHFuzzableType.PValueComputationMethod), CHFuzzableType.StringType),
+    (Set(CHFuzzableType.StringType, CHFuzzableType.SequencePattern), CHFuzzableType.StringType),
+    (Set(CHFuzzableType.StringType, CHFuzzableType.ServerPortName), CHFuzzableType.StringType),
+    (Set(CHFuzzableType.StringType, CHFuzzableType.SpecialString), CHFuzzableType.StringType),
+    (Set(CHFuzzableType.StringType, CHFuzzableType.SynonymExtensionName), CHFuzzableType.StringType),
+    (Set(CHFuzzableType.StringType, CHFuzzableType.TestAlternative), CHFuzzableType.StringType),
+    (Set(CHFuzzableType.StringType, CHFuzzableType.Time64Unit), CHFuzzableType.StringType),
+    (Set(CHFuzzableType.StringType, CHFuzzableType.TimeUnit), CHFuzzableType.StringType),
+    (Set(CHFuzzableType.StringType, CHFuzzableType.TimeZone), CHFuzzableType.StringType),
+    (Set(CHFuzzableType.StringType, CHFuzzableType.Usevar), CHFuzzableType.StringType),
+    (Set(CHFuzzableType.StringType, CHFuzzableType.WindowFunctionMode), CHFuzzableType.StringType),
+    (Set(CHFuzzableType.UInt64, CHFuzzableType.SpecialUInt64), CHFuzzableType.UInt64)
+  )
+  // format: on
+
+  private val allNumbersTypes: Set[CHType] =
+    var types: Set[CHType] = Set(CHAggregatedType.Number)
+    val m: Map[CHType, Set[CHType]] = numberSubstitutionRules.groupMap(_._2)(_._1).view.mapValues(_.toSet.flatten).toMap
+    while
+      val tmp = types ++ types.flatMap(t => m.getOrElse(t, Set.empty))
+      if tmp.size != types.size then
+        types = tmp
+        true
+      else false
+    do ()
+
+    types
+
   private def root[$: P]: P[CHType] = P(Start ~ any ~ End)
   private def digits[$: P]: P[Int] = P(CharsWhileIn("0-9\\-").!).map(_.toInt)
   private def enumElement[$: P]: P[Unit] = (plainString ~ " = " ~ digits).map(_ => (): Unit)
@@ -152,12 +416,15 @@ enum CHSpecialType(val name: String) extends CHType:
 enum CHAggregatedType(val name: String) extends CHType:
   case Any extends CHAggregatedType("Any")
 
-  case Number extends CHAggregatedType("Numbers")
+  // Numbers
+  case DecimalLike extends CHAggregatedType("AnyDecimal")
   case Float extends CHAggregatedType("Float")
   case Int extends CHAggregatedType("Int")
   case IntMax64Bits extends CHAggregatedType("IntMax64Bits")
+  case NonDecimal extends CHAggregatedType("NonDecimal")
   case NonDecimalMax64Bits extends CHAggregatedType("NonDecimalMax64Bits")
   case NonDecimalNorFloatMax64Bits extends CHAggregatedType("NonDecimalNorFloatMax64Bits")
+  case Number extends CHAggregatedType("Numbers")
   case UInt extends CHAggregatedType("UInt")
   case UIntMax64Bits extends CHAggregatedType("UIntMax64Bits")
 

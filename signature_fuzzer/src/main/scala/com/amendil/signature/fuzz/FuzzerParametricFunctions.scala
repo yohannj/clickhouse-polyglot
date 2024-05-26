@@ -913,7 +913,7 @@ object FuzzerParametricFunctions extends StrictLogging:
                 (nonParamTypes, queries) =>
                   executeInSequenceOnlySuccess(queries, client.execute(_).map(_.data.head.head.asInstanceOf[String]))
                     .map(outputTypes =>
-                      (nonParamTypes, outputTypes.map(CHType.getByName).reduce(Fuzzer.mergeOutputType))
+                      (nonParamTypes, outputTypes.map(CHType.getByName).reduce(CHType.mergeOutputType))
                     ),
                 maxConcurrency = Settings.ClickHouse.maxSupportedConcurrency
               ).map(_.toMap)
