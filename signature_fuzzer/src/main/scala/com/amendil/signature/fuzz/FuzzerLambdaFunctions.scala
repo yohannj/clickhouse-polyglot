@@ -1,6 +1,7 @@
 package com.amendil.signature.fuzz
 
 import com.amendil.common.entities.{CHResponse, *}
+import com.amendil.common.entities.`type`.*
 import com.amendil.common.http.CHClient
 import com.amendil.signature.entities.*
 import com.typesafe.scalalogging.StrictLogging

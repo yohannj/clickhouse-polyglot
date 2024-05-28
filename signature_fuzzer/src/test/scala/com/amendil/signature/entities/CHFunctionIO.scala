@@ -1,6 +1,7 @@
 package com.amendil.signature.entities
 
 import com.amendil.common.entities.*
+import com.amendil.common.entities.`type`.*
 import org.scalatest.freespec.AnyFreeSpec
 import org.scalatest.matchers.should.Matchers
 

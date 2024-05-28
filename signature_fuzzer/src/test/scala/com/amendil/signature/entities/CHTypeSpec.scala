@@ -1,6 +1,6 @@
 package com.amendil.signature.entities
 
-import com.amendil.common.entities.*
+import com.amendil.common.entities.`type`.CHFuzzableType
 import org.scalatest.freespec.AnyFreeSpec
 import org.scalatest.matchers.should.Matchers
 

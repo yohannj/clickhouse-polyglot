@@ -1,10 +1,11 @@
-package com.amendil.common.entities
+package com.amendil.common.entities.`type`
 
 import com.amendil.common.entities.*
 import org.scalatest.freespec.AnyFreeSpec
 import org.scalatest.matchers.should.Matchers
-import scala.util.Try
+
 import scala.annotation.nowarn
+import scala.util.Try
 
 class CHFuzzableTypeSpec extends AnyFreeSpec with Matchers:
 

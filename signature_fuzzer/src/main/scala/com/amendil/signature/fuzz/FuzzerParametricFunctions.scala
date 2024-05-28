@@ -1,7 +1,7 @@
 package com.amendil.signature.fuzz
 
 import com.amendil.common.ConcurrencyUtils.*
-import com.amendil.common.entities.*
+import com.amendil.common.entities.`type`.{CHFuzzableType, CHType}
 import com.amendil.common.http.CHClient
 import com.amendil.signature.Settings
 import com.amendil.signature.entities.*
