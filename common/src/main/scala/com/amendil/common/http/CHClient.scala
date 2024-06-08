@@ -13,7 +13,26 @@ import java.time.Duration
 import scala.compat.java8.FutureConverters.*
 import scala.concurrent.{ExecutionContext, Future}
 
-class CHClient(url: String)(using ec: ExecutionContext):
+trait CHClient:
+  def execute(query: String): Future[CHResponse]
+  def executeNoResult(query: String): Future[Unit]
+  def executeNoResultNoSettings(query: String): Future[Unit]
+
+object CHClient:
+  val settings: String = Seq(
+    "allow_deprecated_error_prone_window_functions=1",
+    "allow_experimental_funnel_functions=1",
+    "allow_experimental_object_type=1",
+    "allow_experimental_nlp_functions=1",
+    "allow_experimental_variant_type=1",
+    "allow_get_client_http_header=1",
+    "allow_introspection_functions=1",
+    "allow_suspicious_low_cardinality_types=1",
+    "decimal_check_overflow=0",
+    "log_queries=0"
+  ).mkString(", ")
+
+class CHClientImpl(url: String)(using ExecutionContext) extends CHClient:
 
   System.setProperty("jdk.httpclient.keepalive.timeout", "10")
   private val jsonMapper = JsonMapper.builder().addModule(DefaultScalaModule).build()
@@ -135,16 +154,3 @@ class CHClient(url: String)(using ec: ExecutionContext):
       ,
       maxNumberOfAttempts = Int.MaxValue // Never stops querying ClickHouse, we need 100% accuracy
     )
-
-object CHClient:
-  private val settings: String = Seq(
-    "allow_experimental_funnel_functions=1",
-    "allow_experimental_object_type=1",
-    "allow_experimental_nlp_functions=1",
-    "allow_experimental_variant_type=1",
-    "allow_get_client_http_header=1",
-    "allow_introspection_functions=1",
-    "allow_suspicious_low_cardinality_types=1",
-    "decimal_check_overflow=0",
-    "log_queries=0"
-  ).mkString(", ")

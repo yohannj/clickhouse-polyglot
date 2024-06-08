@@ -2,15 +2,25 @@ package com.amendil.signature.entities
 
 import com.amendil.common.entities.*
 import com.amendil.common.entities.`type`.*
+import com.amendil.common.http.CHClient
 import org.scalatest.freespec.AnyFreeSpec
 import org.scalatest.matchers.should.Matchers
+
+import java.util.concurrent.Executors
+import scala.concurrent.{ExecutionContext, Future}
 
 class CHFunctionIOSpec extends AnyFreeSpec with Matchers:
 
   "CHFunctionIO" - {
+    given ExecutionContext = ExecutionContext.fromExecutorService(Executors.newFixedThreadPool(1))
+    given client: CHClient = new CHClient:
+      override def execute(query: String): Future[CHResponse] = ???
+      override def executeNoResult(query: String): Future[Unit] = ???
+      override def executeNoResultNoSettings(query: String): Future[Unit] = ???
+
     "should aggregate Function1 signatures" - {
       "having the same output type" - {
-        val outputType = CHSpecialType.GenericType("foo")
+        val outputType = CHSpecialType.GenericType("foo", CHAggregatedType.Any)
 
         "when they accept all numbers" in {
           val actual = CHFunctionIO.aggregate(
@@ -38,7 +48,7 @@ class CHFunctionIOSpec extends AnyFreeSpec with Matchers:
           )
           val expected = Seq(CHFunctionIO.Function1(CHAggregatedType.Number, outputType))
 
-          actual shouldBe expected
+          actual.map(_.asString()) shouldBe expected.map(_.asString())
         }
 
         // "when they accept all numbers" in {

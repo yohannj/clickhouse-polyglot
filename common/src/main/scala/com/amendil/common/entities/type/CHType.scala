@@ -10,62 +10,36 @@ import scala.annotation.nowarn
 trait CHType:
   def name: String
 
+trait InnerType:
+  def innerType: CHType
+
 object CHType extends StrictLogging:
 
-  def mergeInputTypes(types: Set[CHType]): Set[CHType] =
-    var mergedTypes = types
+  def cleanTypes(types: Set[CHType]): Set[CHType] =
+    types.map { t =>
+      if t.isInstanceOf[CHFuzzableType] then t
+      else CHFuzzableType.values.find(_.name == t.name).getOrElse(t)
+    }
 
-    // Handle Special types
-    var toMerge = true
-    while toMerge do
-      val newMergedTypes = specialTypesSubstitutionRules.foldLeft(mergedTypes) {
-        case (currentTypes, (subTypes, aggregatedType)) =>
-          if subTypes.forall(currentTypes.contains) then currentTypes.removedAll(subTypes) + aggregatedType
-          else currentTypes
+  def deduplicateSupertypes(types: Set[CHType]): Set[CHType] =
+    filterCHTypes(
+      cleanTypes(types),
+      supertypeDeduplicationRules
+    )
+
+  def mergeInputTypes(types: Set[CHType], supportJson: Boolean = true): Set[CHType] =
+    val filteredSubstitutionRules = typeSubstitutionRules.collect {
+      case (rule, mergedType) if supportJson || !mergedType.name.toLowerCase.contains("json") =>
+        (rule.filter(t => supportJson || !t.name.toLowerCase.contains("json")), Seq(mergedType))
+    }
+
+    filterCHTypes(
+      cleanTypes(deduplicateSupertypes(types)),
+      typeSubstitutionRules.collect {
+        case (rule, mergedType) if supportJson || !mergedType.name.toLowerCase.contains("json") =>
+          (rule.filter(t => supportJson || !t.name.toLowerCase.contains("json")), Seq(mergedType))
       }
-
-      toMerge = mergedTypes.size != newMergedTypes.size
-      mergedTypes = newMergedTypes
-
-    // Remove boolean when there is another kind of number being supported
-    if mergedTypes.contains(CHFuzzableType.BooleanType) && mergedTypes.exists(allNumberTypes.contains) then
-      mergedTypes -= CHFuzzableType.BooleanType
-
-    if mergedTypes.contains(CHFuzzableType.LowCardinalityBoolean) && mergedTypes.exists(
-        allLowCardinalityNumberTypes.contains
-      )
-    then mergedTypes -= CHFuzzableType.LowCardinalityBoolean
-
-    if mergedTypes.contains(CHFuzzableType.LowCardinalityNullableBoolean) && mergedTypes.exists(
-        allLowCardinalityNullableNumberTypes.contains
-      )
-    then mergedTypes -= CHFuzzableType.LowCardinalityNullableBoolean
-
-    if mergedTypes.contains(CHFuzzableType.NullableBoolean) && mergedTypes.exists(allNullableNumberTypes.contains) then
-      mergedTypes -= CHFuzzableType.NullableBoolean
-
-    if mergedTypes.contains(CHFuzzableType.ArrayBoolean) && mergedTypes.exists(allArrayNumberTypes.contains) then
-      mergedTypes -= CHFuzzableType.ArrayBoolean
-
-    if mergedTypes.contains(CHFuzzableType.MapBooleanInt) && mergedTypes.exists(allMapNumberIntTypes.contains) then
-      mergedTypes -= CHFuzzableType.MapBooleanInt
-
-    if mergedTypes.contains(CHFuzzableType.Tuple1Boolean) && mergedTypes.exists(allTuple1NumberTypes.contains) then
-      mergedTypes -= CHFuzzableType.Tuple1Boolean
-
-    // Handle other rules
-    toMerge = true
-    while toMerge do
-      val newMergedTypes = nonSpecialTypesSubstitutionRules.foldLeft(mergedTypes) {
-        case (currentTypes, (subTypes, aggregatedType)) =>
-          if subTypes.forall(currentTypes.contains) then currentTypes.removedAll(subTypes) + aggregatedType
-          else currentTypes
-      }
-
-      toMerge = mergedTypes.size != newMergedTypes.size
-      mergedTypes = newMergedTypes
-
-    mergedTypes
+    )
 
   def mergeOutputType(type1: CHType, type2: CHType): CHType =
     import CHAggregatedType.*
@@ -82,6 +56,31 @@ object CHType extends StrictLogging:
               type2.asInstanceOf[CHSpecialType.Array].innerType
             )
           )
+        else if type1.isInstanceOf[CHSpecialType.Map] && type2.isInstanceOf[CHSpecialType.Map] then
+          val mapType1 = type1.asInstanceOf[CHSpecialType.Map]
+          val mapType2 = type2.asInstanceOf[CHSpecialType.Map]
+
+          CHSpecialType.Map(
+            mergeOutputType(mapType1.keyType, mapType2.keyType),
+            mergeOutputType(mapType1.valueType, mapType2.valueType)
+          )
+        else if type1.isInstanceOf[CHSpecialType.Tuple] && type2.isInstanceOf[CHSpecialType.Tuple] then
+          val tupleType1 = type1.asInstanceOf[CHSpecialType.Tuple]
+          val tupleType2 = type2.asInstanceOf[CHSpecialType.Tuple]
+
+          if tupleType1.innerTypes.size != tupleType2.innerTypes.size then CHSpecialType.TupleN(Any)
+          else
+            CHSpecialType.Tuple(
+              tupleType1.innerTypes.zip(tupleType2.innerTypes).map(mergeOutputType)
+            )
+        else if type1.isInstanceOf[CHSpecialType.TupleN] then
+          type2 match
+            case _: CHSpecialType.TupleN | _: CHSpecialType.Tuple => CHSpecialType.TupleN(Any)
+            case _                                                => Any
+        else if type2.isInstanceOf[CHSpecialType.TupleN] then
+          type1 match
+            case _: CHSpecialType.TupleN | _: CHSpecialType.Tuple => CHSpecialType.TupleN(Any)
+            case _                                                => Any
         else if type1 == BooleanType then
           type2 match
             case UInt8 | UInt16 | UInt32 | UInt64 | UInt128 | UInt256 | Int16 | Int32 | Int64 | Int128 | Int256 =>
@@ -213,7 +212,7 @@ object CHType extends StrictLogging:
           type1 match
             case UInt256 => type1
             case _       => Any
-        // From now on, neither type1 nor type2 can be an unsigned integer
+        // From now on, neither type1 nor type2 can be a signed or unsigned integer
         else if type1 == Float32 then
           type2 match
             case Float64 => Float64
@@ -222,7 +221,7 @@ object CHType extends StrictLogging:
           type1 match
             case Float64 => Float64
             case _       => Any
-        // From now on, neither type1 nor type2 can be a float number
+        // From now on, neither type1 nor type2 can be a number
         else if type1 == Date then
           type2 match
             case Date32 | DateTime | DateTime64 => type2
@@ -239,6 +238,11 @@ object CHType extends StrictLogging:
           type1 match
             case DateTime64 => DateTime64
             case _          => Any
+        // From now on, neither type1 nor type2 can be a number nor a date/datetime
+        else if type1 == Enum8 || type1 == Enum16 || type1 == Enum then
+          type2 match
+            case Enum8 | Enum16 | Enum => Enum
+            case _                     => Any
         else Any
 
       mergedType
@@ -252,13 +256,40 @@ object CHType extends StrictLogging:
         throw IllegalArgumentException(s"Failed to parse type $name: label: $label, idx: $idx")
 
   // Utils
+  private def filterCHTypes(types: Set[CHType], filteringRules: Map[Set[CHType], Seq[CHType]]): Set[CHType] =
+    var mergedTypes = types
+    var toMerge = true
+    while toMerge do
+      val newMergedTypes = filteringRules.foldLeft(mergedTypes) { case (currentTypes, (subTypes, aggregatedTypes)) =>
+        if subTypes.forall(currentTypes.contains) then currentTypes.removedAll(subTypes) ++ aggregatedTypes
+        else currentTypes
+      }
+
+      toMerge = mergedTypes.size != newMergedTypes.size
+      mergedTypes = newMergedTypes
+
+    mergedTypes
+
   // format: off
-  private val nonSpecialTypesSubstitutionRules = Map(
+  private val typeSubstitutionRules = Map(
     (Set(
-      CHAggregatedType.Bitmap, CHAggregatedType.DateLikeOrDateTimeLike, CHFuzzableType.Enum, CHAggregatedType.Interval,
-      CHAggregatedType.IP, CHAggregatedType.Geo, CHFuzzableType.Json, CHAggregatedType.Number, CHAggregatedType.StringLike,
-      CHFuzzableType.UUID, CHSpecialType.Array(CHAggregatedType.Any), CHSpecialType.Map(CHAggregatedType.MapKey, CHAggregatedType.Int),
-      CHSpecialType.Tuple(Seq(CHAggregatedType.Any))
+      CHAggregatedType.NonDecimalNorFloat, CHAggregatedType.DateLikeOrDateTime, CHAggregatedType.Interval, CHAggregatedType.StringLike,
+      CHFuzzableType.UUID
+    ), CHAggregatedType.MapKey),
+
+    (Set(
+      CHAggregatedType.Bitmap, CHFuzzableType.DateTime64, CHAggregatedType.DecimalLike, CHAggregatedType.Float,
+      CHFuzzableType.Json, CHAggregatedType.MapKey, CHSpecialType.Array(CHAggregatedType.Any), CHSpecialType.Tuple(Seq(CHAggregatedType.Any))
+    ), CHAggregatedType.AnyNonMapNonNullableNonLowCardinality),
+
+    (Set(
+      CHAggregatedType.Bitmap, CHAggregatedType.DateLikeOrDateTimeLike, CHAggregatedType.Interval,
+      CHFuzzableType.Json, CHAggregatedType.Number, CHAggregatedType.StringLike, CHFuzzableType.UUID,
+      CHSpecialType.Array(CHAggregatedType.Any), CHSpecialType.Tuple(Seq(CHAggregatedType.Any))
+    ), CHAggregatedType.AnyNonMapNonNullableNonLowCardinality),
+
+    (Set(
+      CHAggregatedType.AnyNonMapNonNullableNonLowCardinality, CHSpecialType.Map(CHAggregatedType.MapKey, CHAggregatedType.Int)
     ), CHAggregatedType.AnyNonNullableNonLowCardinality),
 
     (Set(
@@ -266,17 +297,46 @@ object CHType extends StrictLogging:
       CHAggregatedType.LowCardinalityNullable
     ), CHAggregatedType.Any),
 
-    (Set(CHFuzzableType.Decimal32, CHFuzzableType.Decimal64, CHFuzzableType.Decimal128, CHFuzzableType.Decimal256), CHAggregatedType.DecimalLike),
+    (Set(CHFuzzableType.DateUnit, CHFuzzableType.TimeUnit), CHAggregatedType.DateTimeUnit),
+    (Set(CHFuzzableType.TimeUnit, CHFuzzableType.Time64Unit), CHAggregatedType.TimeOrTime64Unit),
+    (Set(CHAggregatedType.DateTimeUnit, CHFuzzableType.Time64Unit), CHAggregatedType.DateTimeUnit),
+    (Set(CHAggregatedType.TimeOrTime64Unit, CHFuzzableType.DateUnit), CHAggregatedType.DateTimeUnit),
+
+    (Set(CHFuzzableType.Int8, CHFuzzableType.Int16), CHAggregatedType.IntMax16Bits),
+    (Set(CHAggregatedType.IntMax16Bits, CHFuzzableType.Int32), CHAggregatedType.IntMax32Bits),
+    (Set(CHAggregatedType.IntMax32Bits, CHFuzzableType.Int64), CHAggregatedType.IntMax64Bits),
+    (Set(CHAggregatedType.IntMax64Bits, CHFuzzableType.Int128), CHAggregatedType.IntMax128Bits),
+    (Set(CHAggregatedType.IntMax128Bits, CHFuzzableType.Int256), CHAggregatedType.Int),
+    
+    (Set(CHFuzzableType.UInt8, CHFuzzableType.UInt16), CHAggregatedType.UIntMax16Bits),
+    (Set(CHAggregatedType.UIntMax16Bits, CHFuzzableType.UInt32), CHAggregatedType.UIntMax32Bits),
+    (Set(CHAggregatedType.UIntMax32Bits, CHFuzzableType.UInt64), CHAggregatedType.UIntMax64Bits),
+    (Set(CHAggregatedType.UIntMax64Bits, CHFuzzableType.UInt128), CHAggregatedType.UIntMax128Bits),
+    (Set(CHAggregatedType.UIntMax128Bits, CHFuzzableType.UInt256), CHAggregatedType.UInt),
+
     (Set(CHFuzzableType.Float32, CHFuzzableType.Float64), CHAggregatedType.Float),
-    (Set(CHAggregatedType.IntMax64Bits, CHFuzzableType.Int128, CHFuzzableType.Int256), CHAggregatedType.Int),
-    (Set(CHFuzzableType.Int8, CHFuzzableType.Int16, CHFuzzableType.Int32, CHFuzzableType.Int64), CHAggregatedType.IntMax64Bits),
-    (Set(CHAggregatedType.Float, CHAggregatedType.Int, CHAggregatedType.UInt), CHAggregatedType.NonDecimal),
-    (Set(CHAggregatedType.NonDecimalMax64Bits, CHFuzzableType.Int128, CHFuzzableType.Int256, CHFuzzableType.UInt128, CHFuzzableType.UInt256), CHAggregatedType.NonDecimal),
-    (Set(CHAggregatedType.NonDecimalNorFloatMax64Bits, CHAggregatedType.Float), CHAggregatedType.NonDecimalMax64Bits),
+    (Set(CHFuzzableType.Decimal32, CHFuzzableType.Decimal64, CHFuzzableType.Decimal128, CHFuzzableType.Decimal256), CHAggregatedType.DecimalLike),
+
+    (Set(CHFuzzableType.Int8, CHFuzzableType.UInt8), CHAggregatedType.NonDecimalNorFloatMax8Bits),
+    (Set(CHAggregatedType.IntMax16Bits, CHAggregatedType.UIntMax16Bits), CHAggregatedType.NonDecimalNorFloatMax16Bits),
+    (Set(CHAggregatedType.NonDecimalNorFloatMax8Bits, CHFuzzableType.Int16, CHFuzzableType.UInt16), CHAggregatedType.NonDecimalNorFloatMax16Bits),
+    (Set(CHAggregatedType.IntMax32Bits, CHAggregatedType.UIntMax32Bits), CHAggregatedType.NonDecimalNorFloatMax32Bits),
+    (Set(CHAggregatedType.NonDecimalNorFloatMax16Bits, CHFuzzableType.Int32, CHFuzzableType.UInt32), CHAggregatedType.NonDecimalNorFloatMax32Bits),
     (Set(CHAggregatedType.IntMax64Bits, CHAggregatedType.UIntMax64Bits), CHAggregatedType.NonDecimalNorFloatMax64Bits),
+    (Set(CHAggregatedType.NonDecimalNorFloatMax32Bits, CHFuzzableType.Int64, CHFuzzableType.UInt64), CHAggregatedType.NonDecimalNorFloatMax64Bits),
+    (Set(CHAggregatedType.Int, CHAggregatedType.UInt), CHAggregatedType.NonDecimalNorFloat),
+    (Set(CHAggregatedType.NonDecimalNorFloatMax64Bits, CHFuzzableType.Int128, CHFuzzableType.UInt128, CHFuzzableType.Int256, CHFuzzableType.UInt256), CHAggregatedType.NonDecimalNorFloat),
+
+    (Set(CHAggregatedType.NonDecimalNorFloatMax32Bits, CHFuzzableType.Float32), CHAggregatedType.NonDecimalMax32Bits),
+    (Set(CHAggregatedType.NonDecimalNorFloatMax64Bits, CHAggregatedType.Float), CHAggregatedType.NonDecimalMax64Bits),
+    (Set(CHAggregatedType.NonDecimalMax32Bits, CHFuzzableType.Int64, CHFuzzableType.UInt64, CHFuzzableType.Float64), CHAggregatedType.NonDecimalMax64Bits),
+    (Set(CHAggregatedType.NonDecimalNorFloat, CHAggregatedType.Float), CHAggregatedType.NonDecimal),
+    (Set(CHAggregatedType.NonDecimalMax64Bits, CHFuzzableType.Int128, CHFuzzableType.UInt128, CHFuzzableType.Int256, CHFuzzableType.UInt256), CHAggregatedType.NonDecimal),
+
+    (Set(CHAggregatedType.DecimalLike, CHAggregatedType.NonDecimalNorFloat, CHFuzzableType.Float64), CHAggregatedType.NonFloat32Number),
+
     (Set(CHAggregatedType.DecimalLike, CHAggregatedType.NonDecimal), CHAggregatedType.Number),
-    (Set(CHAggregatedType.UIntMax64Bits, CHFuzzableType.UInt128, CHFuzzableType.UInt256), CHAggregatedType.UInt),
-    (Set(CHFuzzableType.UInt8, CHFuzzableType.UInt16, CHFuzzableType.UInt32, CHFuzzableType.UInt64), CHAggregatedType.UIntMax64Bits),
+    (Set(CHAggregatedType.NonFloat32Number, CHFuzzableType.Float32), CHAggregatedType.Number),
 
     (Set(
       CHFuzzableType.BitmapInt8, CHFuzzableType.BitmapInt16, CHFuzzableType.BitmapInt32, CHFuzzableType.BitmapInt64, 
@@ -284,12 +344,18 @@ object CHType extends StrictLogging:
     ), CHAggregatedType.Bitmap),
 
     (Set(CHFuzzableType.Date, CHFuzzableType.DateTime), CHAggregatedType.DateOrDateTime),
-    (Set(CHAggregatedType.DateOrDateTime, CHFuzzableType.Date32, CHFuzzableType.DateTime64), CHAggregatedType.DateLikeOrDateTimeLike),
-    (Set(CHAggregatedType.DateLike, CHAggregatedType.DateTimeLike), CHAggregatedType.DateLikeOrDateTimeLike),
     (Set(CHFuzzableType.Date, CHFuzzableType.Date32), CHAggregatedType.DateLike),
     (Set(CHFuzzableType.DateTime, CHFuzzableType.DateTime64), CHAggregatedType.DateTimeLike),
+    (Set(CHFuzzableType.Date32, CHFuzzableType.DateTime64), CHAggregatedType.Date32OrDateTime64),
+    (Set(CHAggregatedType.DateLike, CHFuzzableType.DateTime), CHAggregatedType.DateLikeOrDateTime),
+    (Set(CHAggregatedType.DateOrDateTime, CHFuzzableType.Date32), CHAggregatedType.DateLikeOrDateTime),
+    (Set(CHAggregatedType.DateLikeOrDateTime, CHFuzzableType.DateTime64), CHAggregatedType.DateLikeOrDateTimeLike),
+    (Set(CHAggregatedType.DateLike, CHAggregatedType.DateTimeLike), CHAggregatedType.DateLikeOrDateTimeLike),
+    (Set(CHAggregatedType.Date32OrDateTime64, CHAggregatedType.DateOrDateTime), CHAggregatedType.DateLikeOrDateTimeLike),
 
     (Set(CHFuzzableType.Enum8, CHFuzzableType.Enum16), CHFuzzableType.Enum),
+
+    (Set(CHFuzzableType.Point, CHFuzzableType.Ring, CHFuzzableType.Polygon, CHFuzzableType.MultiPolygon), CHAggregatedType.Geo),
 
     (Set(CHFuzzableType.IntervalNanosecond, CHFuzzableType.IntervalMicrosecond, CHFuzzableType.IntervalMillisecond, CHAggregatedType.IntervalTime), CHAggregatedType.IntervalTime64),
     (Set(CHFuzzableType.IntervalSecond, CHFuzzableType.IntervalMinute, CHFuzzableType.IntervalHour), CHAggregatedType.IntervalTime),
@@ -297,8 +363,6 @@ object CHType extends StrictLogging:
     (Set(CHAggregatedType.IntervalTime64, CHAggregatedType.IntervalDate), CHAggregatedType.Interval),
 
     (Set(CHFuzzableType.IPv4, CHFuzzableType.IPv6), CHAggregatedType.IP),
-
-    (Set(CHFuzzableType.Point, CHFuzzableType.Ring, CHFuzzableType.Polygon, CHFuzzableType.MultiPolygon), CHAggregatedType.Geo),
 
     (Set(CHFuzzableType.StringType, CHFuzzableType.FixedString), CHAggregatedType.StringLike),
 
@@ -315,10 +379,12 @@ object CHType extends StrictLogging:
     (Set(CHFuzzableType.ArrayUInt8, CHFuzzableType.ArrayUInt16, CHFuzzableType.ArrayUInt32, CHFuzzableType.ArrayUInt64), CHSpecialType.Array(CHAggregatedType.UIntMax64Bits)),
 
     (Set(CHFuzzableType.ArrayDate, CHFuzzableType.ArrayDateTime), CHSpecialType.Array(CHAggregatedType.DateOrDateTime)),
-    (Set(CHSpecialType.Array(CHAggregatedType.DateOrDateTime), CHFuzzableType.ArrayDate32, CHFuzzableType.ArrayDateTime64), CHSpecialType.Array(CHAggregatedType.DateLikeOrDateTimeLike)),
-    (Set(CHSpecialType.Array(CHAggregatedType.DateLike), CHSpecialType.Array(CHAggregatedType.DateTimeLike)), CHSpecialType.Array(CHAggregatedType.DateLikeOrDateTimeLike)),
     (Set(CHFuzzableType.ArrayDate, CHFuzzableType.ArrayDate32), CHSpecialType.Array(CHAggregatedType.DateLike)),
     (Set(CHFuzzableType.ArrayDateTime, CHFuzzableType.ArrayDateTime64), CHSpecialType.Array(CHAggregatedType.DateTimeLike)),
+    (Set(CHFuzzableType.ArrayDate32, CHFuzzableType.ArrayDateTime64), CHSpecialType.Array(CHAggregatedType.Date32OrDateTime64)),
+    (Set(CHSpecialType.Array(CHAggregatedType.DateOrDateTime), CHFuzzableType.ArrayDate32, CHFuzzableType.ArrayDateTime64), CHSpecialType.Array(CHAggregatedType.DateLikeOrDateTimeLike)),
+    (Set(CHSpecialType.Array(CHAggregatedType.DateLike), CHSpecialType.Array(CHAggregatedType.DateTimeLike)), CHSpecialType.Array(CHAggregatedType.DateLikeOrDateTimeLike)),
+    (Set(CHSpecialType.Array(CHAggregatedType.Date32OrDateTime64), CHSpecialType.Array(CHAggregatedType.DateOrDateTime)), CHSpecialType.Array(CHAggregatedType.DateLikeOrDateTimeLike)),
 
     (Set(CHFuzzableType.ArrayEnum8, CHFuzzableType.ArrayEnum16), CHFuzzableType.ArrayEnum),
 
@@ -329,15 +395,12 @@ object CHType extends StrictLogging:
 
     (Set(CHFuzzableType.ArrayIPv4, CHFuzzableType.ArrayIPv6), CHSpecialType.Array(CHAggregatedType.IP)),
 
-    (Set(CHFuzzableType.ArrayPoint, CHFuzzableType.ArrayRing, CHFuzzableType.ArrayPolygon, CHFuzzableType.ArrayMultiPolygon), CHSpecialType.Array(CHAggregatedType.Geo)),
-
     (Set(CHFuzzableType.ArrayString, CHFuzzableType.ArrayFixedString), CHSpecialType.Array(CHAggregatedType.StringLike)),
 
     (Set(
       CHSpecialType.Array(CHAggregatedType.Number), CHSpecialType.Array(CHAggregatedType.DateLikeOrDateTimeLike),
-      CHSpecialType.Array(CHAggregatedType.Interval), CHSpecialType.Array(CHAggregatedType.Geo),
-      CHFuzzableType.ArrayEnum, CHSpecialType.Array(CHAggregatedType.StringLike), CHSpecialType.Array(CHAggregatedType.IP),
-      CHFuzzableType.ArrayJson, CHFuzzableType.ArrayUUID, CHFuzzableType.ArrayMapStringInt, CHFuzzableType.ArrayTuple1UInt8
+      CHSpecialType.Array(CHAggregatedType.Interval), CHSpecialType.Array(CHAggregatedType.StringLike), CHFuzzableType.ArrayJson,
+      CHFuzzableType.ArrayUUID, CHFuzzableType.ArrayArrayString, CHFuzzableType.ArrayMapStringInt, CHFuzzableType.ArrayTuple1UInt8
     ), CHSpecialType.Array(CHAggregatedType.Any)),
 
     (Set(CHFuzzableType.MapInt8Int, CHFuzzableType.MapInt16Int, CHFuzzableType.MapInt32Int, CHFuzzableType.MapInt64Int), CHSpecialType.Map(CHAggregatedType.IntMax64Bits, CHAggregatedType.Int)),
@@ -365,9 +428,10 @@ object CHType extends StrictLogging:
     (Set(CHFuzzableType.MapStringInt, CHFuzzableType.MapFixedStringInt), CHSpecialType.Map(CHAggregatedType.StringLike, CHAggregatedType.Int)),
 
     (Set(
-      CHSpecialType.Map(CHAggregatedType.NonDecimalNorFloat, CHAggregatedType.Int), CHSpecialType.Map(CHAggregatedType.DateLikeOrDateTime, CHAggregatedType.Int),
-      CHSpecialType.Map(CHAggregatedType.Interval, CHAggregatedType.Int), CHFuzzableType.MapEnumInt, CHSpecialType.Map(CHAggregatedType.StringLike, CHAggregatedType.Int),
-      CHSpecialType.Map(CHAggregatedType.IP, CHAggregatedType.Int), CHFuzzableType.MapUUIDInt
+      CHSpecialType.Map(CHAggregatedType.NonDecimalNorFloat, CHAggregatedType.Int),
+      CHSpecialType.Map(CHAggregatedType.DateLikeOrDateTime, CHAggregatedType.Int),
+      CHSpecialType.Map(CHAggregatedType.Interval, CHAggregatedType.Int),
+      CHSpecialType.Map(CHAggregatedType.StringLike, CHAggregatedType.Int), CHFuzzableType.MapUUIDInt
     ), CHSpecialType.Map(CHAggregatedType.MapKey, CHAggregatedType.Int)),
 
     (Set(CHFuzzableType.Tuple1Decimal32, CHFuzzableType.Tuple1Decimal64, CHFuzzableType.Tuple1Decimal128, CHFuzzableType.Tuple1Decimal256), CHSpecialType.Tuple(Seq(CHAggregatedType.DecimalLike))),
@@ -390,6 +454,8 @@ object CHType extends StrictLogging:
 
     (Set(CHFuzzableType.Tuple1Enum8, CHFuzzableType.Tuple1Enum16), CHFuzzableType.Tuple1Enum),
 
+    (Set(CHFuzzableType.Tuple1Point, CHFuzzableType.Tuple1Ring, CHFuzzableType.Tuple1Polygon, CHFuzzableType.Tuple1MultiPolygon), CHSpecialType.Tuple(Seq(CHAggregatedType.Geo))),
+
     (Set(CHFuzzableType.Tuple1IntervalNanosecond, CHFuzzableType.Tuple1IntervalMicrosecond, CHFuzzableType.Tuple1IntervalMillisecond, CHSpecialType.Tuple(Seq(CHAggregatedType.IntervalTime))), CHSpecialType.Tuple(Seq(CHAggregatedType.IntervalTime64))),
     (Set(CHFuzzableType.Tuple1IntervalSecond, CHFuzzableType.Tuple1IntervalMinute, CHFuzzableType.Tuple1IntervalHour), CHSpecialType.Tuple(Seq(CHAggregatedType.IntervalTime))),
     (Set(CHFuzzableType.Tuple1IntervalDay, CHFuzzableType.Tuple1IntervalWeek, CHFuzzableType.Tuple1IntervalMonth, CHFuzzableType.Tuple1IntervalQuarter, CHFuzzableType.Tuple1IntervalYear), CHSpecialType.Tuple(Seq(CHAggregatedType.IntervalDate))),
@@ -397,16 +463,12 @@ object CHType extends StrictLogging:
 
     (Set(CHFuzzableType.Tuple1IPv4, CHFuzzableType.Tuple1IPv6), CHSpecialType.Tuple(Seq(CHAggregatedType.IP))),
 
-    (Set(CHFuzzableType.Tuple1Point, CHFuzzableType.Tuple1Ring, CHFuzzableType.Tuple1Polygon, CHFuzzableType.Tuple1MultiPolygon), CHSpecialType.Tuple(Seq(CHAggregatedType.Geo))),
-
     (Set(CHFuzzableType.Tuple1String, CHFuzzableType.Tuple1FixedString), CHSpecialType.Tuple(Seq(CHAggregatedType.StringLike))),
 
     (Set(
       CHSpecialType.Tuple(Seq(CHAggregatedType.Number)), CHSpecialType.Tuple(Seq(CHAggregatedType.DateLikeOrDateTimeLike)),
-      CHSpecialType.Tuple(Seq(CHAggregatedType.Interval)), CHSpecialType.Tuple(Seq(CHAggregatedType.Geo)),
-      CHFuzzableType.Tuple1Enum, CHSpecialType.Tuple(Seq(CHAggregatedType.StringLike)),
-      CHSpecialType.Tuple(Seq(CHAggregatedType.IP)), CHFuzzableType.Tuple1Json, CHFuzzableType.Tuple1UUID,
-      CHFuzzableType.Tuple1ArrayUInt8, CHFuzzableType.Tuple1MapStringInt
+      CHSpecialType.Tuple(Seq(CHAggregatedType.Interval)), CHSpecialType.Tuple(Seq(CHAggregatedType.StringLike)), CHFuzzableType.Tuple1Json,
+      CHFuzzableType.Tuple1UUID, CHFuzzableType.Tuple1ArrayUInt8, CHFuzzableType.Tuple1MapStringInt
     ), CHSpecialType.Tuple(Seq(CHAggregatedType.Any))),
 
     (Set(
@@ -443,9 +505,8 @@ object CHType extends StrictLogging:
       CHFuzzableType.NullableIntervalMicrosecond, CHFuzzableType.NullableIntervalMillisecond,
       CHFuzzableType.NullableIntervalSecond, CHFuzzableType.NullableIntervalMinute, CHFuzzableType.NullableIntervalHour,
       CHFuzzableType.NullableIntervalDay, CHFuzzableType.NullableIntervalWeek, CHFuzzableType.NullableIntervalMonth,
-      CHFuzzableType.NullableIntervalQuarter, CHFuzzableType.NullableIntervalYear, CHFuzzableType.NullableEnum,
-      CHFuzzableType.NullableEnum8, CHFuzzableType.NullableEnum16, CHFuzzableType.NullableFixedString, CHFuzzableType.NullableIPv4,
-      CHFuzzableType.NullableIPv6, CHFuzzableType.NullableString, CHFuzzableType.NullableUUID
+      CHFuzzableType.NullableIntervalQuarter, CHFuzzableType.NullableIntervalYear, CHFuzzableType.NullableFixedString,
+      CHFuzzableType.NullableString, CHFuzzableType.NullableUUID
     ), CHAggregatedType.Nullable),
 
     (Set(CHFuzzableType.NullableDecimal32, CHFuzzableType.NullableDecimal64, CHFuzzableType.NullableDecimal128, CHFuzzableType.NullableDecimal256), CHAggregatedType.NullableDecimalLike),
@@ -461,61 +522,104 @@ object CHType extends StrictLogging:
     (Set(CHFuzzableType.NullableUInt8, CHFuzzableType.NullableUInt16, CHFuzzableType.NullableUInt32, CHFuzzableType.NullableUInt64), CHAggregatedType.NullableUIntMax64Bits)
   )
 
-  private val specialTypesSubstitutionRules = Map(
-    (Set(CHFuzzableType.ArrayFixedString, CHFuzzableType.SpecialArrayFixedString), CHFuzzableType.ArrayFixedString),
-    (Set(CHFuzzableType.ArrayString, CHFuzzableType.SpecialArrayString), CHFuzzableType.ArrayString),
-    (Set(CHFuzzableType.FixedString, CHFuzzableType.SpecialFixedString), CHFuzzableType.FixedString),
-    (Set(CHFuzzableType.LowCardinalityNullableUInt64, CHFuzzableType.SpecialLowCardinalityNullableUInt64), CHFuzzableType.LowCardinalityNullableUInt64),
-    (Set(CHFuzzableType.LowCardinalityUInt64, CHFuzzableType.SpecialLowCardinalityUInt64), CHFuzzableType.LowCardinalityUInt64),
-    (Set(CHFuzzableType.NullableUInt64, CHFuzzableType.SpecialNullableUInt64), CHFuzzableType.NullableUInt64),
-    (Set(CHFuzzableType.StringType, CHFuzzableType.Charset), CHFuzzableType.StringType),
-    (Set(CHFuzzableType.StringType, CHFuzzableType.ClickHouseType), CHFuzzableType.StringType),
-    (Set(CHFuzzableType.StringType, CHFuzzableType.DateUnit), CHFuzzableType.StringType),
-    (Set(CHFuzzableType.StringType, CHFuzzableType.DictionaryName), CHFuzzableType.StringType),
-    (Set(CHFuzzableType.StringType, CHFuzzableType.EncryptionMode), CHFuzzableType.StringType),
-    (Set(CHFuzzableType.StringType, CHFuzzableType.PValueComputationMethod), CHFuzzableType.StringType),
-    (Set(CHFuzzableType.StringType, CHFuzzableType.SequencePattern), CHFuzzableType.StringType),
-    (Set(CHFuzzableType.StringType, CHFuzzableType.ServerPortName), CHFuzzableType.StringType),
-    (Set(CHFuzzableType.StringType, CHFuzzableType.SpecialString), CHFuzzableType.StringType),
-    (Set(CHFuzzableType.StringType, CHFuzzableType.SynonymExtensionName), CHFuzzableType.StringType),
-    (Set(CHFuzzableType.StringType, CHFuzzableType.TestAlternative), CHFuzzableType.StringType),
-    (Set(CHFuzzableType.StringType, CHFuzzableType.Time64Unit), CHFuzzableType.StringType),
-    (Set(CHFuzzableType.StringType, CHFuzzableType.TimeUnit), CHFuzzableType.StringType),
-    (Set(CHFuzzableType.StringType, CHFuzzableType.TimeZone), CHFuzzableType.StringType),
-    (Set(CHFuzzableType.StringType, CHFuzzableType.Usevar), CHFuzzableType.StringType),
-    (Set(CHFuzzableType.StringType, CHFuzzableType.WindowFunctionMode), CHFuzzableType.StringType),
-    (Set(CHFuzzableType.UInt64, CHFuzzableType.SpecialUInt64), CHFuzzableType.UInt64)
-  )
-  // format: on
-
-  private val allNumberTypes: Set[CHType] =
+  val allNumberTypes: Set[CHType] =
     getSubtypes(CHAggregatedType.Number) + CHAggregatedType.Number
 
-  private val allLowCardinalityNumberTypes: Set[CHType] =
+  val allLowCardinalityNumberTypes: Set[CHType] =
     getSubtypes(CHAggregatedType.LowCardinalityNonDecimal) + CHAggregatedType.LowCardinalityNonDecimal
 
-  private val allLowCardinalityNullableNumberTypes: Set[CHType] =
+  val allLowCardinalityNullableNumberTypes: Set[CHType] =
     getSubtypes(CHAggregatedType.LowCardinalityNullableNonDecimal) + CHAggregatedType.LowCardinalityNullableNonDecimal
 
-  private val allNullableNumberTypes: Set[CHType] =
+  val allNullableNumberTypes: Set[CHType] =
     getSubtypes(CHAggregatedType.NullableNumber) + CHAggregatedType.NullableNumber
 
-  private val allArrayNumberTypes: Set[CHType] =
+  val allArrayNumberTypes: Set[CHType] =
     getSubtypes(CHSpecialType.Array(CHAggregatedType.Number)) + CHSpecialType.Array(CHAggregatedType.Number)
 
-  private val allMapNumberIntTypes: Set[CHType] =
+  val allMapNumberIntTypes: Set[CHType] =
     getSubtypes(CHSpecialType.Map(CHAggregatedType.NonDecimalNorFloat, CHAggregatedType.Int)) + CHSpecialType.Map(
       CHAggregatedType.NonDecimalNorFloat,
       CHAggregatedType.Int
     )
 
-  private val allTuple1NumberTypes: Set[CHType] =
+  val allTuple1NumberTypes: Set[CHType] =
     getSubtypes(CHSpecialType.Tuple(Seq(CHAggregatedType.Number))) + CHSpecialType.Tuple(Seq(CHAggregatedType.Number))
+
+  private val supertypeDeduplicationRules: Map[Set[CHType], Seq[CHType]] = Map(
+    // Array based
+    (Set(CHFuzzableType.ArrayTuple1UInt8, CHFuzzableType.Point, CHFuzzableType.Ring, CHFuzzableType.Polygon, CHFuzzableType.MultiPolygon), Seq(CHFuzzableType.ArrayTuple1UInt8)),
+    (Set(CHFuzzableType.Tuple1ArrayUInt8, CHFuzzableType.Tuple1Point, CHFuzzableType.Tuple1Ring, CHFuzzableType.Tuple1Polygon, CHFuzzableType.Tuple1MultiPolygon), Seq(CHFuzzableType.Tuple1ArrayUInt8)),
+
+    // Number based - cf method `getNumericType` in https://github.com/ClickHouse/ClickHouse/blob/master/src/DataTypes/getLeastSupertype.cpp
+    // Number based - Enum
+    (Set(CHFuzzableType.Int8, CHFuzzableType.Enum8), Seq(CHFuzzableType.Int8)),
+    (Set(CHFuzzableType.Int16, CHFuzzableType.Enum16), Seq(CHFuzzableType.Int16)),
+    (Set(CHFuzzableType.Int8, CHFuzzableType.Int16, CHFuzzableType.Enum), Seq(CHFuzzableType.Int8, CHFuzzableType.Int16)),
+    (Set(CHFuzzableType.ArrayInt8, CHFuzzableType.ArrayEnum8), Seq(CHFuzzableType.ArrayInt8)),
+    (Set(CHFuzzableType.ArrayInt16, CHFuzzableType.ArrayEnum16), Seq(CHFuzzableType.ArrayInt16)),
+    (Set(CHFuzzableType.ArrayInt8, CHFuzzableType.ArrayInt16, CHFuzzableType.ArrayEnum), Seq(CHFuzzableType.ArrayInt8, CHFuzzableType.ArrayInt16)),
+    (Set(CHFuzzableType.MapInt8Int, CHFuzzableType.MapEnum8Int), Seq(CHFuzzableType.MapInt8Int)),
+    (Set(CHFuzzableType.MapInt16Int, CHFuzzableType.MapEnum16Int), Seq(CHFuzzableType.MapInt16Int)),
+    (Set(CHFuzzableType.MapInt8Int, CHFuzzableType.MapInt16Int, CHFuzzableType.MapEnumInt), Seq(CHFuzzableType.MapInt8Int, CHFuzzableType.MapInt16Int)),
+    (Set(CHFuzzableType.Tuple1Int8, CHFuzzableType.Tuple1Enum8), Seq(CHFuzzableType.Tuple1Int8)),
+    (Set(CHFuzzableType.Tuple1Int16, CHFuzzableType.Tuple1Enum16), Seq(CHFuzzableType.Tuple1Int16)),
+    (Set(CHFuzzableType.Tuple1Int8, CHFuzzableType.Tuple1Int16, CHFuzzableType.Tuple1Enum), Seq(CHFuzzableType.Tuple1Int8, CHFuzzableType.Tuple1Int16)),
+    (Set(CHFuzzableType.NullableInt8, CHFuzzableType.NullableEnum8), Seq(CHFuzzableType.NullableInt8)),
+    (Set(CHFuzzableType.NullableInt16, CHFuzzableType.NullableEnum16), Seq(CHFuzzableType.NullableInt16)),
+    (Set(CHFuzzableType.NullableInt8, CHFuzzableType.NullableInt16, CHFuzzableType.NullableEnum), Seq(CHFuzzableType.NullableInt8, CHFuzzableType.NullableInt16)),
+
+    // Number based - IP
+    (Set(CHFuzzableType.SpecialUInt64), Seq(CHFuzzableType.UInt64)),
+    (Set(CHFuzzableType.UInt32, CHFuzzableType.IPv4), Seq(CHFuzzableType.UInt32)),
+    (Set(CHFuzzableType.UInt128, CHFuzzableType.IPv6), Seq(CHFuzzableType.UInt128)),
+    (Set(CHFuzzableType.ArrayUInt32, CHFuzzableType.ArrayIPv4), Seq(CHFuzzableType.ArrayUInt32)),
+    (Set(CHFuzzableType.ArrayUInt128, CHFuzzableType.ArrayIPv6), Seq(CHFuzzableType.ArrayUInt128)),
+    (Set(CHFuzzableType.MapUInt32Int, CHFuzzableType.MapIPv4Int), Seq(CHFuzzableType.MapUInt32Int)),
+    (Set(CHFuzzableType.MapUInt128Int, CHFuzzableType.MapIPv6Int), Seq(CHFuzzableType.MapUInt128Int)),
+    (Set(CHFuzzableType.Tuple1UInt32, CHFuzzableType.Tuple1IPv4), Seq(CHFuzzableType.Tuple1UInt32)),
+    (Set(CHFuzzableType.Tuple1UInt128, CHFuzzableType.Tuple1IPv6), Seq(CHFuzzableType.Tuple1UInt128)),
+    (Set(CHFuzzableType.NullableUInt32, CHFuzzableType.NullableIPv4), Seq(CHFuzzableType.NullableUInt32)),
+    (Set(CHFuzzableType.NullableUInt128, CHFuzzableType.NullableIPv6), Seq(CHFuzzableType.NullableUInt128)),
+
+    // String based
+    (Set(CHFuzzableType.SpecialArrayFixedString), Seq(CHFuzzableType.ArrayFixedString)),
+    (Set(CHFuzzableType.SpecialArrayString), Seq(CHFuzzableType.ArrayString)),
+    (Set(CHFuzzableType.SpecialFixedString), Seq(CHFuzzableType.FixedString)),
+    (Set(CHFuzzableType.SpecialLowCardinalityNullableUInt64), Seq(CHFuzzableType.LowCardinalityNullableUInt64)),
+    (Set(CHFuzzableType.SpecialLowCardinalityUInt64), Seq(CHFuzzableType.LowCardinalityUInt64)),
+    (Set(CHFuzzableType.SpecialNullableUInt64), Seq(CHFuzzableType.NullableUInt64)),
+    (Set(CHFuzzableType.SpecialString), Seq(CHFuzzableType.StringType)),
+    (Set(CHFuzzableType.StringType, CHFuzzableType.Charset), Seq(CHFuzzableType.StringType)),
+    (Set(CHFuzzableType.StringType, CHFuzzableType.ClickHouseType), Seq(CHFuzzableType.StringType)),
+    (Set(CHFuzzableType.StringType, CHFuzzableType.DateUnit), Seq(CHFuzzableType.StringType)),
+    (Set(CHFuzzableType.StringType, CHFuzzableType.DictionaryName), Seq(CHFuzzableType.StringType)),
+    (Set(CHFuzzableType.StringType, CHFuzzableType.EncryptionMode), Seq(CHFuzzableType.StringType)),
+    (Set(CHFuzzableType.StringType, CHFuzzableType.PValueComputationMethod), Seq(CHFuzzableType.StringType)),
+    (Set(CHFuzzableType.StringType, CHFuzzableType.SequencePattern), Seq(CHFuzzableType.StringType)),
+    (Set(CHFuzzableType.StringType, CHFuzzableType.ServerPortName), Seq(CHFuzzableType.StringType)),
+    (Set(CHFuzzableType.StringType, CHFuzzableType.SynonymExtensionName), Seq(CHFuzzableType.StringType)),
+    (Set(CHFuzzableType.StringType, CHFuzzableType.TestAlternative), Seq(CHFuzzableType.StringType)),
+    (Set(CHFuzzableType.StringType, CHFuzzableType.Time64Unit), Seq(CHFuzzableType.StringType)),
+    (Set(CHFuzzableType.StringType, CHFuzzableType.TimeUnit), Seq(CHFuzzableType.StringType)),
+    (Set(CHFuzzableType.StringType, CHFuzzableType.TimeZone), Seq(CHFuzzableType.StringType)),
+    (Set(CHFuzzableType.StringType, CHFuzzableType.TopKOption), Seq(CHFuzzableType.StringType)),
+    (Set(CHFuzzableType.StringType, CHFuzzableType.Usevar), Seq(CHFuzzableType.StringType)),
+    (Set(CHFuzzableType.StringType, CHFuzzableType.WindowFunctionMode), Seq(CHFuzzableType.StringType))
+  ) ++
+    allNumberTypes.map(t => (Set(t, CHFuzzableType.BooleanType), Seq(t))).toMap ++
+    allLowCardinalityNumberTypes.map(t => (Set(t, CHFuzzableType.LowCardinalityBoolean), Seq(t))).toMap ++
+    allLowCardinalityNullableNumberTypes.map(t => (Set(t, CHFuzzableType.LowCardinalityNullableBoolean), Seq(t))).toMap ++
+    allNullableNumberTypes.map(t => (Set(t, CHFuzzableType.NullableBoolean), Seq(t))).toMap ++
+    allArrayNumberTypes.map(t => (Set(t, CHFuzzableType.ArrayBoolean), Seq(t))).toMap ++
+    allMapNumberIntTypes.map(t => (Set(t, CHFuzzableType.MapBooleanInt), Seq(t))).toMap ++
+    allTuple1NumberTypes.map(t => (Set(t, CHFuzzableType.Tuple1Boolean), Seq(t))).toMap
+  // format: on
 
   private def getSubtypes(t: CHType): Set[CHType] =
     var types: Set[CHType] = Set(t)
     val m: Map[CHType, Set[CHType]] =
-      nonSpecialTypesSubstitutionRules.groupMap(_._2)(_._1).view.mapValues(_.toSet.flatten).toMap
+      typeSubstitutionRules.groupMap(_._2)(_._1).view.mapValues(_.toSet.flatten).toMap
     while
       val tmp = types ++ types.flatMap(t => m.getOrElse(t, Set.empty))
       if tmp.size != types.size then
@@ -529,6 +633,7 @@ object CHType extends StrictLogging:
   private def root[$: P]: P[CHType] = P(Start ~ any ~ End)
   private def digits[$: P]: P[Int] = P(CharsWhileIn("0-9\\-").!).map(_.toInt)
   private def enumElement[$: P]: P[Unit] = (plainString ~ " = " ~ digits).map(_ => (): Unit)
+  private def endOfConstant[$: P]: P[Unit] = P(!CharIn("A-Za-z0-9("))
   private def escapedString[$: P]: P[String] =
     "`" ~ CharsWhile(_ != '`').! ~ "`" // TODO an escaped String could have backticks in it
   private def plainString[$: P]: P[String] =
@@ -539,9 +644,9 @@ object CHType extends StrictLogging:
       any
 
   // ClickHouse types
-  // Types starting with '_' are only here to parse type names internal to this project (e.g. DateTime64, without parameters)
   private def any[$: P]: P[CHType] = P(
-    aggregateFunction | array | bool | date | date32 | datetime | _datetime64 | datetime64 | datetimeTZ | datetime64TZ | decimal | decimal32 | decimal64 | decimal128 | decimal256 | _enum | _enum16 | _enum8 | enum16 | enum8 | _fixedstring | fixedstring | float32 | float64 | int128 | int16 | int256 | int32 | int64 | int8 | intervalday | intervalhour | intervalmicrosecond | intervalmillisecond | intervalminute | intervalmonth | intervalnanosecond | intervalquarter | intervalsecond | intervalweek | intervalyear | ipv4 | ipv6 | json | lowcardinality | map | multipolygon | nothing | nullable | point | polygon | ring | string | tuple | uint128 | uint16 | uint256 | uint32 | uint64 | uint8 | uuid
+    aggregateFunction | array | bitmap | datetime64 | datetimeTZ | datetime64TZ | decimal | enum16 | enum8 | fixedstring |
+      json | lowcardinality | map | nullable | tuple | tupleN | _internal
   )
   private def aggregateFunction[$: P]: P[CHType] =
     P("AggregateFunction(" ~/ CharsWhile(_ != ',').! ~ ", " ~ any ~ ")").map { (fnName, innerType) =>
@@ -560,76 +665,50 @@ object CHType extends StrictLogging:
         case _ => CHSpecialType.AggregateFunction(fnName, innerType)
     }
   private def array[$: P]: P[CHType] = P("Array(" ~/ any ~ ")").map(CHSpecialType.Array(_))
-  private def bool[$: P]: P[CHType] = P("Bool").map(_ => CHFuzzableType.BooleanType)
-  private def date[$: P]: P[CHType] = P("Date" ~ !("Time" | "32")).map(_ => CHFuzzableType.Date)
-  private def date32[$: P]: P[CHType] = P("Date32").map(_ => CHFuzzableType.Date32)
-  private def datetime[$: P]: P[CHType] = P("DateTime" ~ !("(" | "64")).map(_ => CHFuzzableType.DateTime)
-  private def _datetime64[$: P]: P[CHType] = P("DateTime64" ~ !"(").map(_ => CHFuzzableType.DateTime64)
+  private def bitmap[$: P]: P[CHType] = P("Bitmap(" ~/ any ~ ")").map { innerType =>
+    innerType match
+      case CHFuzzableType.Int8   => CHFuzzableType.BitmapInt8
+      case CHFuzzableType.Int16  => CHFuzzableType.BitmapInt16
+      case CHFuzzableType.Int32  => CHFuzzableType.BitmapInt32
+      case CHFuzzableType.Int64  => CHFuzzableType.BitmapInt64
+      case CHFuzzableType.UInt8  => CHFuzzableType.BitmapUInt8
+      case CHFuzzableType.UInt16 => CHFuzzableType.BitmapUInt16
+      case CHFuzzableType.UInt32 => CHFuzzableType.BitmapUInt32
+      case CHFuzzableType.UInt64 => CHFuzzableType.BitmapUInt64
+      case _ =>
+        throw new IllegalArgumentException(
+          s"Unknown innerType for Bitmap: $innerType, expected an integer of up to 64 bits."
+        )
+  }
   private def datetime64[$: P]: P[CHType] = P("DateTime64(" ~ digits ~ ")").map(_ => CHFuzzableType.DateTime64)
   private def datetimeTZ[$: P]: P[CHType] = P("DateTime(" ~/ plainString ~ ")").map(_ => CHFuzzableType.DateTime)
   private def datetime64TZ[$: P]: P[CHType] =
     P("DateTime64(" ~ digits ~ ", " ~ plainString ~ ")").map(_ => CHFuzzableType.DateTime64)
   private def decimal[$: P]: P[CHType] = P("Decimal(" ~/ digits ~ ", " ~/ digits ~ ")").map { (d1, _) =>
     if d1 <= 9 then CHFuzzableType.Decimal32
-    if d1 <= 18 then CHFuzzableType.Decimal64
-    if d1 <= 38 then CHFuzzableType.Decimal128
-    if d1 <= 76 then CHFuzzableType.Decimal256
+    else if d1 <= 18 then CHFuzzableType.Decimal64
+    else if d1 <= 38 then CHFuzzableType.Decimal128
+    else if d1 <= 76 then CHFuzzableType.Decimal256
     else throw new IllegalArgumentException(s"Unknown precision for Decimal: $d1, expected a precision up to 76.")
   }
-  private def decimal32[$: P]: P[CHType] = P("Decimal32").map(_ => CHFuzzableType.Decimal32)
-  private def decimal64[$: P]: P[CHType] = P("Decimal64").map(_ => CHFuzzableType.Decimal64)
-  private def decimal128[$: P]: P[CHType] = P("Decimal128").map(_ => CHFuzzableType.Decimal128)
-  private def decimal256[$: P]: P[CHType] = P("Decimal256").map(_ => CHFuzzableType.Decimal256)
-  private def _enum[$: P]: P[CHType] = P("Enum" ~ !("(" | "16" | "8")).map(_ => CHFuzzableType.Enum)
-  private def _enum16[$: P]: P[CHType] = P("Enum16" ~ !"(").map(_ => CHFuzzableType.Enum16)
-  private def _enum8[$: P]: P[CHType] = P("Enum8" ~ !"(").map(_ => CHFuzzableType.Enum8)
   private def enum16[$: P]: P[CHType] =
     P("Enum16(" ~/ enumElement ~ ("," ~ " ".? ~ enumElement).rep ~ ")").map(_ => CHFuzzableType.Enum16)
   private def enum8[$: P]: P[CHType] =
     P("Enum8(" ~/ enumElement ~ ("," ~ " ".? ~ enumElement).rep ~ ")").map(_ => CHFuzzableType.Enum8)
-  private def _fixedstring[$: P]: P[CHType] = P("FixedString" ~ !"(").map(_ => CHFuzzableType.FixedString)
   private def fixedstring[$: P]: P[CHType] = P("FixedString(" ~/ digits ~ ")").map(_ => CHFuzzableType.FixedString)
-  private def float32[$: P]: P[CHType] = P("Float32").map(_ => CHFuzzableType.Float32)
-  private def float64[$: P]: P[CHType] = P("Float64").map(_ => CHFuzzableType.Float64)
-  private def int128[$: P]: P[CHType] = P("Int128").map(_ => CHFuzzableType.Int128)
-  private def int16[$: P]: P[CHType] = P("Int16").map(_ => CHFuzzableType.Int16)
-  private def int256[$: P]: P[CHType] = P("Int256").map(_ => CHFuzzableType.Int256)
-  private def int32[$: P]: P[CHType] = P("Int32").map(_ => CHFuzzableType.Int32)
-  private def int64[$: P]: P[CHType] = P("Int64").map(_ => CHFuzzableType.Int64)
-  private def int8[$: P]: P[CHType] = P("Int8").map(_ => CHFuzzableType.Int8)
-  private def intervalday[$: P]: P[CHType] = P("IntervalDay").map(_ => CHFuzzableType.IntervalDay)
-  private def intervalhour[$: P]: P[CHType] = P("IntervalHour").map(_ => CHFuzzableType.IntervalHour)
-  private def intervalmicrosecond[$: P]: P[CHType] =
-    P("IntervalMicrosecond").map(_ => CHFuzzableType.IntervalMicrosecond)
-  private def intervalmillisecond[$: P]: P[CHType] =
-    P("IntervalMillisecond").map(_ => CHFuzzableType.IntervalMillisecond)
-  private def intervalminute[$: P]: P[CHType] = P("IntervalMinute").map(_ => CHFuzzableType.IntervalMinute)
-  private def intervalmonth[$: P]: P[CHType] = P("IntervalMonth").map(_ => CHFuzzableType.IntervalMonth)
-  private def intervalnanosecond[$: P]: P[CHType] = P("IntervalNanosecond").map(_ => CHFuzzableType.IntervalNanosecond)
-  private def intervalquarter[$: P]: P[CHType] = P("IntervalQuarter").map(_ => CHFuzzableType.IntervalQuarter)
-  private def intervalsecond[$: P]: P[CHType] = P("IntervalSecond").map(_ => CHFuzzableType.IntervalSecond)
-  private def intervalweek[$: P]: P[CHType] = P("IntervalWeek").map(_ => CHFuzzableType.IntervalWeek)
-  private def intervalyear[$: P]: P[CHType] = P("IntervalYear").map(_ => CHFuzzableType.IntervalYear)
-  private def ipv4[$: P]: P[CHType] = P("IPv4").map(_ => CHFuzzableType.IPv4)
-  private def ipv6[$: P]: P[CHType] = P("IPv6").map(_ => CHFuzzableType.IPv6)
   private def json[$: P]: P[CHType] = P("Object('json')").map(_ => CHFuzzableType.Json)
   private def lowcardinality[$: P]: P[CHType] = P("LowCardinality(" ~/ any ~ ")").map(CHSpecialType.LowCardinality(_))
-  private def map[$: P]: P[CHType] = P("Map(" ~ any ~ "," ~ " ".? ~ any ~ ")").map(CHSpecialType.Map(_, _))
-  private def multipolygon[$: P]: P[CHType] = P("MultiPolygon").map(_ => CHFuzzableType.MultiPolygon)
-  private def nothing[$: P]: P[CHType] = P("Nothing").map(_ => CHSpecialType.Nothing)
+  private def map[$: P]: P[CHType] = P("Map(" ~/ any ~ "," ~ " ".? ~ any ~ ")").map(CHSpecialType.Map(_, _))
   private def nullable[$: P]: P[CHType] = P("Nullable(" ~/ any ~ ")").map(CHSpecialType.Nullable(_))
-  private def point[$: P]: P[CHType] = P("Point").map(_ => CHFuzzableType.Point)
-  private def polygon[$: P]: P[CHType] = P("Polygon").map(_ => CHFuzzableType.Polygon)
-  private def ring[$: P]: P[CHType] = P("Ring").map(_ => CHFuzzableType.Ring)
-  private def string[$: P]: P[CHType] = P("String").map(_ => CHFuzzableType.StringType)
   private def tuple[$: P]: P[CHType] =
     P("Tuple(" ~/ tupleElement ~ ("," ~ " ".? ~ tupleElement).rep ~ ")").map((head, tail) =>
       CHSpecialType.Tuple(head +: tail)
     )
-  private def uint128[$: P]: P[CHType] = P("UInt128").map(_ => CHFuzzableType.UInt128)
-  private def uint16[$: P]: P[CHType] = P("UInt16").map(_ => CHFuzzableType.UInt16)
-  private def uint256[$: P]: P[CHType] = P("UInt256").map(_ => CHFuzzableType.UInt256)
-  private def uint32[$: P]: P[CHType] = P("UInt32").map(_ => CHFuzzableType.UInt32)
-  private def uint64[$: P]: P[CHType] = P("UInt64").map(_ => CHFuzzableType.UInt64)
-  private def uint8[$: P]: P[CHType] = P("UInt8").map(_ => CHFuzzableType.UInt8)
-  private def uuid[$: P]: P[CHType] = P("UUID").map(_ => CHFuzzableType.UUID)
+  private def tupleN[$: P]: P[CHType] = P("TupleN(" ~/ any ~ ")").map(CHSpecialType.TupleN(_))
+
+  // Internal
+  private val internalTypes = CHFuzzableType.values ++ CHAggregatedType.values ++ CHSpecialType.constantValues
+  private def _internal[$: P]: P[CHType] = P(CharsWhileIn("A-Za-z0-9").!).collect {
+    case s if internalTypes.exists(_.name == s)       => internalTypes.find(_.name == s).get
+    case s if Seq("T1", "T2", "T3", "T4").contains(s) => CHSpecialType.GenericType(s, CHSpecialType.Nothing)
+  }

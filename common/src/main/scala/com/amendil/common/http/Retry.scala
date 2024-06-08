@@ -36,7 +36,7 @@ object Retry:
       maxNumberOfAttempts: Int,
       attempt: Int = 0,
       previousWaitTimeMs: Long = 0L
-  )(using ec: ExecutionContext): Future[T] =
+  )(using ExecutionContext): Future[T] =
     lazy val retriedValue =
       val waitTimeMs: Long = (Math.min(previousWaitTimeMs * 1.15, 59800) + random.nextInt(200)).toLong
       val p = Promise[T]()

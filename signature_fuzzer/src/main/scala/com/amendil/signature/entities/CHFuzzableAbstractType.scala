@@ -3,7 +3,9 @@ package com.amendil.signature.entities
 import com.amendil.common.entities.`type`.CHFuzzableType
 import com.amendil.signature.Settings
 
-sealed trait CustomStringBasedAbstractType
+sealed trait CustomAbstractType
+sealed trait CustomArrayBasedAbstractType extends CustomAbstractType
+sealed trait CustomStringBasedAbstractType extends CustomAbstractType
 
 enum CHFuzzableAbstractType(_fuzzingValues: Seq[String], _chFuzzableTypes: Seq[CHFuzzableType]):
   val chFuzzableTypes: Seq[CHFuzzableType] = _chFuzzableTypes.filter { chType =>
@@ -15,7 +17,7 @@ enum CHFuzzableAbstractType(_fuzzingValues: Seq[String], _chFuzzableTypes: Seq[C
   val fuzzingValues: Seq[String] = if chFuzzableTypes.nonEmpty then _fuzzingValues else Nil
 
   // Numbers
-  case Numbers
+  case Number
       extends CHFuzzableAbstractType(
         Seq("1", "0.5", "true", "-999999999::Decimal32(0)", "8", "1::UInt16", "1::UInt32", "1::Int64", "1::UInt64"),
         Seq(
@@ -183,17 +185,6 @@ enum CHFuzzableAbstractType(_fuzzingValues: Seq[String], _chFuzzableTypes: Seq[C
         )
       )
 
-  // Geo
-  case Point extends CHFuzzableAbstractType(Seq(CHFuzzableType.Point.fuzzingValues.head), Seq(CHFuzzableType.Point))
-  case Ring extends CHFuzzableAbstractType(Seq(CHFuzzableType.Ring.fuzzingValues.head), Seq(CHFuzzableType.Ring))
-  case Polygon
-      extends CHFuzzableAbstractType(Seq(CHFuzzableType.Polygon.fuzzingValues.head), Seq(CHFuzzableType.Polygon))
-  case MultiPolygon
-      extends CHFuzzableAbstractType(
-        Seq(CHFuzzableType.MultiPolygon.fuzzingValues.head),
-        Seq(CHFuzzableType.MultiPolygon)
-      )
-
   // LowCardinality and Nullable
   case LowCardinalityString
       extends CHFuzzableAbstractType(
@@ -262,9 +253,9 @@ enum CHFuzzableAbstractType(_fuzzingValues: Seq[String], _chFuzzableTypes: Seq[C
       )
 
   // Array
-  case ArrayNumbers
+  case ArrayNumber
       extends CHFuzzableAbstractType(
-        Numbers.fuzzingValues.map(n => s"array($n)") :+ "array(1, 2, 3, 4, 5, 6, 7, 8)",
+        Number.fuzzingValues.map(n => s"array($n)") :+ "array(1, 2, 3, 4, 5, 6, 7, 8)",
         Seq(
           CHFuzzableType.ArrayBoolean,
           CHFuzzableType.ArrayInt8,
@@ -321,20 +312,6 @@ enum CHFuzzableAbstractType(_fuzzingValues: Seq[String], _chFuzzableTypes: Seq[C
           CHFuzzableType.ArrayIntervalHour
         )
       )
-  case ArrayPoint
-      extends CHFuzzableAbstractType(Seq(CHFuzzableType.ArrayPoint.fuzzingValues.head), Seq(CHFuzzableType.ArrayPoint))
-  case ArrayRing
-      extends CHFuzzableAbstractType(Seq(CHFuzzableType.ArrayRing.fuzzingValues.head), Seq(CHFuzzableType.ArrayRing))
-  case ArrayPolygon
-      extends CHFuzzableAbstractType(
-        Seq(CHFuzzableType.ArrayPolygon.fuzzingValues.head),
-        Seq(CHFuzzableType.ArrayPolygon)
-      )
-  case ArrayMultiPolygon
-      extends CHFuzzableAbstractType(
-        Seq(CHFuzzableType.ArrayMultiPolygon.fuzzingValues.head),
-        Seq(CHFuzzableType.ArrayMultiPolygon)
-      )
   case ArrayEnum
       extends CHFuzzableAbstractType(
         Seq(s"[${Enum.fuzzingValues.head}]"),
@@ -359,9 +336,9 @@ enum CHFuzzableAbstractType(_fuzzingValues: Seq[String], _chFuzzableTypes: Seq[C
       extends CHFuzzableAbstractType(Seq(s"[${UUID.fuzzingValues.head}]::Array(UUID)"), Seq(CHFuzzableType.ArrayUUID))
 
   // Map
-  case MapNumbersInt
+  case MapNumberInt
       extends CHFuzzableAbstractType(
-        Seq(s"map(${Numbers.fuzzingValues.head}, 1)"),
+        Seq(s"map(${Number.fuzzingValues.head}, 1)"),
         Seq(
           CHFuzzableType.MapBooleanInt,
           CHFuzzableType.MapInt8Int,
@@ -452,7 +429,7 @@ enum CHFuzzableAbstractType(_fuzzingValues: Seq[String], _chFuzzableTypes: Seq[C
       )
 
   // Tuple1
-  case Tuple1Numbers
+  case Tuple1Number
       extends CHFuzzableAbstractType(
         CHFuzzableType.Tuple1UInt8.fuzzingValues,
         Seq(
@@ -512,23 +489,6 @@ enum CHFuzzableAbstractType(_fuzzingValues: Seq[String], _chFuzzableTypes: Seq[C
           CHFuzzableType.Tuple1IntervalHour
         )
       )
-  case Tuple1Point
-      extends CHFuzzableAbstractType(
-        CHFuzzableType.Tuple1Point.fuzzingValues,
-        Seq(CHFuzzableType.Tuple1Point)
-      )
-  case Tuple1Ring
-      extends CHFuzzableAbstractType(CHFuzzableType.Tuple1Ring.fuzzingValues, Seq(CHFuzzableType.Tuple1Ring))
-  case Tuple1Polygon
-      extends CHFuzzableAbstractType(
-        CHFuzzableType.Tuple1Polygon.fuzzingValues,
-        Seq(CHFuzzableType.Tuple1Polygon)
-      )
-  case Tuple1MultiPolygon
-      extends CHFuzzableAbstractType(
-        CHFuzzableType.Tuple1MultiPolygon.fuzzingValues,
-        Seq(CHFuzzableType.Tuple1MultiPolygon)
-      )
   case Tuple1Enum
       extends CHFuzzableAbstractType(
         Seq(
@@ -570,17 +530,22 @@ enum CHFuzzableAbstractType(_fuzzingValues: Seq[String], _chFuzzableTypes: Seq[C
       )
 
   // Nested
+  case ArrayArrayString
+      extends CHFuzzableAbstractType(
+        Seq(CHFuzzableType.ArrayArrayString.fuzzingValues.head),
+        Seq(CHFuzzableType.ArrayArrayString)
+      )
   case ArrayMapStringInt
       extends CHFuzzableAbstractType(
         Seq(s"[${MapStringInt.fuzzingValues.head}]::Array(Map(String, Int8))"),
         Seq(CHFuzzableType.ArrayMapStringInt)
       )
-  case ArrayTuple1Numbers
+  case ArrayTuple1Number
       extends CHFuzzableAbstractType(
-        Seq(s"[${Tuple1Numbers.fuzzingValues.head}]::Array(Tuple(UInt8))"),
+        Seq(s"[${Tuple1Number.fuzzingValues.head}]::Array(Tuple(UInt8))"),
         Seq(CHFuzzableType.ArrayTuple1UInt8)
       )
-  case Tuple1ArrayNumbers
+  case Tuple1ArrayNumber
       extends CHFuzzableAbstractType(
         Seq(
           s"tuple(${CHFuzzableType.ArrayUInt8.fuzzingValues.head})::Tuple(Array(UInt8))",
@@ -598,6 +563,46 @@ enum CHFuzzableAbstractType(_fuzzingValues: Seq[String], _chFuzzableTypes: Seq[C
       )
 
   // Special
+  // Special - Geo
+  case Point
+      extends CHFuzzableAbstractType(Seq(CHFuzzableType.Point.fuzzingValues.head), Seq(CHFuzzableType.Point))
+      with CustomArrayBasedAbstractType
+  case Ring
+      extends CHFuzzableAbstractType(Seq(CHFuzzableType.Ring.fuzzingValues.head), Seq(CHFuzzableType.Ring))
+      with CustomArrayBasedAbstractType
+  case Polygon
+      extends CHFuzzableAbstractType(Seq(CHFuzzableType.Polygon.fuzzingValues.head), Seq(CHFuzzableType.Polygon))
+      with CustomArrayBasedAbstractType
+  case MultiPolygon
+      extends CHFuzzableAbstractType(
+        Seq(CHFuzzableType.MultiPolygon.fuzzingValues.head),
+        Seq(CHFuzzableType.MultiPolygon)
+      )
+      with CustomArrayBasedAbstractType
+
+  case Tuple1Point
+      extends CHFuzzableAbstractType(
+        CHFuzzableType.Tuple1Point.fuzzingValues,
+        Seq(CHFuzzableType.Tuple1Point)
+      )
+      with CustomArrayBasedAbstractType
+  case Tuple1Ring
+      extends CHFuzzableAbstractType(CHFuzzableType.Tuple1Ring.fuzzingValues, Seq(CHFuzzableType.Tuple1Ring))
+      with CustomArrayBasedAbstractType
+  case Tuple1Polygon
+      extends CHFuzzableAbstractType(
+        CHFuzzableType.Tuple1Polygon.fuzzingValues,
+        Seq(CHFuzzableType.Tuple1Polygon)
+      )
+      with CustomArrayBasedAbstractType
+  case Tuple1MultiPolygon
+      extends CHFuzzableAbstractType(
+        CHFuzzableType.Tuple1MultiPolygon.fuzzingValues,
+        Seq(CHFuzzableType.Tuple1MultiPolygon)
+      )
+      with CustomArrayBasedAbstractType
+
+  // Special - Misc
   case Charset
       extends CHFuzzableAbstractType(
         CHFuzzableType.Charset.fuzzingValues,
@@ -674,6 +679,12 @@ enum CHFuzzableAbstractType(_fuzzingValues: Seq[String], _chFuzzableTypes: Seq[C
       extends CHFuzzableAbstractType(
         Seq(CHFuzzableType.TimeZone.fuzzingValues.head),
         Seq(CHFuzzableType.TimeZone)
+      )
+      with CustomStringBasedAbstractType
+  case TopKOption
+      extends CHFuzzableAbstractType(
+        Seq(CHFuzzableType.TopKOption.fuzzingValues.head),
+        Seq(CHFuzzableType.TopKOption)
       )
       with CustomStringBasedAbstractType
   case WindowFunctionMode

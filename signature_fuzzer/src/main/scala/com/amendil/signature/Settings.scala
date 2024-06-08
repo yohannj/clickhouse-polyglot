@@ -64,6 +64,9 @@ object Settings:
   object Fuzzer:
     private val fuzzerSettings = config.getConfig("fuzzer")
 
+    val aggregateSignature = fuzzerSettings.getBoolean("signature.aggregate.enabled")
+    val aggregateSignatureThreshold = fuzzerSettings.getInt("signature.aggregate.threshold")
+
     val supportJson: Boolean = fuzzerSettings.getBoolean("support.json")
     val supportLowCardinality: Boolean = fuzzerSettings.getBoolean("support.lowcardinality")
     val supportNullable: Boolean = fuzzerSettings.getBoolean("support.nullable")

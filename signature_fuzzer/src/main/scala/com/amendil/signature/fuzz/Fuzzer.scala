@@ -10,8 +10,11 @@ import scala.concurrent.{ExecutionContext, Future}
 
 object Fuzzer extends StrictLogging:
 
-  def fuzz(fn: CHFunctionFuzzResult)(using client: CHClient, ec: ExecutionContext): Future[CHFunctionFuzzResult] =
+  def fuzz(fn: CHFunctionFuzzResult)(using CHClient, ExecutionContext): Future[CHFunctionFuzzResult] =
     fn.name match
+      case "makeDateTime" | "makeDateTime64" | "range" =>
+        // Ends up in OOM, to be handled at another time
+        Future.successful(fn)
       case "randBinomial" | "hop" | "hopStart" | "hopEnd" | "windowID" =>
         // To be handled at a later time
         // Known issues

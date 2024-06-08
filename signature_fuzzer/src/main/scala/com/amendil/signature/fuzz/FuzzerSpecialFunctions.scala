@@ -15,7 +15,7 @@ object FuzzerSpecialFunctions extends StrictLogging:
       ec: ExecutionContext
   ): Seq[((CHFunctionFuzzResult) => Future[CHFunctionFuzzResult], Long)] =
     Seq(
-      (fuzzInfiniteAnyTypeFunctions, 1)
+      (fuzzRepeatedAnyTypeFunctions, 1)
     )
 
   /**
@@ -25,10 +25,10 @@ object FuzzerSpecialFunctions extends StrictLogging:
     * This is not necessarily ideal in regards to the output type.
     * E.g. For `tuple`, we might want to know the number of elements in the return tuple (same as in input, with same types)
     */
-  private def fuzzInfiniteAnyTypeFunctions(
+  private def fuzzRepeatedAnyTypeFunctions(
       fn: CHFunctionFuzzResult
   )(using client: CHClient, ec: ExecutionContext): Future[CHFunctionFuzzResult] =
-    logger.debug("fuzzInfiniteAnyTypeFunctions")
+    logger.debug("fuzzRepeatedAnyTypeFunctions")
     val manyCHFuzzableTypes: Seq[CHFuzzableType] = Seq(
       CHFuzzableType.ArrayDate,
       CHFuzzableType.UInt8,

@@ -2,7 +2,7 @@ package com.amendil.signature
 
 import com.amendil.common.{ConcurrencyUtils, Settings as CommonSettings}
 import com.amendil.common.entities.`type`.CHFuzzableType
-import com.amendil.common.http.CHClient
+import com.amendil.common.http.{CHClient, CHClientImpl}
 import com.amendil.signature.entities.{CHFunction, CHFunctionFuzzResult, CHFuzzableAbstractType}
 import com.amendil.signature.fuzz.*
 import com.typesafe.scalalogging.Logger
@@ -18,7 +18,7 @@ import scala.util.{Failure, Success, Try}
   val logger = Logger("Main")
 
   given ExecutionContext = ExecutionContext.fromExecutorService(Executors.newFixedThreadPool(1))
-  given client: CHClient = CHClient(Settings.ClickHouse.httpUrl)
+  given client: CHClient = CHClientImpl(Settings.ClickHouse.httpUrl)
 
   val runF =
     (for
@@ -26,11 +26,11 @@ import scala.util.{Failure, Success, Try}
       _ <- createDictionaries()
 
       chVersion <- getCHVersion()
-      // functions <- getCHFunctions()
-      functions =
-        unknownFunctions.map(
-          CHFunctionFuzzResult(_, isAggregate = false, aliasTo = "")
-        )
+      functions <- getCHFunctions()
+      // functions =
+      //   unknownFunctions.map(
+      //     CHFunctionFuzzResult(_, isAggregate = false, aliasTo = "")
+      //   ) ++ unknownFunctionsWithAlias.map((name, alias) => CHFunctionFuzzResult(name, isAggregate = false, aliasTo = alias))
       functionsToFuzz = functions.filter { fn =>
         Settings.Fuzzer.supportJson || !fn.name.toLowerCase().contains("json")
       }
@@ -43,7 +43,7 @@ import scala.util.{Failure, Success, Try}
       val functionsFuzzResultsF: Future[Seq[CHFunctionFuzzResult]] =
         ConcurrencyUtils
           .executeInSequence(
-            functionsToFuzz.zipWithIndex,
+            functionsToFuzz.zipWithIndex.filter(_._1.name >= "neighbor"),
             (function: CHFunctionFuzzResult, idx: Int) =>
               if idx % Math.max(functionCount / 20, 1) == 0 then
                 logger.info(s"===============================================================")
@@ -96,7 +96,7 @@ import scala.util.{Failure, Success, Try}
     case Success(_) =>
       sys.exit(0)
 
-def createDictionaries()(using client: CHClient, ec: ExecutionContext): Future[Unit] =
+def createDictionaries()(using CHClient, ExecutionContext): Future[Unit] =
   for
     _ <- createHierarchicalDictionary()
     _ <- createManyTypesDictionary()

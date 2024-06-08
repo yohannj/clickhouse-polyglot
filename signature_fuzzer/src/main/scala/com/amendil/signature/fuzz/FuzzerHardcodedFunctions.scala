@@ -19,47 +19,153 @@ object FuzzerHardcodedFunctions extends StrictLogging {
       fn: CHFunctionFuzzResult
   )(using client: CHClient, ec: ExecutionContext): Future[CHFunctionFuzzResult] =
     fn.name match
-      case "CAST" | "_CAST" | "accurateCast" | "accurateCastOrNull" => // TODO Test it similarly to "encrypt"
-        // Cast methods can return any kind of type, depending on the value of a String.
+      case "CAST" | "_CAST" | "accurateCast" | "accurateCastOrNull" =>
+        // Cast methods can return any kind of type, depending on the value of a ClickHouseType.
         // This is an edge case not automatically handled by this fuzzer, and it is not worth it to handle it.
-        Future.successful(
-          fn.copy(function2s =
-            Seq(CHFunctionIO.Function2(CHAggregatedType.Any, CHFuzzableType.ClickHouseType, CHAggregatedType.Any))
-          )
-        )
-      case "accurateCastOrDefault" => // TODO Test it similarly to "encrypt"
-        // Cast methods can return any kind of type, depending on the value of a String.
+        for isValidSignature <-
+            client.executeNoResult(s"SELECT toTypeName(${fn.name}(1, 'UInt32'))").map(_ => true).recover(_ => false)
+        yield
+          if !isValidSignature then
+            logger.error(
+              s"Unexpected result for hardcoded function ${fn.name}, it may not exists anymore. Skipping it."
+            )
+            fn
+          else
+            fn.copy(function2s =
+              Seq(CHFunctionIO.Function2(CHAggregatedType.Any, CHFuzzableType.ClickHouseType, CHAggregatedType.Any))
+            )
+      case "accurateCastOrDefault" =>
+        // Cast methods can return any kind of type, depending on the value of a ClickHouseType.
         // This is an edge case not automatically handled by this fuzzer, and it is not worth it to handle it.
-        Future.successful(
-          fn.copy(
-            function2s =
-              Seq(CHFunctionIO.Function2(CHAggregatedType.Any, CHFuzzableType.ClickHouseType, CHAggregatedType.Any)),
-            // FIXME Third argument of the Function3 is not really "Any", but should be of the ClickHouseType chosen
-            function3s = Seq(
-              CHFunctionIO.Function3(
-                CHAggregatedType.Any,
-                CHFuzzableType.ClickHouseType,
-                CHAggregatedType.Any,
-                CHAggregatedType.Any
+        for isValidSignature <-
+            client
+              .executeNoResult(s"SELECT toTypeName(${fn.name}(1, 'UInt32'))")
+              .flatMap(_ => client.executeNoResult(s"SELECT toTypeName(${fn.name}(1, 'UInt32', 2::UInt32))"))
+              .map(_ => true)
+              .recover(_ => false)
+        yield
+          if !isValidSignature then
+            logger.error(
+              s"Unexpected result for hardcoded function ${fn.name}, it may not exists anymore. Skipping it."
+            )
+            fn
+          else
+            fn.copy(
+              function2s =
+                Seq(CHFunctionIO.Function2(CHAggregatedType.Any, CHFuzzableType.ClickHouseType, CHAggregatedType.Any)),
+              function3s = Seq(
+                CHFunctionIO.Function3(
+                  CHAggregatedType.Any,
+                  CHFuzzableType.ClickHouseType,
+                  CHSpecialType.GenericType("T1", CHAggregatedType.Any),
+                  CHSpecialType.GenericType("T1", CHAggregatedType.Any)
+                )
               )
             )
-          )
-        )
       case "arrayFold" =>
         Future.successful(
           fn.copy(
             modes = fn.modes + CHFunction.Mode.NoOverWindow,
             lambdaArrayFunction1N1Opt = Some(
               LambdaArrayFunction1N1(
-                CHSpecialType.LambdaType(CHSpecialType.GenericType("T")),
+                CHSpecialType.LambdaType(CHSpecialType.GenericType("T1", CHAggregatedType.Any)),
                 CHSpecialType.Array(CHAggregatedType.Any),
                 CHSpecialType.Array(CHAggregatedType.Any),
-                CHSpecialType.GenericType("T"),
-                CHSpecialType.GenericType("T")
+                CHSpecialType.GenericType("T1", CHAggregatedType.Any),
+                CHSpecialType.GenericType("T1", CHAggregatedType.Any)
               )
             )
           )
         )
+      case "arrayEnumerateDenseRanked" | "arrayEnumerateUniqRanked" =>
+        val anyNonArrayTypes = CHFuzzableAbstractType.values.toSeq
+          .filterNot(_.isInstanceOf[CustomAbstractType])
+          .flatMap(_.chFuzzableTypes)
+          .filterNot(_.name.startsWith("Array("))
+          .map(t => (t, t.fuzzingValues))
+
+        val arrTypes = Seq((CHFuzzableType.ArrayInt8, Seq("[1]")))
+
+        for
+          isValidSignature <-
+            client
+              .executeNoResult(s"SELECT toTypeName(${fn.name}([['foo', 'bar'], ['baz', 'bar']], [1, 1]))")
+              .flatMap(_ =>
+                client.executeNoResult(s"SELECT toTypeName(${fn.name}(1, [['foo', 'bar'], ['baz', 'bar']], [1, 1]))")
+              )
+              .flatMap(_ =>
+                client.executeNoResult(s"SELECT toTypeName(${fn.name}([['foo', 'bar'], ['baz', 'bar']], [1, 1], 1))")
+              )
+              .flatMap(_ =>
+                client.executeNoResult(s"SELECT toTypeName(${fn.name}(1, [['foo', 'bar'], ['baz', 'bar']], [1, 1], 1))")
+              )
+              .map(_ => true)
+              .recover(_ => false)
+
+          clearDepthTypes <-
+            fuzzSignatures(
+              fn.name,
+              crossJoin(
+                anyNonArrayTypes,
+                arrTypes
+              ).map(_.toList)
+            ).map { signatures =>
+              signatures.map { io =>
+                io._1 match
+                  case Seq(arg1, _) => arg1
+                  case _            => throw Exception(s"Expected 2 arguments, but found ${io._1.size} arguments")
+              }
+            }
+
+          maxArrayDepthTypes <-
+            fuzzSignatures(
+              fn.name,
+              crossJoin(
+                arrTypes,
+                anyNonArrayTypes
+              ).map(_.toList)
+            ).map { signatures =>
+              signatures.map { io =>
+                io._1 match
+                  case Seq(_, arg2) => arg2
+                  case _            => throw Exception(s"Expected 2 arguments, but found ${io._1.size} arguments")
+              }
+            }
+        yield
+          if !isValidSignature then
+            logger.error(
+              s"Unexpected result for hardcoded function ${fn.name}, it may not exists anymore. Skipping it."
+            )
+            fn
+          else
+            fn.copy(
+              function0Ns = Seq(
+                CHFunctionIO
+                  .Function0N(CHSpecialType.Array(CHAggregatedType.Any), CHSpecialType.Array(CHAggregatedType.Any))
+              ),
+              function1Ns = clearDepthTypes.map(clearDepthType =>
+                CHFunctionIO.Function1N(
+                  clearDepthType,
+                  CHSpecialType.Array(CHAggregatedType.Any),
+                  CHSpecialType.Array(CHAggregatedType.Any)
+                )
+              ),
+              function0N1s = maxArrayDepthTypes.map(maxArrayDepthType =>
+                CHFunctionIO.Function0N1(
+                  CHSpecialType.Array(CHAggregatedType.Any),
+                  maxArrayDepthType,
+                  CHSpecialType.Array(CHAggregatedType.Any)
+                )
+              ),
+              function1N1s = crossJoin(clearDepthTypes, maxArrayDepthTypes).map((clearDepthType, maxArrayDepthType) =>
+                CHFunctionIO.Function1N1(
+                  clearDepthType,
+                  CHSpecialType.Array(CHAggregatedType.Any),
+                  maxArrayDepthType,
+                  CHSpecialType.Array(CHAggregatedType.Any)
+                )
+              )
+            )
       case "arrayReduce" =>
         val aggFnNameType =
           Seq(
@@ -83,7 +189,7 @@ object FuzzerHardcodedFunctions extends StrictLogging {
               }
             }
 
-          isInfiniteConfirmation <-
+          isRepeatedConfirmation <-
             fuzzSignatures(
               fn.name,
               crossJoin(
@@ -93,7 +199,7 @@ object FuzzerHardcodedFunctions extends StrictLogging {
               ).map(_.toList)
             ).map(_.nonEmpty)
         yield
-          if !isInfiniteConfirmation then
+          if !isRepeatedConfirmation then
             logger.error(s"Unexpected result for hardcoded function ${fn.name}. Skipping it.")
             fn
           else
@@ -136,7 +242,7 @@ object FuzzerHardcodedFunctions extends StrictLogging {
               }
             }
 
-          isInfiniteConfirmation <-
+          isRepeatedConfirmation <-
             fuzzSignatures(
               fn.name,
               crossJoin(
@@ -147,7 +253,7 @@ object FuzzerHardcodedFunctions extends StrictLogging {
               ).map(_.toList)
             ).map(_.nonEmpty)
         yield
-          if !isInfiniteConfirmation then
+          if !isRepeatedConfirmation then
             logger.error(s"Unexpected result for hardcoded function ${fn.name}. Skipping it.")
             fn
           else
@@ -168,6 +274,67 @@ object FuzzerHardcodedFunctions extends StrictLogging {
               )
             )
           )
+        )
+      case "DATE" | "toDate" =>
+        // Second argument (TimeZone) is sometimes accepted as any String, and not check is done to verify the String is a TimeZone.
+        // In the automatic signature detectionm it leads us to incorrectly believe the second argument is a String and not a TimeZone.
+
+        val anyType = CHFuzzableAbstractType.values.toSeq
+          .filterNot(_.isInstanceOf[CustomAbstractType])
+          .flatMap(_.chFuzzableTypes)
+          .map(t => (t, t.fuzzingValues))
+
+        val stringType = Seq((CHFuzzableType.StringType, Seq("''")))
+        val timeZoneType = Seq((CHFuzzableType.TimeZone, Seq(CHFuzzableType.TimeZone.fuzzingValues.head)))
+
+        for
+          function1s <-
+            fuzzSignatures(
+              fn.name,
+              anyType.map(Seq(_))
+            ).map { signatures =>
+              signatures.map { io =>
+                io._1 match
+                  case Seq(arg1) => Function1(arg1, io._2)
+                  case _         => throw Exception(s"Expected 1 argument, but found ${io._1.size} arguments")
+              }
+            }
+
+          typesThatDiscardTimezoneArgument <-
+            fuzzSignatures(
+              fn.name,
+              crossJoin(
+                anyType,
+                stringType
+              ).map(_.toList)
+            ).map { signatures =>
+              signatures.map { io =>
+                io._1 match
+                  case Seq(arg1, _) => arg1
+                  case _            => throw Exception(s"Expected 2 arguments, but found ${io._1.size} arguments")
+              }
+            }
+
+          function2s <-
+            fuzzSignatures(
+              fn.name,
+              crossJoin(
+                anyType,
+                timeZoneType
+              ).map(_.toList)
+            ).map { signatures =>
+              signatures
+                .map { io =>
+                  io._1 match
+                    case Seq(arg1, arg2) => Function2(arg1, arg2, io._2)
+                    case _               => throw Exception(s"Expected 2 arguments, but found ${io._1.size} arguments")
+                }
+                .filterNot(f => typesThatDiscardTimezoneArgument.contains(f.arg1))
+            }
+        yield fn.copy(
+          modes = fn.modes + CHFunction.Mode.NoOverWindow,
+          function1s = function1s,
+          function2s = function2s
         )
       case "defaultValueOfTypeName" =>
         executeInSequenceUntilSuccess(
@@ -232,7 +399,7 @@ object FuzzerHardcodedFunctions extends StrictLogging {
             )
           )
         val idExprType = CHFuzzableAbstractType.values.toSeq
-          .filterNot(_.isInstanceOf[CustomStringBasedAbstractType])
+          .filterNot(_.isInstanceOf[CustomAbstractType])
           .flatMap(_.chFuzzableTypes)
           .map(t => (t, t.fuzzingValues))
         for attributeNamesTypes <-
@@ -326,7 +493,7 @@ object FuzzerHardcodedFunctions extends StrictLogging {
             )
           )
         val idExprType = CHFuzzableAbstractType.values.toSeq
-          .filterNot(_.isInstanceOf[CustomStringBasedAbstractType])
+          .filterNot(_.isInstanceOf[CustomAbstractType])
           .flatMap(_.chFuzzableTypes)
           .map(t => (t, t.fuzzingValues))
         val defaultValueType =
@@ -404,7 +571,7 @@ object FuzzerHardcodedFunctions extends StrictLogging {
             )
           )
         val idExprType = CHFuzzableAbstractType.values.toSeq
-          .filterNot(_.isInstanceOf[CustomStringBasedAbstractType])
+          .filterNot(_.isInstanceOf[CustomAbstractType])
           .flatMap(_.chFuzzableTypes)
           .map(t => (t, t.fuzzingValues))
         for function3s <-
@@ -459,7 +626,7 @@ object FuzzerHardcodedFunctions extends StrictLogging {
             )
           )
         val idExprType = CHFuzzableAbstractType.values.toSeq
-          .filterNot(_.isInstanceOf[CustomStringBasedAbstractType])
+          .filterNot(_.isInstanceOf[CustomAbstractType])
           .flatMap(_.chFuzzableTypes)
           .map(t => (t, t.fuzzingValues))
         val defaultValueType =
@@ -506,7 +673,7 @@ object FuzzerHardcodedFunctions extends StrictLogging {
       case "dictHas" =>
         val dictionaryNameType = Seq((CHFuzzableType.DictionaryName, CHFuzzableType.DictionaryName.fuzzingValues))
         val idExprType = CHFuzzableAbstractType.values.toSeq
-          .filterNot(_.isInstanceOf[CustomStringBasedAbstractType])
+          .filterNot(_.isInstanceOf[CustomAbstractType])
           .flatMap(_.chFuzzableTypes)
           .map(t => (t, t.fuzzingValues))
         for outputTypes <-
@@ -539,7 +706,7 @@ object FuzzerHardcodedFunctions extends StrictLogging {
       case "dictGetChildren" | "dictGetHierarchy" =>
         val dictionaryNameType = Seq((CHFuzzableType.DictionaryName, CHFuzzableType.DictionaryName.fuzzingValues))
         val idExprType = CHFuzzableAbstractType.values.toSeq
-          .filterNot(_.isInstanceOf[CustomStringBasedAbstractType])
+          .filterNot(_.isInstanceOf[CustomAbstractType])
           .flatMap(_.chFuzzableTypes)
           .map(t => (t, t.fuzzingValues))
         for function2s <-
@@ -563,7 +730,7 @@ object FuzzerHardcodedFunctions extends StrictLogging {
       case "dictGetDescendants" =>
         val dictionaryNameType = Seq((CHFuzzableType.DictionaryName, CHFuzzableType.DictionaryName.fuzzingValues))
         val idExprType = CHFuzzableAbstractType.values.toSeq
-          .filterNot(_.isInstanceOf[CustomStringBasedAbstractType])
+          .filterNot(_.isInstanceOf[CustomAbstractType])
           .flatMap(_.chFuzzableTypes)
           .map(t => (t, t.fuzzingValues))
         for function2s <-
@@ -587,7 +754,7 @@ object FuzzerHardcodedFunctions extends StrictLogging {
       case "dictIsIn" =>
         val dictionaryNameType = Seq((CHFuzzableType.DictionaryName, CHFuzzableType.DictionaryName.fuzzingValues))
         val idExprType = CHFuzzableAbstractType.values.toSeq
-          .filterNot(_.isInstanceOf[CustomStringBasedAbstractType])
+          .filterNot(_.isInstanceOf[CustomAbstractType])
           .flatMap(_.chFuzzableTypes)
           .map(t => (t, t.fuzzingValues))
         for function3s <-
@@ -686,7 +853,7 @@ object FuzzerHardcodedFunctions extends StrictLogging {
           function5s = function5s
         )
       case "geoDistance" | "greatCircleAngle" | "greatCircleDistance" =>
-        val fuzzType = CHFuzzableAbstractType.Numbers.chFuzzableTypes.map(t => (t, Seq(t.fuzzingValues.head)))
+        val fuzzType = CHFuzzableAbstractType.Number.chFuzzableTypes.map(t => (t, Seq(t.fuzzingValues.head)))
         for function4s <-
             fuzzSignatures(
               fn.name,
@@ -708,7 +875,7 @@ object FuzzerHardcodedFunctions extends StrictLogging {
           function4s = function4s
         )
       case "geohashesInBox" =>
-        val fuzzType = CHFuzzableAbstractType.Numbers.chFuzzableTypes.map(t => (t, Seq(t.fuzzingValues.head)))
+        val fuzzType = CHFuzzableAbstractType.Number.chFuzzableTypes.map(t => (t, Seq(t.fuzzingValues.head)))
         for function5s <-
             fuzzSignatures(
               fn.name,
@@ -733,7 +900,7 @@ object FuzzerHardcodedFunctions extends StrictLogging {
       case "groupArrayInsertAt" =>
         val xType =
           CHFuzzableAbstractType.values.toSeq
-            .filterNot(_.isInstanceOf[CustomStringBasedAbstractType])
+            .filterNot(_.isInstanceOf[CustomAbstractType])
             .flatMap(_.chFuzzableTypes)
             .map(t => (t, t.fuzzingValues.take(3)))
         val numbersType = Seq(
@@ -971,7 +1138,7 @@ object FuzzerHardcodedFunctions extends StrictLogging {
         val computationMethodTypes = Seq(
           (CHFuzzableType.PValueComputationMethod, CHFuzzableType.PValueComputationMethod.fuzzingValues)
         )
-        val sampleDataTypes = CHFuzzableAbstractType.Numbers.chFuzzableTypes.map(t => (t, Seq(t.fuzzingValues.head)))
+        val sampleDataTypes = CHFuzzableAbstractType.Number.chFuzzableTypes.map(t => (t, Seq(t.fuzzingValues.head)))
         val sampleIndexTypes = Seq((CHFuzzableType.UInt8, Seq("randNormal(0, 1)")))
 
         for
@@ -1044,159 +1211,153 @@ object FuzzerHardcodedFunctions extends StrictLogging {
           parametric2Function2s = parametric2Function2
         )
       case "makeDateTime" =>
-        // Actually ends up in OOM
-        Future.successful(fn)
+        val fuzzType = CHFuzzableAbstractType.Number.chFuzzableTypes.map(t => (t, Seq(t.fuzzingValues.head)))
 
-      // val fuzzType = CHFuzzableAbstractType.Numbers.chFuzzableTypes.map(t => (t, Seq(t.fuzzingValues.head)))
+        for
+          function6s <-
+            fuzzSignatures(
+              fn.name,
+              crossJoin(
+                fuzzType,
+                fuzzType,
+                fuzzType,
+                fuzzType,
+                fuzzType,
+                fuzzType
+              ).map(_.toList)
+            ).map { signatures =>
+              signatures.map { io =>
+                io._1 match
+                  case Seq(arg1, arg2, arg3, arg4, arg5, arg6) => Function6(arg1, arg2, arg3, arg4, arg5, arg6, io._2)
+                  case _                                       => throw Exception(s"Expected 6 arguments, but found ${io._1.size} arguments")
+              }
+            }
 
-      // for
-      //   function6s <-
-      //     fuzzSignatures(
-      //       fn.name,
-      //       crossJoin(
-      //         fuzzType,
-      //         fuzzType,
-      //         fuzzType,
-      //         fuzzType,
-      //         fuzzType,
-      //         fuzzType
-      //       ).map(_.toList)
-      //     ).map { signatures =>
-      //       signatures.map { io =>
-      //         io._1 match
-      //           case Seq(arg1, arg2, arg3, arg4, arg5, arg6) => Function6(arg1, arg2, arg3, arg4, arg5, arg6, io._2)
-      //           case _                                       => throw Exception(s"Expected 6 arguments, but found ${io._1.size} arguments")
-      //       }
-      //     }
-
-      //   function7s <-
-      //     fuzzSignatures(
-      //       fn.name,
-      //       crossJoin(
-      //         fuzzType,
-      //         fuzzType,
-      //         fuzzType,
-      //         fuzzType,
-      //         fuzzType,
-      //         fuzzType,
-      //         Seq((CHFuzzableType.TimeZone, Seq(CHFuzzableType.TimeZone.fuzzingValues.head)))
-      //       ).map(_.toList)
-      //     ).map { signatures =>
-      //       signatures.map { io =>
-      //         io._1 match
-      //           case Seq(arg1, arg2, arg3, arg4, arg5, arg6, arg7) => Function7(arg1, arg2, arg3, arg4, arg5, arg6, arg7, io._2)
-      //           case _                                             => throw Exception(s"Expected 7 arguments, but found ${io._1.size} arguments")
-      //       }
-      //     }
-      // yield {
-      //   fn.copy(
-      //     modes = fn.modes + CHFunction.Mode.NoOverWindow,
-      //     function6s = function6s,
-      //     function7s = function7s
-      //   )
-      // }
+          function7s <-
+            fuzzSignatures(
+              fn.name,
+              crossJoin(
+                fuzzType,
+                fuzzType,
+                fuzzType,
+                fuzzType,
+                fuzzType,
+                fuzzType,
+                Seq((CHFuzzableType.TimeZone, Seq(CHFuzzableType.TimeZone.fuzzingValues.head)))
+              ).map(_.toList)
+            ).map { signatures =>
+              signatures.map { io =>
+                io._1 match
+                  case Seq(arg1, arg2, arg3, arg4, arg5, arg6, arg7) =>
+                    Function7(arg1, arg2, arg3, arg4, arg5, arg6, arg7, io._2)
+                  case _ => throw Exception(s"Expected 7 arguments, but found ${io._1.size} arguments")
+              }
+            }
+        yield fn.copy(
+          modes = fn.modes + CHFunction.Mode.NoOverWindow,
+          function6s = function6s,
+          function7s = function7s
+        )
       case "makeDateTime64" =>
-        // Actually ends up in OOM
-        Future.successful(fn)
+        val fuzzType = CHFuzzableAbstractType.Number.chFuzzableTypes.map(t => (t, Seq(t.fuzzingValues.head)))
 
-      // val fuzzType = CHFuzzableAbstractType.Numbers.chFuzzableTypes.map(t => (t, Seq(t.fuzzingValues.head)))
+        for
+          function6s <-
+            fuzzSignatures(
+              fn.name,
+              crossJoin(
+                fuzzType,
+                fuzzType,
+                fuzzType,
+                fuzzType,
+                fuzzType,
+                fuzzType
+              ).map(_.toList)
+            ).map { signatures =>
+              signatures.map { io =>
+                io._1 match
+                  case Seq(arg1, arg2, arg3, arg4, arg5, arg6) => Function6(arg1, arg2, arg3, arg4, arg5, arg6, io._2)
+                  case _                                       => throw Exception(s"Expected 6 arguments, but found ${io._1.size} arguments")
+              }
+            }
 
-      // for
-      //   function6s <-
-      //     fuzzSignatures(
-      //       fn.name,
-      //       crossJoin(
-      //         fuzzType,
-      //         fuzzType,
-      //         fuzzType,
-      //         fuzzType,
-      //         fuzzType,
-      //         fuzzType
-      //       ).map(_.toList)
-      //     ).map { signatures =>
-      //       signatures.map { io =>
-      //         io._1 match
-      //           case Seq(arg1, arg2, arg3, arg4, arg5, arg6) => Function6(arg1, arg2, arg3, arg4, arg5, arg6, io._2)
-      //           case _                                       => throw Exception(s"Expected 6 arguments, but found ${io._1.size} arguments")
-      //       }
-      //     }
+          function7s <-
+            fuzzSignatures(
+              fn.name,
+              crossJoin(
+                fuzzType,
+                fuzzType,
+                fuzzType,
+                fuzzType,
+                fuzzType,
+                fuzzType,
+                fuzzType
+              ).map(_.toList)
+            ).map { signatures =>
+              signatures.map { io =>
+                io._1 match
+                  case Seq(arg1, arg2, arg3, arg4, arg5, arg6, arg7) =>
+                    Function7(arg1, arg2, arg3, arg4, arg5, arg6, arg7, io._2)
+                  case _ => throw Exception(s"Expected 7 arguments, but found ${io._1.size} arguments")
+              }
+            }
 
-      //   function7s <-
-      //     fuzzSignatures(
-      //       fn.name,
-      //       crossJoin(
-      //         fuzzType,
-      //         fuzzType,
-      //         fuzzType,
-      //         fuzzType,
-      //         fuzzType,
-      //         fuzzType,
-      //         fuzzType
-      //       ).map(_.toList)
-      //     ).map { signatures =>
-      //       signatures.map { io =>
-      //         io._1 match
-      //           case Seq(arg1, arg2, arg3, arg4, arg5, arg6, arg7) => Function7(arg1, arg2, arg3, arg4, arg5, arg6, arg7, io._2)
-      //           case _                                             => throw Exception(s"Expected 7 arguments, but found ${io._1.size} arguments")
-      //       }
-      //     }
+          function8s <-
+            fuzzSignatures(
+              fn.name,
+              crossJoin(
+                fuzzType,
+                fuzzType,
+                fuzzType,
+                fuzzType,
+                fuzzType,
+                fuzzType,
+                fuzzType,
+                fuzzType
+              ).map(_.toList)
+            ).map { signatures =>
+              signatures.map { io =>
+                io._1 match
+                  case Seq(arg1, arg2, arg3, arg4, arg5, arg6, arg7, arg8) =>
+                    Function8(arg1, arg2, arg3, arg4, arg5, arg6, arg7, arg8, io._2)
+                  case _ => throw Exception(s"Expected 8 arguments, but found ${io._1.size} arguments")
+              }
+            }
 
-      //   function8s <-
-      //       fuzzSignatures(
-      //         fn.name,
-      //         crossJoin(
-      //           fuzzType,
-      //           fuzzType,
-      //           fuzzType,
-      //           fuzzType,
-      //           fuzzType,
-      //           fuzzType,
-      //           fuzzType,
-      //           fuzzType
-      //         ).map(_.toList)
-      //       ).map { signatures =>
-      //         signatures.map { io =>
-      //           io._1 match
-      //             case Seq(arg1, arg2, arg3, arg4, arg5, arg6, arg7, arg8) => Function8(arg1, arg2, arg3, arg4, arg5, arg6, arg7, arg8, io._2)
-      //             case _                                                   => throw Exception(s"Expected 8 arguments, but found ${io._1.size} arguments")
-      //         }
-      //       }
-
-      //   function9s <-
-      //       fuzzSignatures(
-      //         fn.name,
-      //         crossJoin(
-      //           fuzzType,
-      //           fuzzType,
-      //           fuzzType,
-      //           fuzzType,
-      //           fuzzType,
-      //           fuzzType,
-      //           fuzzType,
-      //           fuzzType,
-      //           Seq((CHFuzzableType.TimeZone, Seq(CHFuzzableType.TimeZone.fuzzingValues.head)))
-      //         ).map(_.toList)
-      //       ).map { signatures =>
-      //         signatures.map { io =>
-      //           io._1 match
-      //             case Seq(arg1, arg2, arg3, arg4, arg5, arg6, arg7, arg8, arg9) => Function9(arg1, arg2, arg3, arg4, arg5, arg6, arg7, arg8, arg9, io._2)
-      //             case _                                                         => throw Exception(s"Expected 9 arguments, but found ${io._1.size} arguments")
-      //         }
-      //       }
-      // yield {
-      //   fn.copy(
-      //     modes = fn.modes + CHFunction.Mode.NoOverWindow,
-      //     function6s = function6s,
-      //     function7s = function7s,
-      //     function8s = function8s,
-      //     function9s = function9s
-      //   )
-      // }
+          function9s <-
+            fuzzSignatures(
+              fn.name,
+              crossJoin(
+                fuzzType,
+                fuzzType,
+                fuzzType,
+                fuzzType,
+                fuzzType,
+                fuzzType,
+                fuzzType,
+                fuzzType,
+                Seq((CHFuzzableType.TimeZone, Seq(CHFuzzableType.TimeZone.fuzzingValues.head)))
+              ).map(_.toList)
+            ).map { signatures =>
+              signatures.map { io =>
+                io._1 match
+                  case Seq(arg1, arg2, arg3, arg4, arg5, arg6, arg7, arg8, arg9) =>
+                    Function9(arg1, arg2, arg3, arg4, arg5, arg6, arg7, arg8, arg9, io._2)
+                  case _ => throw Exception(s"Expected 9 arguments, but found ${io._1.size} arguments")
+              }
+            }
+        yield fn.copy(
+          modes = fn.modes + CHFunction.Mode.NoOverWindow,
+          function6s = function6s,
+          function7s = function7s,
+          function8s = function8s,
+          function9s = function9s
+        )
       case "mannWhitneyUTest" =>
         val alternativeTypes = Seq((CHFuzzableType.TestAlternative, CHFuzzableType.TestAlternative.fuzzingValues))
         val continuityCorrectionTypes =
-          CHFuzzableAbstractType.Numbers.chFuzzableTypes.map(t => (t, Seq(t.fuzzingValues.head)))
-        val sampleDataTypes = CHFuzzableAbstractType.Numbers.chFuzzableTypes.map(t =>
+          CHFuzzableAbstractType.Number.chFuzzableTypes.map(t => (t, Seq(t.fuzzingValues.head)))
+        val sampleDataTypes = CHFuzzableAbstractType.Number.chFuzzableTypes.map(t =>
           (t, Seq(s"toInt8(randNormal(0, 1))::${if t.name.contains("Decimal") then s"${t.name}(1)" else t.name}"))
         )
         val sampleIndexTypes = Seq((CHFuzzableType.UInt8, Seq("randNormal(0, 1)")))
@@ -1271,8 +1432,8 @@ object FuzzerHardcodedFunctions extends StrictLogging {
           parametric2Function2s = parametric2Function2
         )
       case "mapApply" => // Any Map working with identity actually
-        val typeT = CHSpecialType.GenericType("T")
-        val typeU = CHSpecialType.GenericType("U")
+        val typeT = CHSpecialType.GenericType("T1", CHAggregatedType.MapKey)
+        val typeU = CHSpecialType.GenericType("U", CHAggregatedType.Any)
         val lambdaIdentityType: (CHSpecialType.LambdaType, Seq[String]) =
           (CHSpecialType.LambdaType(CHSpecialType.Tuple(Seq(typeT, typeU))), Seq("x, y -> (x, y)"))
         val mapType: (CHSpecialType.Map, Seq[String]) = (CHSpecialType.Map(typeT, typeU), Seq("map(now(), today())"))
@@ -1299,18 +1460,18 @@ object FuzzerHardcodedFunctions extends StrictLogging {
           lambdaMapFunction1Opt = lambdaMapFunction1Opt
         )
       case "meanZTest" =>
-        val floatNumbersType = CHFuzzableAbstractType.Numbers.chFuzzableTypes
+        val floatNumberType = CHFuzzableAbstractType.Number.chFuzzableTypes
           .filter(_.name.toLowerCase().contains("float"))
           .map(t => (t, t.fuzzingValues.take(3)))
-        val numbersType = CHFuzzableAbstractType.Numbers.chFuzzableTypes.map(t => (t, t.fuzzingValues.take(3)))
+        val numbersType = CHFuzzableAbstractType.Number.chFuzzableTypes.map(t => (t, t.fuzzingValues.take(3)))
 
         for parametric3Function2 <-
             fuzzParametricSignatures(
               fn.name,
               crossJoin(
-                floatNumbersType,
-                floatNumbersType,
-                floatNumbersType
+                floatNumberType,
+                floatNumberType,
+                floatNumberType
               ).map(_.toList),
               crossJoin(
                 numbersType,
@@ -1338,11 +1499,11 @@ object FuzzerHardcodedFunctions extends StrictLogging {
                 fn.name,
                 Seq(
                   Seq(
-                    CHFuzzableAbstractType.Numbers,
-                    CHFuzzableAbstractType.Numbers,
-                    CHFuzzableAbstractType.Numbers,
-                    CHFuzzableAbstractType.Numbers,
-                    CHFuzzableAbstractType.Numbers
+                    CHFuzzableAbstractType.Number,
+                    CHFuzzableAbstractType.Number,
+                    CHFuzzableAbstractType.Number,
+                    CHFuzzableAbstractType.Number,
+                    CHFuzzableAbstractType.Number
                   )
                 ),
                 fuzzOverWindow = false,
@@ -1366,10 +1527,10 @@ object FuzzerHardcodedFunctions extends StrictLogging {
                 fn.name,
                 Seq(
                   Seq(
-                    CHFuzzableAbstractType.Numbers,
-                    CHFuzzableAbstractType.Numbers,
-                    CHFuzzableAbstractType.Numbers,
-                    CHFuzzableAbstractType.Numbers
+                    CHFuzzableAbstractType.Number,
+                    CHFuzzableAbstractType.Number,
+                    CHFuzzableAbstractType.Number,
+                    CHFuzzableAbstractType.Number
                   )
                 ),
                 fuzzOverWindow = false,
@@ -1462,7 +1623,7 @@ object FuzzerHardcodedFunctions extends StrictLogging {
           function2Ns = function2Ns
         )
       case "proportionsZTest" =>
-        val number = CHFuzzableAbstractType.Numbers.chFuzzableTypes.map(t => (t, Seq(t.fuzzingValues.head)))
+        val number = CHFuzzableAbstractType.Number.chFuzzableTypes.map(t => (t, Seq(t.fuzzingValues.head)))
         val usevarType = Seq((CHFuzzableType.Usevar, CHFuzzableType.Usevar.fuzzingValues))
 
         for function6s <-
@@ -1503,10 +1664,10 @@ object FuzzerHardcodedFunctions extends StrictLogging {
                 fn.name,
                 Seq(
                   Seq(
-                    CHFuzzableAbstractType.Numbers,
-                    CHFuzzableAbstractType.Numbers,
-                    CHFuzzableAbstractType.Numbers,
-                    CHFuzzableAbstractType.Numbers
+                    CHFuzzableAbstractType.Number,
+                    CHFuzzableAbstractType.Number,
+                    CHFuzzableAbstractType.Number,
+                    CHFuzzableAbstractType.Number
                   )
                 ),
                 fuzzOverWindow = false
@@ -1529,7 +1690,7 @@ object FuzzerHardcodedFunctions extends StrictLogging {
         )
 
         val timestampType = CHFuzzableAbstractType.values.toSeq
-          .filterNot(_.isInstanceOf[CustomStringBasedAbstractType])
+          .filterNot(_.isInstanceOf[CustomAbstractType])
           .flatMap(_.chFuzzableTypes)
           .map(t => (t, t.fuzzingValues))
 
@@ -1558,7 +1719,7 @@ object FuzzerHardcodedFunctions extends StrictLogging {
               }
             }
 
-          isInfiniteConfirmation <-
+          isRepeatedConfirmation <-
             fuzzParametricSignatures(
               fn.name,
               patternType.map(Seq(_)),
@@ -1570,7 +1731,7 @@ object FuzzerHardcodedFunctions extends StrictLogging {
               ).map(_.toList)
             ).map(_.nonEmpty)
         yield
-          if !isInfiniteConfirmation then
+          if !isRepeatedConfirmation then
             logger.error(s"Unexpected result for hardcoded function ${fn.name}. Skipping it.")
             fn
           else
@@ -1640,7 +1801,7 @@ object FuzzerHardcodedFunctions extends StrictLogging {
               .fuzzAbstractInputCombinations(
                 fn.name,
                 Seq(
-                  Seq(CHFuzzableAbstractType.ArrayNumbers)
+                  Seq(CHFuzzableAbstractType.ArrayNumber)
                 ),
                 fuzzOverWindow = false
               )
@@ -1658,10 +1819,10 @@ object FuzzerHardcodedFunctions extends StrictLogging {
                 fn.name,
                 Seq(
                   Seq(
-                    CHFuzzableAbstractType.ArrayNumbers,
-                    CHFuzzableAbstractType.Numbers,
-                    CHFuzzableAbstractType.Numbers,
-                    CHFuzzableAbstractType.Numbers
+                    CHFuzzableAbstractType.ArrayNumber,
+                    CHFuzzableAbstractType.Number,
+                    CHFuzzableAbstractType.Number,
+                    CHFuzzableAbstractType.Number
                   )
                 ),
                 fuzzOverWindow = false
@@ -1700,24 +1861,24 @@ object FuzzerHardcodedFunctions extends StrictLogging {
       case "timeSlots" =>
         val dateTimeTypes = CHFuzzableAbstractType.DateTime.chFuzzableTypes.map(t => (t, t.fuzzingValues))
 
-        val allNumbersCHTypes = CHFuzzableAbstractType.Numbers.chFuzzableTypes
-        val nonExpectedNumbersTypes =
-          allNumbersCHTypes.filterNot(t =>
+        val allNumberCHTypes = CHFuzzableAbstractType.Number.chFuzzableTypes
+        val nonExpectedNumberTypes =
+          allNumberCHTypes.filterNot(t =>
             t.name == "Bool" || t.name.startsWith("UInt") || t.name.startsWith("Int") || t.name.startsWith(
               "Float"
             ) || t.name.startsWith("Decimal")
           )
 
-        if nonExpectedNumbersTypes.isEmpty then
+        if nonExpectedNumberTypes.isEmpty then
           throw Exception(
-            s"Expected to handle only signed, unsigned, floating numbers, as well as Decimal. Found: ${nonExpectedNumbersTypes.map(_.name).mkString(", ")}"
+            s"Expected to handle only signed, unsigned, floating numbers, as well as Decimal. Found: ${nonExpectedNumberTypes.map(_.name).mkString(", ")}"
           )
 
         val numberTypes =
-          allNumbersCHTypes
+          allNumberCHTypes
             .filter(t => t.name.startsWith("UInt") || t.name.startsWith("Int"))
             .map(t => (t, Seq(s"1::${t.name}"))) ++
-            allNumbersCHTypes
+            allNumberCHTypes
               .filter(t => t.name.startsWith("Decimal"))
               .map(t => (t, Seq(s"1::${t.name}(0)")))
 
@@ -1813,10 +1974,10 @@ object FuzzerHardcodedFunctions extends StrictLogging {
                 fn.name,
                 Seq(
                   Seq(
-                    CHFuzzableAbstractType.Numbers,
-                    CHFuzzableAbstractType.Numbers,
-                    CHFuzzableAbstractType.Numbers,
-                    CHFuzzableAbstractType.Numbers
+                    CHFuzzableAbstractType.Number,
+                    CHFuzzableAbstractType.Number,
+                    CHFuzzableAbstractType.Number,
+                    CHFuzzableAbstractType.Number
                   )
                 ),
                 fuzzOverWindow = false

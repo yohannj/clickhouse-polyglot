@@ -29,6 +29,14 @@ class CHFuzzableTypeSpec extends AnyFreeSpec with Matchers:
 
           actual shouldBe expected
         }
+        "to MapKey" in {
+          val mapTypes = CHFuzzableType.values.filter(_.name.startsWith("Map("))
+          val mapKeyTypes = mapTypes.map(_.name).map(CHType.getByName).map(_.asInstanceOf[CHSpecialType.Map].keyType)
+          val actual = CHType.mergeInputTypes(mapKeyTypes.toSet)
+          val expected = Set(CHAggregatedType.MapKey)
+
+          actual shouldBe expected
+        }
         "of type array" - {
           "to Array(Any)" in {
             val actual = CHType.mergeInputTypes(CHFuzzableType.values.filter(_.name.startsWith("Array(")).toSet)
@@ -587,6 +595,23 @@ class CHFuzzableTypeSpec extends AnyFreeSpec with Matchers:
           }
         }
       }
+      "output types" - {
+        "Array(Tuple(Enum))" in {
+          val o1 = "Array(Tuple(Enum8('hello' = 1, 'world' = 2)))"
+          val o2 = "Array(Tuple(a Enum8('hello' = 1, 'world' = 2)))"
+          val o3 = "Array(Tuple(a Enum16('hello' = -32768, 'world' = 2)))"
+
+          val actual =
+            CHType.mergeOutputType(
+              CHType.mergeOutputType(CHType.getByName(o1), CHType.getByName(o2)),
+              CHType.getByName(o3)
+            )
+
+          val expected = CHSpecialType.Array(CHSpecialType.Tuple(Seq(CHFuzzableType.Enum)))
+
+          actual shouldBe expected
+        }
+      }
     }
 
     "should parse" - {
@@ -637,6 +662,48 @@ class CHFuzzableTypeSpec extends AnyFreeSpec with Matchers:
       "DateTime64(1, 'Asia/Istanbul')" in {
         val actual = CHType.getByName("DateTime64(1, 'Asia/Istanbul')")
         val expected = CHFuzzableType.DateTime64
+
+        actual shouldBe expected
+      }
+
+      "Decimal(9, 0)" in {
+        val actual = CHType.getByName("Decimal(9, 0)")
+        val expected = CHFuzzableType.Decimal32
+
+        actual shouldBe expected
+      }
+
+      "Decimal(9, 9)" in {
+        val actual = CHType.getByName("Decimal(9, 9)")
+        val expected = CHFuzzableType.Decimal32
+
+        actual shouldBe expected
+      }
+
+      "Decimal(18, 0)" in {
+        val actual = CHType.getByName("Decimal(18, 0)")
+        val expected = CHFuzzableType.Decimal64
+
+        actual shouldBe expected
+      }
+
+      "Decimal(18, 9)" in {
+        val actual = CHType.getByName("Decimal(18, 9)")
+        val expected = CHFuzzableType.Decimal64
+
+        actual shouldBe expected
+      }
+
+      "Decimal(38, 0)" in {
+        val actual = CHType.getByName("Decimal(38, 0)")
+        val expected = CHFuzzableType.Decimal128
+
+        actual shouldBe expected
+      }
+
+      "Decimal(38, 9)" in {
+        val actual = CHType.getByName("Decimal(38, 9)")
+        val expected = CHFuzzableType.Decimal128
 
         actual shouldBe expected
       }

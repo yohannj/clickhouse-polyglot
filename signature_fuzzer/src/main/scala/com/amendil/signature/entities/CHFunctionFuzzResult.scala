@@ -15,6 +15,8 @@ final case class CHFunctionFuzzResult(
     aliasTo: String,
     modes: Set[CHFunction.Mode],
     function0Ns: Seq[Function0N],
+    function0N1s: Seq[Function0N1],
+    function1N1s: Seq[Function1N1],
     function1Ns: Seq[Function1N],
     function2Ns: Seq[Function2N],
     function3Ns: Seq[Function3N],
@@ -110,7 +112,7 @@ final case class CHFunctionFuzzResult(
 
   val atLeastOneSignatureFound: Boolean = functions.nonEmpty
 
-  val isSpecialInfiniteFunction: Boolean =
+  val isSpecialRepeatedFunction: Boolean =
     specialFunction0Ns.nonEmpty || specialParametric2Function2Ns.nonEmpty || specialParametric2Function3Ns.nonEmpty
 
   val isLambda: Boolean =
@@ -124,6 +126,8 @@ object CHFunctionFuzzResult:
       aliasTo = aliasTo,
       modes = Set.empty,
       function0Ns = Nil,
+      function0N1s = Nil,
+      function1N1s = Nil,
       function1Ns = Nil,
       function2Ns = Nil,
       function3Ns = Nil,

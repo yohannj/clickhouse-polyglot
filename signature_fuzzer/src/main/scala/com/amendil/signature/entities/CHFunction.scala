@@ -13,9 +13,13 @@ final case class CHFunction(
     else
       val signaturesStr =
         signatures
-          .map(_.asString())
-          .sorted
-          .map(s => s"$indent$indent$s")
+          .map(s => (s.parameters.size, s.arguments.size, s.asString()))
+          .sortWith { case ((paramSize1, argSize1, str1), (paramSize2, argSize2, str2)) =>
+            if paramSize1 != paramSize2 then paramSize1 < paramSize2
+            else if argSize1 != argSize2 then argSize1 < argSize2
+            else str1.compareTo(str2) < 0
+          }
+          .map((_, _, s) => s"$indent$indent$s")
           .mkString("\n")
 
       s"""|$name
@@ -29,7 +33,7 @@ object CHFunction:
 
   // TODO: Write tests
   def fromCHFunctionFuzzResult(fuzzResult: CHFunctionFuzzResult): CHFunction =
-    val signatures =
+    val signatures: Seq[CHFunctionIO] =
       // productIterator is an internal method in all "case class" to iterate over its constructor arguments
       fuzzResult.productIterator.toSeq.flatMap {
         case s: Seq[?] if s.nonEmpty => // Look for functions that we discovered

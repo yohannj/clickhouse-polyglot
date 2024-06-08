@@ -30,7 +30,7 @@ object FuzzerLambdaFunctions extends StrictLogging:
       fn: CHFunctionFuzzResult
   )(using client: CHClient, ec: ExecutionContext): Future[CHFunctionFuzzResult] =
     logger.debug("fuzzBlandLambdaFunctionWithArray")
-    if fn.isSpecialInfiniteFunction then Future.successful(fn)
+    if fn.isSpecialRepeatedFunction then Future.successful(fn)
     else
       client
         .executeNoResult(s"SELECT toTypeName(${fn.name}(x -> today(), ['s']))")
@@ -39,9 +39,9 @@ object FuzzerLambdaFunctions extends StrictLogging:
             modes = fn.modes + CHFunction.Mode.NoOverWindow,
             lambdaArrayFunction0NOpt = Some(
               CHFunctionIO.LambdaArrayFunction0N(
-                CHSpecialType.LambdaType(CHSpecialType.GenericType("T")),
+                CHSpecialType.LambdaType(CHSpecialType.GenericType("T1", CHAggregatedType.Any)),
                 argN = CHSpecialType.Array(CHAggregatedType.Any),
-                output = CHSpecialType.GenericType("T")
+                output = CHSpecialType.GenericType("T1", CHAggregatedType.Any)
               )
             )
           )
@@ -57,7 +57,7 @@ object FuzzerLambdaFunctions extends StrictLogging:
       fn: CHFunctionFuzzResult
   )(using client: CHClient, ec: ExecutionContext): Future[CHFunctionFuzzResult] =
     logger.debug("fuzzBooleanLambdaFunctionWithArray")
-    if fn.isSpecialInfiniteFunction then Future.successful(fn)
+    if fn.isSpecialRepeatedFunction then Future.successful(fn)
     else
       client
         .execute(s"SELECT toTypeName(${fn.name}(x, y -> 1, ['s'], [1]))")
@@ -72,11 +72,12 @@ object FuzzerLambdaFunctions extends StrictLogging:
               lambdaArrayFunction1NOpt = Some(
                 CHFunctionIO.LambdaArrayFunction1N(
                   CHSpecialType.LambdaType(CHFuzzableType.BooleanType),
-                  arg1 = CHSpecialType.Array(CHSpecialType.GenericType("T")),
+                  arg1 = CHSpecialType.Array(CHSpecialType.GenericType("T1", CHAggregatedType.Any)),
                   argN = CHSpecialType.Array(CHAggregatedType.Any),
                   output =
-                    if outputType == CHFuzzableType.StringType then CHSpecialType.GenericType("T")
-                    else CHSpecialType.Array(CHSpecialType.GenericType("T"))
+                    if outputType == CHFuzzableType.StringType then
+                      CHSpecialType.GenericType("T1", CHAggregatedType.Any)
+                    else CHSpecialType.Array(CHSpecialType.GenericType("T1", CHAggregatedType.Any))
                 )
               )
             )
@@ -104,7 +105,7 @@ object FuzzerLambdaFunctions extends StrictLogging:
       fn: CHFunctionFuzzResult
   )(using client: CHClient, ec: ExecutionContext): Future[CHFunctionFuzzResult] =
     logger.debug("fuzzBooleanLambdaFunctionWithMap")
-    if fn.isSpecialInfiniteFunction then Future.successful(fn)
+    if fn.isSpecialRepeatedFunction then Future.successful(fn)
     else
       client
         .execute(s"SELECT toTypeName(${fn.name}(x, y -> 1, map(now(), today())))")
@@ -112,14 +113,17 @@ object FuzzerLambdaFunctions extends StrictLogging:
           val outputType = CHType.getByName(resp.data.head.head.asInstanceOf[String]) match
             case CHFuzzableType.DateTime =>
               // Return type is the type of the keys, so a generic type!
-              CHSpecialType.GenericType("T")
+              CHSpecialType.GenericType("T1", CHAggregatedType.MapKey)
             case CHFuzzableType.Date =>
               // Return type is the type of the values, so a generic type!
-              CHSpecialType.GenericType("U")
+              CHSpecialType.GenericType("U", CHAggregatedType.Any)
             case CHSpecialType.Map(CHFuzzableType.DateTime, CHFuzzableType.Date) |
                 CHSpecialType.Map(CHFuzzableType.DateTime, CHFuzzableType.Date) =>
               // Return type is the same as provided map!
-              CHSpecialType.Map(CHSpecialType.GenericType("T"), CHSpecialType.GenericType("U"))
+              CHSpecialType.Map(
+                CHSpecialType.GenericType("T1", CHAggregatedType.MapKey),
+                CHSpecialType.GenericType("U", CHAggregatedType.Any)
+              )
             case other =>
               // Let's suppose the returned type never changes depending on the size or types in the map
               other
@@ -129,7 +133,10 @@ object FuzzerLambdaFunctions extends StrictLogging:
             lambdaMapFunction1Opt = Some(
               CHFunctionIO.LambdaMapFunction1(
                 CHSpecialType.LambdaType(CHFuzzableType.BooleanType),
-                arg1 = CHSpecialType.Map(CHSpecialType.GenericType("T"), CHSpecialType.GenericType("U")),
+                arg1 = CHSpecialType.Map(
+                  CHSpecialType.GenericType("T1", CHAggregatedType.MapKey),
+                  CHSpecialType.GenericType("U", CHAggregatedType.Any)
+                ),
                 output = outputType
               )
             )

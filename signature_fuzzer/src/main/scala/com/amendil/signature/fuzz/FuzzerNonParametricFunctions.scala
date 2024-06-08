@@ -59,9 +59,9 @@ object FuzzerNonParametricFunctions extends StrictLogging:
 
   private def fuzzFunction1Or0N(
       fn: CHFunctionFuzzResult
-  )(using client: CHClient, ec: ExecutionContext): Future[CHFunctionFuzzResult] =
+  )(using CHClient, ExecutionContext): Future[CHFunctionFuzzResult] =
     logger.debug("fuzzFunction1Or0N")
-    if fn.isSpecialInfiniteFunction then Future.successful(fn)
+    if fn.isSpecialRepeatedFunction then Future.successful(fn)
     else
       fuzzNonParametric(
         fn,
@@ -75,9 +75,9 @@ object FuzzerNonParametricFunctions extends StrictLogging:
 
   private def fuzzFunction2Or1N(
       fn: CHFunctionFuzzResult
-  )(using client: CHClient, ec: ExecutionContext): Future[CHFunctionFuzzResult] =
+  )(using CHClient, ExecutionContext): Future[CHFunctionFuzzResult] =
     logger.debug("fuzzFunction2Or1N")
-    if fn.isLambda || fn.isSpecialInfiniteFunction || fn.function0Ns.nonEmpty then Future.successful(fn)
+    if fn.isLambda || fn.isSpecialRepeatedFunction || fn.function0Ns.nonEmpty then Future.successful(fn)
     else
       fuzzNonParametric(
         fn,
@@ -94,9 +94,9 @@ object FuzzerNonParametricFunctions extends StrictLogging:
 
   private def fuzzFunction3Or2N(
       fn: CHFunctionFuzzResult
-  )(using client: CHClient, ec: ExecutionContext): Future[CHFunctionFuzzResult] =
+  )(using CHClient, ExecutionContext): Future[CHFunctionFuzzResult] =
     logger.debug("fuzzFunction3Or2N")
-    if fn.isLambda || fn.isSpecialInfiniteFunction || fn.function0Ns.nonEmpty || fn.function1Ns.nonEmpty ||
+    if fn.isLambda || fn.isSpecialRepeatedFunction || fn.function0Ns.nonEmpty || fn.function1Ns.nonEmpty ||
       (fn.function1s.filterNot(_.arg1.name.startsWith("Tuple")).nonEmpty && fn.function2s.isEmpty)
     then Future.successful(fn)
     else
@@ -117,7 +117,7 @@ object FuzzerNonParametricFunctions extends StrictLogging:
       fn: CHFunctionFuzzResult,
       argCount: Int,
       fnConstructorFiniteArgs: ((InputTypes, OutputType)) => U1,
-      fnConstructorInfiniteArgs: ((InputTypes, OutputType)) => U2,
+      fnConstructorRepeatedArgs: ((InputTypes, OutputType)) => U2,
       argsOfPreviouslyFoundSignatureOpt: Option[Seq[CHFuzzableType]] = None
   )(using client: CHClient, ec: ExecutionContext): Future[(Seq[CHFunction.Mode], Seq[U1], Seq[U2])] =
     val skipFuzzingF =
@@ -134,8 +134,8 @@ object FuzzerNonParametricFunctions extends StrictLogging:
           argCount,
           fuzzOverWindow = !fn.modes.contains(CHFunction.Mode.NoOverWindow),
           fnConstructorFiniteArgs,
-          fnConstructorInfiniteArgs
-        ).map((finiteFn, infiniteFn) => (Nil, finiteFn, infiniteFn))
+          fnConstructorRepeatedArgs
+        ).map((finiteFn, repeatedFn) => (Nil, finiteFn, repeatedFn))
       else
         // We don't yet know if the function requires/supports or not `OVER window` so we need to brute force them all
         // First check without OVER window
@@ -144,18 +144,18 @@ object FuzzerNonParametricFunctions extends StrictLogging:
           argCount,
           fuzzOverWindow = false,
           fnConstructorFiniteArgs,
-          fnConstructorInfiniteArgs
-        ).flatMap((finiteFn, infiniteFn) =>
+          fnConstructorRepeatedArgs
+        ).flatMap((finiteFn, repeatedFn) =>
           // Success without OVER window, let's try a sample function with OVER window
-          val sampleFn = finiteFn.headOption.orElse(infiniteFn.headOption).get
+          val sampleFn = finiteFn.headOption.orElse(repeatedFn.headOption).get
 
           val queries =
             buildFuzzingValuesArgs(sampleFn.arguments.asInstanceOf[Seq[CHFuzzableType]].map(_.fuzzingValues))
               .map(args => query(fn.name, args, fuzzOverWindow = true))
 
           executeInParallelUntilSuccess(queries, client.executeNoResult, Settings.ClickHouse.maxSupportedConcurrency)
-            .map(_ => (Seq(CHFunction.Mode.OverWindow, CHFunction.Mode.NoOverWindow), finiteFn, infiniteFn))
-            .recover(_ => (Seq(CHFunction.Mode.NoOverWindow), finiteFn, infiniteFn))
+            .map(_ => (Seq(CHFunction.Mode.OverWindow, CHFunction.Mode.NoOverWindow), finiteFn, repeatedFn))
+            .recover(_ => (Seq(CHFunction.Mode.NoOverWindow), finiteFn, repeatedFn))
         ).recoverWith(_ =>
           // Failure without OVER window, fuzz with OVER window
           fuzzNonParametricSingleMode(
@@ -163,8 +163,8 @@ object FuzzerNonParametricFunctions extends StrictLogging:
             argCount,
             fuzzOverWindow = true,
             fnConstructorFiniteArgs,
-            fnConstructorInfiniteArgs
-          ).map((finiteFn, infiniteFn) => (Seq(CHFunction.Mode.OverWindow), finiteFn, infiniteFn))
+            fnConstructorRepeatedArgs
+          ).map((finiteFn, repeatedFn) => (Seq(CHFunction.Mode.OverWindow), finiteFn, repeatedFn))
             .recover(_ => (Nil, Nil, Nil)) // Nothing worked
         )
     )
@@ -174,16 +174,16 @@ object FuzzerNonParametricFunctions extends StrictLogging:
       argCount: Int,
       fuzzOverWindow: Boolean,
       fnConstructorFiniteArgs: ((InputTypes, OutputType)) => U1,
-      fnConstructorInfiniteArgs: ((InputTypes, OutputType)) => U2
-  )(using client: CHClient, ec: ExecutionContext): Future[(Seq[U1], Seq[U2])] =
+      fnConstructorRepeatedArgs: ((InputTypes, OutputType)) => U2
+  )(using CHClient, ExecutionContext): Future[(Seq[U1], Seq[U2])] =
     for
       functions: Seq[(InputTypes, OutputType)] <- fuzzFiniteArgsFunctions(fnName, argCount, fuzzOverWindow)
 
-      fnHasInfiniteArgs: Boolean <-
+      fnHasRepeatedArgs: Boolean <-
         if functions.isEmpty then Future.successful(false)
-        else testInfiniteArgsFunctions(fnName, functions.head._1, fuzzOverWindow)
+        else testRepeatedArgsFunctions(fnName, functions.head._1, fuzzOverWindow)
     yield
-      if fnHasInfiniteArgs then (Nil, functions.map(fnConstructorInfiniteArgs))
+      if fnHasRepeatedArgs then (Nil, functions.map(fnConstructorRepeatedArgs))
       else (functions.map(fnConstructorFiniteArgs), Nil)
 
   private def fuzzFiniteArgsFunctions(
@@ -199,7 +199,7 @@ object FuzzerNonParametricFunctions extends StrictLogging:
       abstractInputCombinationsNoSpecialType: Seq[Seq[CHFuzzableAbstractType]] <-
         executeInParallelOnlySuccess(
           generateCHFuzzableAbstractTypeCombinations(argCount).filterNot(
-            _.exists(_.isInstanceOf[CustomStringBasedAbstractType])
+            _.exists(_.isInstanceOf[CustomAbstractType])
           ),
           (abstractTypes: Seq[CHFuzzableAbstractType]) =>
             executeInParallelUntilSuccess(
@@ -221,7 +221,7 @@ object FuzzerNonParametricFunctions extends StrictLogging:
         else
           executeInParallelOnlySuccess(
             generateCHFuzzableAbstractTypeCombinations(argCount).filter(
-              _.exists(_.isInstanceOf[CustomStringBasedAbstractType])
+              _.exists(_.isInstanceOf[CustomAbstractType])
             ),
             (abstractTypes: Seq[CHFuzzableAbstractType]) =>
               executeInParallelUntilSuccess(
@@ -305,13 +305,13 @@ object FuzzerNonParametricFunctions extends StrictLogging:
       fnName: String,
       argCount: Int,
       fuzzOverWindow: Boolean
-  )(using client: CHClient, ec: ExecutionContext): Future[Seq[Seq[CHFuzzableAbstractType]]] =
+  )(using CHClient, ExecutionContext): Future[Seq[Seq[CHFuzzableAbstractType]]] =
     for
       // For performance reasons, we first exclude custom types that also work as String.
       abstractInputCombinationsNoSpecialType: Seq[Seq[CHFuzzableAbstractType]] <-
         bruteforceAbstractTypeCombinations(
           generateCHFuzzableAbstractTypeCombinations(argCount).filterNot(
-            _.exists(_.isInstanceOf[CustomStringBasedAbstractType])
+            _.exists(_.isInstanceOf[CustomAbstractType])
           ),
           fnName,
           fuzzOverWindow
@@ -328,7 +328,7 @@ object FuzzerNonParametricFunctions extends StrictLogging:
         else
           bruteforceAbstractTypeCombinations(
             generateCHFuzzableAbstractTypeCombinations(argCount).filter(
-              _.exists(_.isInstanceOf[CustomStringBasedAbstractType])
+              _.exists(_.isInstanceOf[CustomAbstractType])
             ),
             fnName,
             fuzzOverWindow
@@ -462,12 +462,12 @@ object FuzzerNonParametricFunctions extends StrictLogging:
     *
     * @return Future.successful(true) if last argument can be repeated many times, otherwise Future.successful(false)
     */
-  private def testInfiniteArgsFunctions(
+  private def testRepeatedArgsFunctions(
       fnName: String,
       arguments: InputTypes,
       fuzzOverWindow: Boolean
   )(using client: CHClient, ec: ExecutionContext): Future[Boolean] =
-    logger.trace(s"testInfiniteArgsFunctions - init")
+    logger.trace(s"testRepeatedArgsFunctions - init")
     require(arguments.nonEmpty, "Expected at least one defined argument, but none found.")
 
     // We shouldn't go to high, to avoid the following error:

@@ -14,7 +14,7 @@ object ConcurrencyUtils:
     *
     * @return The result of the very last function, if no function has been provided, returns the provided element
     */
-  def executeChain[T, U](element: T, fns: Seq[(T) => Future[T]])(using ec: ExecutionContext): Future[T] =
+  def executeChain[T, U](element: T, fns: Seq[(T) => Future[T]])(using ExecutionContext): Future[T] =
     fns match
       case Seq(fn, tail*) => fn(element).flatMap(executeChain(_, tail))
       case _              => Future.successful(element)
@@ -32,7 +32,7 @@ object ConcurrencyUtils:
     * @throws IllegalArgumentException when maxConcurrency is less than 1
     */
   def executeInParallel[T, U](elements: Seq[T], fn: (T) => Future[U], maxConcurrency: Int)(
-      using ec: ExecutionContext
+      using ExecutionContext
   ): Future[Seq[U]] =
     val partitionSize =
       if elements.size == 0 || maxConcurrency < 1 then 1
@@ -60,7 +60,7 @@ object ConcurrencyUtils:
     * @throws IllegalArgumentException when maxConcurrency is less than 1
     */
   def executeInParallelOnlySuccess[T, U](elements: Seq[T], fn: (T) => Future[U], maxConcurrency: Int)(
-      using ec: ExecutionContext
+      using ExecutionContext
   ): Future[Seq[U]] =
     val partitionSize =
       if elements.size == 0 || maxConcurrency < 1 then 1
@@ -88,7 +88,7 @@ object ConcurrencyUtils:
     * @return A sequence which maximum size is the number of provided elements
     */
   def executeInParallelOnlySuccess[T, U](elements: Seq[T], fn: (T) => Future[U])(
-      using ec: ExecutionContext
+      using ExecutionContext
   ): Future[Seq[U]] =
     val futures = elements.map { el =>
       fn(el).map[Option[U]](Some(_)).recover(_ => None)
@@ -102,7 +102,7 @@ object ConcurrencyUtils:
     * @return A Future.Success if one call worked, Future.Failure otherwise
     */
   def executeInParallelUntilSuccess[T, U](elements: Seq[T], fn: (T) => Future[U], maxConcurrency: Int)(
-      using ec: ExecutionContext
+      using ExecutionContext
   ): Future[U] =
     val partitionSize =
       if elements.size == 0 || maxConcurrency < 1 then 1
@@ -141,11 +141,11 @@ object ConcurrencyUtils:
     *
     * @return A sequence of the same size as the provided elements
     */
-  def executeInSequence[T, U](elements: Seq[T], fn: (T) => Future[U])(using ec: ExecutionContext): Future[Seq[U]] =
+  def executeInSequence[T, U](elements: Seq[T], fn: (T) => Future[U])(using ExecutionContext): Future[Seq[U]] =
     executeInSequence(ListBuffer.from(elements), fn).map(_.toSeq)
 
   def executeInSequence[T, U](elements: ListBuffer[T], fn: (T) => Future[U])(
-      using ec: ExecutionContext
+      using ExecutionContext
   ): Future[ListBuffer[U]] =
     elements match
       case buffer if buffer.nonEmpty =>
@@ -163,7 +163,7 @@ object ConcurrencyUtils:
     * @return A sequence of the same size as the provided elements
     */
   def executeInSequenceOnlySuccess[T, U](elements: Seq[T], fn: (T) => Future[U])(
-      using ec: ExecutionContext
+      using ExecutionContext
   ): Future[Seq[U]] =
     elements match
       case Seq(head, tail*) =>
@@ -179,7 +179,7 @@ object ConcurrencyUtils:
     * @return A Future.Success if one call worked, Future.Failure otherwise
     */
   def executeInSequenceUntilSuccess[T, U](elements: Seq[T], fn: (T) => Future[U])(
-      using ec: ExecutionContext
+      using ExecutionContext
   ): Future[U] =
     elements match
       case Seq(head, tail*) => fn(head).recoverWith(_ => executeInSequenceUntilSuccess(tail, fn))
