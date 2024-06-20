@@ -341,7 +341,7 @@ object CHTypeMerger {
     ), CHAggregatedType.Integer64Like),
 
     (Set(
-      CHAggregatedType.Integer64Like, CHAggregatedType.NonDecimalNorFloat, CHFuzzableType.Int128, CHFuzzableType.UInt128,
+      CHAggregatedType.Integer64Like, CHFuzzableType.Int128, CHFuzzableType.UInt128,
       CHFuzzableType.Int256, CHFuzzableType.UInt256, CHAggregatedType.StringLike, CHFuzzableType.UUID
     ), CHAggregatedType.MapKey),
     
