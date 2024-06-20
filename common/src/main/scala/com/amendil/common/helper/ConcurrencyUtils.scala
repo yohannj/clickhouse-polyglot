@@ -1,4 +1,4 @@
-package com.amendil.common
+package com.amendil.common.helper
 
 import java.util.concurrent.atomic.AtomicBoolean
 import scala.collection.mutable.ListBuffer

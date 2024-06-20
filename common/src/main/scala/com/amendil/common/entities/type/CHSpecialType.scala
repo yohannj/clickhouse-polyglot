@@ -1,5 +1,8 @@
 package com.amendil.common.entities.`type`
 
+trait InnerType:
+  def innerType: CHType
+
 enum CHSpecialType(val name: String) extends CHType:
   case AggregateFunction(fnName: String, innerType: CHType)
       extends CHSpecialType(s"AggregateFunction($fnName, ${innerType.name})")

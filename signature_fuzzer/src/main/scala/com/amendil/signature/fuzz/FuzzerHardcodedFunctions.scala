@@ -1,10 +1,11 @@
 package com.amendil.signature.fuzz
 
-import com.amendil.common.ConcurrencyUtils.*
 import com.amendil.common.entities.*
 import com.amendil.common.entities.`type`.*
 import com.amendil.common.entities.function.{CHFunction, CHFunctionIO}
 import com.amendil.common.entities.function.CHFunctionIO.*
+import com.amendil.common.helper.*
+import com.amendil.common.helper.ConcurrencyUtils.*
 import com.amendil.common.http.CHClient
 import com.amendil.signature.Settings
 import com.amendil.signature.entities.*
@@ -100,7 +101,8 @@ object FuzzerHardcodedFunctions extends StrictLogging {
           )
 
         executeInSequenceOnlySuccess(queries, client.execute(_).map(_.data.head.head.asInstanceOf[String])).map(
-          outputTypes => (inputTypes.map(_._1), outputTypes.map(CHType.getByName).reduce(CHType.mergeOutputType))
+          outputTypes =>
+            (inputTypes.map(_._1), outputTypes.map(CHTypeParser.getByName).reduce(CHTypeMerger.mergeOutputType))
         )
       ,
       maxConcurrency = Settings.ClickHouse.maxSupportedConcurrency
@@ -138,7 +140,7 @@ object FuzzerHardcodedFunctions extends StrictLogging {
             (
               inputParams.map(_._1),
               inputArgs.map(_._1),
-              outputTypes.map(CHType.getByName).reduce(CHType.mergeOutputType)
+              outputTypes.map(CHTypeParser.getByName).reduce(CHTypeMerger.mergeOutputType)
             )
         )
       ,
@@ -993,7 +995,7 @@ object FuzzerHardcodedFunctions extends StrictLogging {
             Function2(
               CHFuzzableType.DictionaryName,
               CHAggregatedType.Any,
-              outputTypes.reduce(CHType.mergeOutputType)
+              outputTypes.reduce(CHTypeMerger.mergeOutputType)
             )
           )
         )
@@ -1793,8 +1795,8 @@ object FuzzerHardcodedFunctions extends StrictLogging {
         "Expected each map keys to support exactly the same types of values. But it's apparently not the case anymore."
       )
 
-      val t1 = CHType.mergeInputTypes(kvTypes.map(_._1).toSet, supportJson = Settings.Fuzzer.supportJson)
-      val t2 = CHType.mergeInputTypes(kvTypes.map(_._2).toSet, supportJson = Settings.Fuzzer.supportJson)
+      val t1 = CHTypeMerger.mergeInputTypes(kvTypes.map(_._1).toSet, supportJson = Settings.Fuzzer.supportJson)
+      val t2 = CHTypeMerger.mergeInputTypes(kvTypes.map(_._2).toSet, supportJson = Settings.Fuzzer.supportJson)
       require(t1.size == 1, "Map key type should be aggregatable to a single type")
       require(t2.size == 1, "Map value type should be aggregatable to a single type")
 

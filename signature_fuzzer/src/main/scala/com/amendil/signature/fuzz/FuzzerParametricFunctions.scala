@@ -1,9 +1,10 @@
 package com.amendil.signature.fuzz
 
-import com.amendil.common.ConcurrencyUtils.*
 import com.amendil.common.entities.`type`.{CHFuzzableType, CHType}
 import com.amendil.common.entities.function.{CHFunction, CHFunctionIO}
 import com.amendil.common.entities.function.CHFunctionIO.*
+import com.amendil.common.helper.*
+import com.amendil.common.helper.ConcurrencyUtils.*
 import com.amendil.common.http.CHClient
 import com.amendil.signature.Settings
 import com.amendil.signature.entities.*
@@ -913,7 +914,9 @@ object FuzzerParametricFunctions extends StrictLogging:
             argumentsAndSqlQuery,
             (nonParamTypes, queries) =>
               executeInSequenceOnlySuccess(queries, client.execute(_).map(_.data.head.head.asInstanceOf[String]))
-                .map(outputTypes => (nonParamTypes, outputTypes.map(CHType.getByName).reduce(CHType.mergeOutputType))),
+                .map(outputTypes =>
+                  (nonParamTypes, outputTypes.map(CHTypeParser.getByName).reduce(CHTypeMerger.mergeOutputType))
+                ),
             maxConcurrency = Settings.ClickHouse.maxSupportedConcurrency
           ).map(_.toMap)
 

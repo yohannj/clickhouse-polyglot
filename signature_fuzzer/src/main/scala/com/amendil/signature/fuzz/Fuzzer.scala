@@ -1,8 +1,8 @@
 package com.amendil.signature.fuzz
 
-import com.amendil.common.ConcurrencyUtils
-import com.amendil.common.ConcurrencyUtils.executeChain
 import com.amendil.common.entities.`type`.CHFuzzableType
+import com.amendil.common.helper.ConcurrencyUtils
+import com.amendil.common.helper.ConcurrencyUtils.executeChain
 import com.amendil.common.http.CHClient
 import com.amendil.signature.entities.*
 import com.typesafe.scalalogging.StrictLogging

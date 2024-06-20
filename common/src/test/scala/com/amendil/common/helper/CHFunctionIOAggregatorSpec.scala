@@ -79,7 +79,7 @@ class CHFunctionIOAggregatorSpec extends AnyFreeSpec with Matchers:
           .toSeq
 
       val floatTypes: Seq[CHFuzzableType] =
-        CHType.allNumberTypes.collect { case t: CHFuzzableType if t.name.startsWith("Float") => t }.toSeq
+        CHTypeMerger.allNumberTypes.collect { case t: CHFuzzableType if t.name.startsWith("Float") => t }.toSeq
 
       val intervalTypes: Seq[CHFuzzableType] =
         CHFuzzableType.values
@@ -93,7 +93,7 @@ class CHFunctionIOAggregatorSpec extends AnyFreeSpec with Matchers:
           .toSeq
 
       val numberTypes: Seq[CHFuzzableType] =
-        CHType.allNumberTypes.collect { case t: CHFuzzableType => t }.toSeq
+        CHTypeMerger.allNumberTypes.collect { case t: CHFuzzableType => t }.toSeq
 
       val stringTypes: Seq[CHFuzzableType] =
         Seq(CHFuzzableType.FixedString, CHFuzzableType.StringType)

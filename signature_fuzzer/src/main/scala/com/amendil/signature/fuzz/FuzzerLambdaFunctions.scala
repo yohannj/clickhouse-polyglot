@@ -1,9 +1,10 @@
 package com.amendil.signature.fuzz
 
-import com.amendil.common.ConcurrencyUtils.executeInParallelOnlySuccess
 import com.amendil.common.entities.{CHResponse, *}
 import com.amendil.common.entities.`type`.*
 import com.amendil.common.entities.function.{CHFunction, CHFunctionIO}
+import com.amendil.common.helper.*
+import com.amendil.common.helper.ConcurrencyUtils.executeInParallelOnlySuccess
 import com.amendil.common.http.CHClient
 import com.amendil.signature.Settings
 import com.amendil.signature.entities.*
@@ -67,7 +68,7 @@ object FuzzerLambdaFunctions extends StrictLogging:
       client
         .execute(s"SELECT toTypeName(${fn.name}(x, y -> 1, ['s'], [1]))")
         .map { (resp: CHResponse) =>
-          val outputType = CHType.getByName(resp.data.head.head.asInstanceOf[String])
+          val outputType = CHTypeParser.getByName(resp.data.head.head.asInstanceOf[String])
 
           if outputType == CHFuzzableType.StringType || outputType == CHSpecialType.Array(CHFuzzableType.StringType)
           then
@@ -132,7 +133,7 @@ object FuzzerLambdaFunctions extends StrictLogging:
           var mapKeyType: CHType = CHAggregatedType.MapKey
           var mapValueType: CHType = CHAggregatedType.Any
 
-          val outputType = CHType.getByName(resp2Opt.getOrElse(resp1).data.head.head.asInstanceOf[String]) match
+          val outputType = CHTypeParser.getByName(resp2Opt.getOrElse(resp1).data.head.head.asInstanceOf[String]) match
             case CHSpecialType.Array(CHFuzzableType.UUID) =>
               // Return type is the type of the lambda, so a generic type!
               lambdaOutputType = CHSpecialType.GenericType("T1", CHAggregatedType.Any)
@@ -217,12 +218,12 @@ object FuzzerLambdaFunctions extends StrictLogging:
             resp2Opt match
               case None        => CHFuzzableType.BooleanType
               case Some(value) => CHAggregatedType.Any
-          var arg1Types = CHType.mergeInputTypes(resps1.map(_._2).toSet)
+          var arg1Types = CHTypeMerger.mergeInputTypes(resps1.map(_._2).toSet)
           var mapKeyType: CHType = CHAggregatedType.MapKey
           var mapValueType: CHType = CHAggregatedType.Any
 
           val outputType =
-            CHType.getByName(resp2Opt.getOrElse(resps1.head._1).data.head.head.asInstanceOf[String]) match
+            CHTypeParser.getByName(resp2Opt.getOrElse(resps1.head._1).data.head.head.asInstanceOf[String]) match
               case CHSpecialType.Array(CHFuzzableType.UUID) =>
                 // Return type is the type of the lambda, so a generic type!
                 lambdaOutputType = CHSpecialType.GenericType("T1", CHAggregatedType.Any)

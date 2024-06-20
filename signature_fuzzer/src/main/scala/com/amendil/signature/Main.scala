@@ -1,7 +1,8 @@
 package com.amendil.signature
 
-import com.amendil.common.{ConcurrencyUtils, Settings as CommonSettings}
+import com.amendil.common.Settings as CommonSettings
 import com.amendil.common.entities.`type`.CHFuzzableType
+import com.amendil.common.helper.ConcurrencyUtils
 import com.amendil.common.http.{CHClient, CHClientImpl}
 import com.amendil.signature.entities.{CHFunctionFuzzResult, CHFuzzableAbstractType}
 import com.amendil.signature.fuzz.*
@@ -45,7 +46,7 @@ import scala.util.{Failure, Success, Try}
       val functionsFuzzResultsF: Future[Seq[CHFunctionFuzzResult]] =
         ConcurrencyUtils
           .executeInSequence(
-            functionsToFuzz.zipWithIndex, // .filter(_._1.name >= "tupleHammingDistance"),
+            functionsToFuzz.zipWithIndex, // .filter(_._1.name >= "caseWithoutExpression"),
             (function: CHFunctionFuzzResult, idx: Int) =>
               if idx % Math.max(functionCount / 20, 1) == 0 then
                 logger.info(s"===============================================================")

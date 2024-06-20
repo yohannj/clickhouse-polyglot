@@ -3,6 +3,7 @@ package com.amendil.signature.fuzz
 import com.amendil.common.entities.*
 import com.amendil.common.entities.`type`.*
 import com.amendil.common.entities.function.{CHFunction, CHFunctionIO}
+import com.amendil.common.helper.*
 import com.amendil.common.http.CHClient
 import com.amendil.signature.entities.*
 import com.typesafe.scalalogging.StrictLogging
@@ -43,7 +44,7 @@ object FuzzerSpecialFunctions extends StrictLogging:
     client
       .execute(s"SELECT toTypeName(${fn.name}($exprs1)), toTypeName(${fn.name}($exprs2))")
       .map { (resp: CHResponse) =>
-        val returnType = CHType.getByName(resp.data.head.head.asInstanceOf[String]) match
+        val returnType = CHTypeParser.getByName(resp.data.head.head.asInstanceOf[String]) match
           case CHSpecialType.Tuple(
                 Seq(
                   CHSpecialType.Array(CHFuzzableType.Date),

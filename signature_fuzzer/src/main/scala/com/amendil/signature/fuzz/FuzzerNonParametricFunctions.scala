@@ -1,9 +1,10 @@
 package com.amendil.signature.fuzz
 
-import com.amendil.common.ConcurrencyUtils.*
 import com.amendil.common.entities.*
 import com.amendil.common.entities.`type`.{CHFuzzableType, CHType}
 import com.amendil.common.entities.function.{CHFunction, CHFunctionIO}
+import com.amendil.common.helper.*
+import com.amendil.common.helper.ConcurrencyUtils.*
 import com.amendil.common.http.CHClient
 import com.amendil.signature.Settings
 import com.amendil.signature.entities.*
@@ -36,7 +37,7 @@ object FuzzerNonParametricFunctions extends StrictLogging:
           client
             .execute(query(fn.name, args = "", fuzzOverWindow = false))
             .map((resp: CHResponse) =>
-              val outputType = CHType.getByName(resp.data.head.head.asInstanceOf[String])
+              val outputType = CHTypeParser.getByName(resp.data.head.head.asInstanceOf[String])
               Some(CHFunctionIO.Function0(outputType))
             )
             .recover(_ => None)
@@ -45,7 +46,7 @@ object FuzzerNonParametricFunctions extends StrictLogging:
           client
             .execute(query(fn.name, args = "", fuzzOverWindow = true))
             .map((resp: CHResponse) =>
-              val outputType = CHType.getByName(resp.data.head.head.asInstanceOf[String])
+              val outputType = CHTypeParser.getByName(resp.data.head.head.asInstanceOf[String])
               Some(CHFunctionIO.Function0(outputType))
             )
             .recover(_ => None)
@@ -283,7 +284,7 @@ object FuzzerNonParametricFunctions extends StrictLogging:
                   .execute(_)
                   .map(_.data.head.head.asInstanceOf[String]),
                 Settings.ClickHouse.maxSupportedConcurrencyInnerLoop
-              ).map(outputType => (inputTypes, CHType.getByName(outputType)))
+              ).map(outputType => (inputTypes, CHTypeParser.getByName(outputType)))
             else
               executeInParallelOnlySuccess(
                 queries,
@@ -291,7 +292,9 @@ object FuzzerNonParametricFunctions extends StrictLogging:
                   .execute(_)
                   .map(_.data.head.head.asInstanceOf[String]),
                 Settings.ClickHouse.maxSupportedConcurrencyInnerLoop
-              ).map(outputTypes => (inputTypes, outputTypes.map(CHType.getByName).reduce(CHType.mergeOutputType)))
+              ).map(outputTypes =>
+                (inputTypes, outputTypes.map(CHTypeParser.getByName).reduce(CHTypeMerger.mergeOutputType))
+              )
           ,
           maxConcurrency = Settings.ClickHouse.maxSupportedConcurrencyOuterLoop
         )

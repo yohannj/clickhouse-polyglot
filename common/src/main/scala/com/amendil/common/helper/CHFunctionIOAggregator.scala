@@ -1,6 +1,5 @@
 package com.amendil.common.helper
 
-import com.amendil.common.entities.*
 import com.amendil.common.entities.`type`.*
 import com.amendil.common.entities.function.CHFunctionIO
 import com.typesafe.scalalogging.StrictLogging
@@ -26,7 +25,6 @@ object CHFunctionIOAggregator extends StrictLogging:
 
     if aggregatedSignatures.size == functions.size then functions
     else aggregate(aggregatedSignatures)
-  
 
   private def equalOrUnknown(t1: CHType, t2: CHType): Boolean =
     (t1, t2) match
@@ -267,7 +265,7 @@ object CHFunctionIOAggregator extends StrictLogging:
               .map((_, groupedInputMetadata) => groupedInputMetadata.head)
               .map { inputMetadata =>
                 val types = groupedSignatureIOs.map(_(inputMetadata.idx)).toSet
-                val aggregatedTypes = CHType
+                val aggregatedTypes = CHTypeMerger
                   .mergeInputTypes(types, supportJson = supportJson)
                   .map(t => inputMetadata.converter.extract(CHType.normalize(t)))
 
@@ -339,7 +337,7 @@ object CHFunctionIOAggregator extends StrictLogging:
         )
         .map { case (groupingKey, groupedSignatures) =>
           val types = groupedSignatures.map(_.arguments(argumentIdx)).toSet
-          val deduplicatedTypes = CHType.deduplicateSupertypes(types)
+          val deduplicatedTypes = CHTypeMerger.deduplicateSupertypes(types)
 
           if types.size == deduplicatedTypes.size then groupedSignatures
           else
@@ -384,7 +382,7 @@ object CHFunctionIOAggregator extends StrictLogging:
         )
         .map { case (groupingKey, groupedSignatures) =>
           val types = groupedSignatures.map(_.parameters(parameterIdx)).toSet
-          val deduplicatedTypes = CHType.deduplicateSupertypes(types)
+          val deduplicatedTypes = CHTypeMerger.deduplicateSupertypes(types)
 
           if types.size == deduplicatedTypes.size then groupedSignatures
           else
@@ -923,7 +921,7 @@ object CHFunctionIOAggregator extends StrictLogging:
         .toSeq
         .flatMap { case (groupingKey, groupedSignatures) =>
           val types = groupedSignatures.map(typeSelector).toSet
-          val aggregatedTypes = CHType.mergeInputTypes(types, supportJson = supportJson).toSeq
+          val aggregatedTypes = CHTypeMerger.mergeInputTypes(types, supportJson = supportJson).toSeq
 
           if aggregatedTypes.size < types.size then
             aggregatedTypes.map(aggregatedType =>
@@ -993,7 +991,7 @@ object CHFunctionIOAggregator extends StrictLogging:
 
           if groupedSignatures.forall(f => typeSelectorT1(f) == typeSelectorT2(f)) then
             val types = groupedSignatures.map(typeSelectorT1).toSet
-            val aggregatedTypes = CHType.mergeInputTypes(types, supportJson = supportJson).toSeq
+            val aggregatedTypes = CHTypeMerger.mergeInputTypes(types, supportJson = supportJson).toSeq
 
             if aggregatedTypes.size < types.size then
               aggregatedTypes.map(aggregatedType =>
@@ -1023,8 +1021,8 @@ object CHFunctionIOAggregator extends StrictLogging:
           then
             val types1 = groupedSignatures.map(typeSelectorT1).toSet
             val types2 = groupedSignatures.map(typeSelectorT2).toSet
-            val aggregatedTypes1 = CHType.mergeInputTypes(types1, supportJson = supportJson).toSeq
-            val aggregatedTypes2 = CHType.mergeInputTypes(types2, supportJson = supportJson).toSeq
+            val aggregatedTypes1 = CHTypeMerger.mergeInputTypes(types1, supportJson = supportJson).toSeq
+            val aggregatedTypes2 = CHTypeMerger.mergeInputTypes(types2, supportJson = supportJson).toSeq
 
             if aggregatedTypes1.size < types1.size || aggregatedTypes2.size < types2.size then
               for
@@ -1124,7 +1122,7 @@ object CHFunctionIOAggregator extends StrictLogging:
               .forall(f => typeSelectorT1(f) == typeSelectorT2(f) && typeSelectorT1(f) == typeSelectorT3(f))
           then
             val types = groupedSignatures.map(typeSelectorT1).toSet
-            val aggregatedTypes = CHType.mergeInputTypes(types, supportJson = supportJson).toSeq
+            val aggregatedTypes = CHTypeMerger.mergeInputTypes(types, supportJson = supportJson).toSeq
 
             if aggregatedTypes.size < types.size then
               aggregatedTypes.map(aggregatedType =>
@@ -1155,9 +1153,9 @@ object CHFunctionIOAggregator extends StrictLogging:
             val types1 = groupedSignatures.map(typeSelectorT1).toSet
             val types2 = groupedSignatures.map(typeSelectorT2).toSet
             val types3 = groupedSignatures.map(typeSelectorT3).toSet
-            val aggregatedTypes1 = CHType.mergeInputTypes(types1, supportJson = supportJson).toSeq
-            val aggregatedTypes2 = CHType.mergeInputTypes(types2, supportJson = supportJson).toSeq
-            val aggregatedTypes3 = CHType.mergeInputTypes(types3, supportJson = supportJson).toSeq
+            val aggregatedTypes1 = CHTypeMerger.mergeInputTypes(types1, supportJson = supportJson).toSeq
+            val aggregatedTypes2 = CHTypeMerger.mergeInputTypes(types2, supportJson = supportJson).toSeq
+            val aggregatedTypes3 = CHTypeMerger.mergeInputTypes(types3, supportJson = supportJson).toSeq
 
             if aggregatedTypes1.size < types1.size || aggregatedTypes2.size < types2.size || aggregatedTypes3.size < types3.size
             then
@@ -1314,7 +1312,8 @@ object CHFunctionIOAggregator extends StrictLogging:
       override def extract(t: CHType): CHType = t
       override def wrap(t: CHType): CHType = t
 
-    private[CHFunctionIOAggregator] case class TupleArrayNullableTypeConverter(tail: Seq[CHType]) extends CHTypeConverter:
+    private[CHFunctionIOAggregator] case class TupleArrayNullableTypeConverter(tail: Seq[CHType])
+        extends CHTypeConverter:
       override def extract(t: CHType): CHType = t
         .asInstanceOf[CHSpecialType.Tuple]
         .innerTypes
