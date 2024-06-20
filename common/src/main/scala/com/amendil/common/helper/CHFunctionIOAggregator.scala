@@ -1,785 +1,32 @@
-package com.amendil.signature.entities
+package com.amendil.common.helper
 
 import com.amendil.common.entities.*
 import com.amendil.common.entities.`type`.*
-import com.amendil.signature.Settings
+import com.amendil.common.entities.function.CHFunctionIO
 import com.typesafe.scalalogging.StrictLogging
 
-sealed trait CHFunctionIO:
-  def kind: String
-  def parameters: Seq[CHType] = Nil
-  def arguments: Seq[CHType] = Nil
-  def repeatedParameterIdxOpt: Option[Int] = None
-  def repeatedArgumentIdxOpt: Option[Int] = None
-  def isParametric: Boolean = false
-  def output: CHType
-
-  def asString(): String =
-    val genericTypes = getGenericTypes()
-    val genericTypesStr =
-      if genericTypes.isEmpty then ""
-      else
-        genericTypes.toSeq
-          .sortBy(_.typeName)
-          .map(t => s"${t.typeName} <: ${t.superType.name}")
-          .mkString("[", ", ", "] ")
-
-    val parametersStr =
-      if !isParametric then ""
-      else
-        s"(${parameters.zipWithIndex
-            .map((param, idx) => param.name + (if repeatedParameterIdxOpt.exists(_ == idx) then "..." else ""))
-            .mkString(", ")})"
-
-    val argumentsStr =
-      s"(${arguments.zipWithIndex
-          .map((param, idx) => param.name + (if repeatedArgumentIdxOpt.exists(_ == idx) then "..." else ""))
-          .mkString(", ")})"
-
-    s"$genericTypesStr$parametersStr$argumentsStr => ${output.name}".stripMargin
-
-  protected def getGenericTypes(): Set[CHSpecialType.GenericType] =
-    val genericTypes = CHType.getGenericTypes(arguments ++ parameters :+ output)
-    require(genericTypes.map(_.typeName).size == genericTypes.size)
-    genericTypes
-
-sealed trait CHFunctionNIO extends CHFunctionIO:
-  override def repeatedArgumentIdxOpt: Option[Int] = Some(this.arguments.size - 1)
-
-sealed trait CHParametricFunction extends CHFunctionIO:
-  override def isParametric: Boolean = true
-
-sealed trait CHParametricNFunctionNIO extends CHParametricFunction:
-  override def repeatedParameterIdxOpt: Option[Int] = Some(this.parameters.size - 1)
-  override def repeatedArgumentIdxOpt: Option[Int] = Some(this.arguments.size - 1)
-
-sealed trait CHParametricNFunctionIO extends CHParametricFunction:
-  override def repeatedParameterIdxOpt: Option[Int] = Some(this.parameters.size - 1)
-
-sealed trait CHParametricFunctionNIO extends CHParametricFunction with CHFunctionNIO
-
-object CHFunctionIO extends StrictLogging:
-
-  def aggregate[T <: CHFunctionIO](functions: Seq[T]): Seq[CHFunctionIO] =
+object CHFunctionIOAggregator extends StrictLogging:
+  def aggregate[T <: CHFunctionIO](functions: Seq[T], supportJson: Boolean = true): Seq[CHFunctionIO] =
     require(
       functions.map(_.kind).distinct.size <= 1,
       s"Cannot aggregate different kind of functions, but asked to aggregate '${functions.map(_.kind).distinct.sorted.mkString("', '")}' together."
     )
 
-    if functions.size < 2 || !Settings.Fuzzer.aggregateSignature then functions
-    else
-      var aggregatedSignatures: Seq[CHFunctionIO] = functions
+    given SupportJson = supportJson
 
-      aggregatedSignatures = deduplicateArguments(aggregatedSignatures)
-      aggregatedSignatures = deduplicateParameters(aggregatedSignatures)
+    var aggregatedSignatures: Seq[CHFunctionIO] = functions
 
-      aggregatedSignatures = aggregateSimilarIOs(aggregatedSignatures)
-      aggregatedSignatures = aggregateArrayArgumentsWithMapOutput(aggregatedSignatures)
-      aggregatedSignatures = aggregateArrayArgumentsWithTupleArrayNullableOutput(aggregatedSignatures)
-      aggregatedSignatures = aggregateArrayArgumentsWithTupleArrayOutput(aggregatedSignatures)
+    aggregatedSignatures = deduplicateArguments(aggregatedSignatures)
+    aggregatedSignatures = deduplicateParameters(aggregatedSignatures)
 
-      if aggregatedSignatures.size > Settings.Fuzzer.aggregateSignatureThreshold || aggregatedSignatures.size == functions.size
-      then functions
-      else aggregate(aggregatedSignatures)
+    aggregatedSignatures = aggregateSimilarIOs(aggregatedSignatures)
+    aggregatedSignatures = aggregateArrayArgumentsWithMapOutput(aggregatedSignatures)
+    aggregatedSignatures = aggregateArrayArgumentsWithTupleArrayNullableOutput(aggregatedSignatures)
+    aggregatedSignatures = aggregateArrayArgumentsWithTupleArrayOutput(aggregatedSignatures)
 
-  case class Function0N(argN: CHType, output: CHType) extends CHFunctionNIO:
-    val kind = "function0N"
-    override val arguments = Seq(argN)
-
-  case class Function0N1(argN: CHType, arg1: CHType, output: CHType) extends CHFunctionIO:
-    val kind = "Function0N1"
-    override val arguments = Seq(argN, arg1)
-    override val repeatedArgumentIdxOpt = Some(0)
-
-  case class Function1N(arg1: CHType, argN: CHType, output: CHType) extends CHFunctionNIO:
-    val kind = "function1N"
-    override val arguments = Seq(arg1, argN)
-
-  case class Function1N1(arg1: CHType, argN: CHType, arg2: CHType, output: CHType) extends CHFunctionIO:
-    val kind = "Function1N1"
-    override val arguments = Seq(arg1, argN, arg2)
-    override val repeatedArgumentIdxOpt = Some(1)
-
-  case class Function2N(arg1: CHType, arg2: CHType, argN: CHType, output: CHType) extends CHFunctionNIO:
-    val kind = "function2N"
-    override val arguments = Seq(arg1, arg2, argN)
-
-  case class Function3N(arg1: CHType, arg2: CHType, arg3: CHType, argN: CHType, output: CHType) extends CHFunctionNIO:
-    val kind = "function3N"
-    override val arguments = Seq(arg1, arg2, arg3, argN)
-
-  case class Function0(output: CHType) extends CHFunctionIO:
-    val kind = "function0"
-
-  case class Function1(arg1: CHType, output: CHType) extends CHFunctionIO:
-    val kind = "function1"
-    override val arguments = Seq(arg1)
-
-  case class Function2(arg1: CHType, arg2: CHType, output: CHType) extends CHFunctionIO:
-    val kind = "function2"
-    override val arguments = Seq(arg1, arg2)
-
-  case class Function3(arg1: CHType, arg2: CHType, arg3: CHType, output: CHType) extends CHFunctionIO:
-    val kind = "function3"
-    override val arguments = Seq(arg1, arg2, arg3)
-
-  case class Function4(arg1: CHType, arg2: CHType, arg3: CHType, arg4: CHType, output: CHType) extends CHFunctionIO:
-    val kind = "function4"
-    override val arguments = Seq(arg1, arg2, arg3, arg4)
-
-  case class Function5(arg1: CHType, arg2: CHType, arg3: CHType, arg4: CHType, arg5: CHType, output: CHType)
-      extends CHFunctionIO:
-    val kind = "function5"
-    override val arguments = Seq(arg1, arg2, arg3, arg4, arg5)
-
-  case class Function6(
-      arg1: CHType,
-      arg2: CHType,
-      arg3: CHType,
-      arg4: CHType,
-      arg5: CHType,
-      arg6: CHType,
-      output: CHType
-  ) extends CHFunctionIO:
-    val kind = "function6"
-    override val arguments = Seq(arg1, arg2, arg3, arg4, arg5, arg6)
-
-  case class Function7(
-      arg1: CHType,
-      arg2: CHType,
-      arg3: CHType,
-      arg4: CHType,
-      arg5: CHType,
-      arg6: CHType,
-      arg7: CHType,
-      output: CHType
-  ) extends CHFunctionIO:
-    val kind = "function7"
-    override val arguments = Seq(arg1, arg2, arg3, arg4, arg5, arg6, arg7)
-
-  case class Function8(
-      arg1: CHType,
-      arg2: CHType,
-      arg3: CHType,
-      arg4: CHType,
-      arg5: CHType,
-      arg6: CHType,
-      arg7: CHType,
-      arg8: CHType,
-      output: CHType
-  ) extends CHFunctionIO:
-    val kind = "function8"
-    override val arguments = Seq(arg1, arg2, arg3, arg4, arg5, arg6, arg7, arg8)
-
-  case class Function9(
-      arg1: CHType,
-      arg2: CHType,
-      arg3: CHType,
-      arg4: CHType,
-      arg5: CHType,
-      arg6: CHType,
-      arg7: CHType,
-      arg8: CHType,
-      arg9: CHType,
-      output: CHType
-  ) extends CHFunctionIO:
-    val kind = "function9"
-    override val arguments = Seq(arg1, arg2, arg3, arg4, arg5, arg6, arg7, arg8, arg9)
-
-  case class LambdaArrayFunction0N(lambdaArg: CHSpecialType.LambdaType, argN: CHSpecialType.Array, output: CHType)
-      extends CHFunctionNIO:
-    val kind = "lambdaArrayFunction0N"
-    override val arguments = Seq(lambdaArg, argN)
-
-  case class LambdaArrayFunction1N(
-      lambdaArg: CHSpecialType.LambdaType,
-      arg1: CHSpecialType.Array,
-      argN: CHSpecialType.Array,
-      output: CHType
-  ) extends CHFunctionNIO:
-    val kind = "lambdaArrayFunction1N"
-    override val arguments = Seq(lambdaArg, arg1, argN)
-
-  case class LambdaArrayFunction1N1(
-      lambdaArg: CHSpecialType.LambdaType,
-      arg1: CHSpecialType.Array,
-      argN: CHSpecialType.Array,
-      arg2: CHType,
-      output: CHType
-  ) extends CHFunctionIO:
-    val kind = "LambdaArrayFunction1N1"
-    override val arguments = Seq(lambdaArg, arg1, argN, arg2)
-    override val repeatedArgumentIdxOpt = Some(2)
-
-  case class LambdaMapFunction0N(lambdaArg: CHSpecialType.LambdaType, argN: CHSpecialType.Map, output: CHType)
-      extends CHFunctionNIO:
-    val kind = "LambdaMapFunction0N"
-    override val arguments = Seq(lambdaArg, argN)
-
-  case class LambdaMapFunction1(lambdaArg: CHSpecialType.LambdaType, arg1: CHSpecialType.Map, output: CHType)
-      extends CHFunctionIO:
-    val kind = "LambdaMapFunction1"
-    override val arguments = Seq(lambdaArg, arg1)
-
-  case class LambdaMapFunction1N(
-      lambdaArg: CHSpecialType.LambdaType,
-      arg1: CHType,
-      argN: CHSpecialType.Map,
-      output: CHType
-  ) extends CHFunctionNIO:
-    val kind = "LambdaMapFunction1N"
-    override val arguments = Seq(lambdaArg, arg1, argN)
-
-  case class LambdaMapFunction2(
-      lambdaArg: CHSpecialType.LambdaType,
-      arg1: CHType,
-      arg2: CHSpecialType.Map,
-      output: CHType
-  ) extends CHFunctionIO:
-    val kind = "LambdaMapFunction2"
-    override val arguments = Seq(lambdaArg, arg1, arg2)
-
-  case class Parametric0NFunction0N(paramArgN: CHType, argN: CHType, output: CHType) extends CHParametricNFunctionNIO:
-    val kind = "parametric0NFunction0N"
-    override val parameters = Seq(paramArgN)
-    override val arguments = Seq(argN)
-
-  case class Parametric0NFunction1N(paramArgN: CHType, arg1: CHType, argN: CHType, output: CHType)
-      extends CHParametricNFunctionNIO:
-    val kind = "parametric0NFunction1N"
-    override val parameters = Seq(paramArgN)
-    override val arguments = Seq(arg1, argN)
-
-  case class Parametric0NFunction2N(paramArgN: CHType, arg1: CHType, arg2: CHType, argN: CHType, output: CHType)
-      extends CHParametricNFunctionNIO:
-    val kind = "parametric0NFunction2N"
-    override val parameters = Seq(paramArgN)
-    override val arguments = Seq(arg1, arg2, argN)
-
-  case class Parametric0NFunction1(paramArgN: CHType, arg1: CHType, output: CHType) extends CHParametricNFunctionIO:
-    val kind = "parametric0NFunction1"
-    override val parameters = Seq(paramArgN)
-    override val arguments = Seq(arg1)
-
-  case class Parametric0NFunction2(paramArgN: CHType, arg1: CHType, arg2: CHType, output: CHType)
-      extends CHParametricNFunctionIO:
-    val kind = "parametric0NFunction2"
-    override val parameters = Seq(paramArgN)
-    override val arguments = Seq(arg1, arg2)
-
-  case class Parametric0NFunction3(paramArgN: CHType, arg1: CHType, arg2: CHType, arg3: CHType, output: CHType)
-      extends CHParametricNFunctionIO:
-    val kind = "parametric0NFunction3"
-    override val parameters = Seq(paramArgN)
-    override val arguments = Seq(arg1, arg2, arg3)
-
-  case class Parametric1NFunction0N(paramArg1: CHType, paramArgN: CHType, argN: CHType, output: CHType)
-      extends CHParametricNFunctionNIO:
-    val kind = "parametric1NFunction0N"
-    override val parameters = Seq(paramArg1, paramArgN)
-    override val arguments = Seq(argN)
-
-  case class Parametric1NFunction1N(
-      paramArg1: CHType,
-      paramArgN: CHType,
-      arg1: CHType,
-      argN: CHType,
-      output: CHType
-  ) extends CHParametricNFunctionNIO:
-    val kind = "parametric1NFunction1N"
-    override val parameters = Seq(paramArg1, paramArgN)
-    override val arguments = Seq(arg1, argN)
-
-  case class Parametric1NFunction2N(
-      paramArg1: CHType,
-      paramArgN: CHType,
-      arg1: CHType,
-      arg2: CHType,
-      argN: CHType,
-      output: CHType
-  ) extends CHParametricNFunctionNIO:
-    val kind = "parametric1NFunction2N"
-    override val parameters = Seq(paramArg1, paramArgN)
-    override val arguments = Seq(arg1, arg2, argN)
-
-  case class Parametric1NFunction3N(
-      paramArg1: CHType,
-      paramArgN: CHType,
-      arg1: CHType,
-      arg2: CHType,
-      arg3: CHType,
-      argN: CHType,
-      output: CHType
-  ) extends CHParametricNFunctionNIO:
-    val kind = "parametric1NFunction3N"
-    override val parameters = Seq(paramArg1, paramArgN)
-    override val arguments = Seq(arg1, arg2, arg3, argN)
-
-  case class Parametric1NFunction1(paramArg1: CHType, paramArgN: CHType, arg1: CHType, output: CHType)
-      extends CHParametricNFunctionIO:
-    val kind = "parametric1NFunction1"
-    override val parameters = Seq(paramArg1, paramArgN)
-    override val arguments = Seq(arg1)
-
-  case class Parametric1NFunction2(
-      paramArg1: CHType,
-      paramArgN: CHType,
-      arg1: CHType,
-      arg2: CHType,
-      output: CHType
-  ) extends CHParametricNFunctionIO:
-    val kind = "parametric1NFunction2"
-    override val parameters = Seq(paramArg1, paramArgN)
-    override val arguments = Seq(arg1, arg2)
-
-  case class Parametric1NFunction3(
-      paramArg1: CHType,
-      paramArgN: CHType,
-      arg1: CHType,
-      arg2: CHType,
-      arg3: CHType,
-      output: CHType
-  ) extends CHParametricNFunctionIO:
-    val kind = "parametric1NFunction3"
-    override val parameters = Seq(paramArg1, paramArgN)
-    override val arguments = Seq(arg1, arg2, arg3)
-
-  case class Parametric2NFunction0N(
-      paramArg1: CHType,
-      paramArg2: CHType,
-      paramArgN: CHType,
-      argN: CHType,
-      output: CHType
-  ) extends CHParametricNFunctionNIO:
-    val kind = "parametric2NFunction0N"
-    override val parameters = Seq(paramArg1, paramArg2, paramArgN)
-    override val arguments = Seq(argN)
-
-  case class Parametric2NFunction1N(
-      paramArg1: CHType,
-      paramArg2: CHType,
-      paramArgN: CHType,
-      arg1: CHType,
-      argN: CHType,
-      output: CHType
-  ) extends CHParametricNFunctionNIO:
-    val kind = "parametric2NFunction1N"
-    override val parameters = Seq(paramArg1, paramArg2, paramArgN)
-    override val arguments = Seq(arg1, argN)
-
-  case class Parametric2NFunction2N(
-      paramArg1: CHType,
-      paramArg2: CHType,
-      paramArgN: CHType,
-      arg1: CHType,
-      arg2: CHType,
-      argN: CHType,
-      output: CHType
-  ) extends CHParametricNFunctionNIO:
-    val kind = "parametric2NFunction2N"
-    override val parameters = Seq(paramArg1, paramArg2, paramArgN)
-    override val arguments = Seq(arg1, arg2, argN)
-
-  case class Parametric2NFunction1(
-      paramArg1: CHType,
-      paramArg2: CHType,
-      paramArgN: CHType,
-      arg1: CHType,
-      output: CHType
-  ) extends CHParametricNFunctionIO:
-    val kind = "parametric2NFunction1"
-    override val parameters = Seq(paramArg1, paramArg2, paramArgN)
-    override val arguments = Seq(arg1)
-
-  case class Parametric2NFunction2(
-      paramArg1: CHType,
-      paramArg2: CHType,
-      paramArgN: CHType,
-      arg1: CHType,
-      arg2: CHType,
-      output: CHType
-  ) extends CHParametricNFunctionIO:
-    val kind = "parametric2NFunction2"
-    override val parameters = Seq(paramArg1, paramArg2, paramArgN)
-    override val arguments = Seq(arg1, arg2)
-
-  case class Parametric2NFunction3(
-      paramArg1: CHType,
-      paramArg2: CHType,
-      paramArgN: CHType,
-      arg1: CHType,
-      arg2: CHType,
-      arg3: CHType,
-      output: CHType
-  ) extends CHParametricNFunctionIO:
-    val kind = "parametric2NFunction3"
-    override val parameters = Seq(paramArg1, paramArg2, paramArgN)
-    override val arguments = Seq(arg1, arg2, arg3)
-
-  case class Parametric3NFunction0N(
-      paramArg1: CHType,
-      paramArg2: CHType,
-      paramArg3: CHType,
-      paramArgN: CHType,
-      argN: CHType,
-      output: CHType
-  ) extends CHParametricNFunctionNIO:
-    val kind = "parametric3NFunction0N"
-    override val parameters = Seq(paramArg1, paramArg2, paramArg3, paramArgN)
-    override val arguments = Seq(argN)
-
-  case class Parametric3NFunction1N(
-      paramArg1: CHType,
-      paramArg2: CHType,
-      paramArg3: CHType,
-      paramArgN: CHType,
-      arg1: CHType,
-      argN: CHType,
-      output: CHType
-  ) extends CHParametricNFunctionNIO:
-    val kind = "parametric3NFunction1N"
-    override val parameters = Seq(paramArg1, paramArg2, paramArg3, paramArgN)
-    override val arguments = Seq(arg1, argN)
-
-  case class Parametric3NFunction2N(
-      paramArg1: CHType,
-      paramArg2: CHType,
-      paramArg3: CHType,
-      paramArgN: CHType,
-      arg1: CHType,
-      arg2: CHType,
-      argN: CHType,
-      output: CHType
-  ) extends CHParametricNFunctionNIO:
-    val kind = "parametric3NFunction2N"
-    override val parameters = Seq(paramArg1, paramArg2, paramArg3, paramArgN)
-    override val arguments = Seq(arg1, arg2, argN)
-
-  case class Parametric3NFunction1(
-      paramArg1: CHType,
-      paramArg2: CHType,
-      paramArg3: CHType,
-      paramArgN: CHType,
-      arg1: CHType,
-      output: CHType
-  ) extends CHParametricNFunctionIO:
-    val kind = "parametric3NFunction1"
-    override val parameters = Seq(paramArg1, paramArg2, paramArg3, paramArgN)
-    override val arguments = Seq(arg1)
-
-  case class Parametric3NFunction2(
-      paramArg1: CHType,
-      paramArg2: CHType,
-      paramArg3: CHType,
-      paramArgN: CHType,
-      arg1: CHType,
-      arg2: CHType,
-      output: CHType
-  ) extends CHParametricNFunctionIO:
-    val kind = "parametric3NFunction2"
-    override val parameters = Seq(paramArg1, paramArg2, paramArg3, paramArgN)
-    override val arguments = Seq(arg1, arg2)
-
-  case class Parametric3NFunction3(
-      paramArg1: CHType,
-      paramArg2: CHType,
-      paramArg3: CHType,
-      paramArgN: CHType,
-      arg1: CHType,
-      arg2: CHType,
-      arg3: CHType,
-      output: CHType
-  ) extends CHParametricNFunctionIO:
-    val kind = "parametric3NFunction3"
-    override val parameters = Seq(paramArg1, paramArg2, paramArg3, paramArgN)
-    override val arguments = Seq(arg1, arg2, arg3)
-
-  case class Parametric0Function0N(argN: CHType, output: CHType) extends CHParametricFunctionNIO:
-    val kind = "parametric0Function0N"
-    override val parameters = Seq()
-    override val arguments = Seq(argN)
-
-  case class Parametric0Function1N(arg1: CHType, argN: CHType, output: CHType) extends CHParametricFunctionNIO:
-    val kind = "parametric0Function1N"
-    override val parameters = Seq()
-    override val arguments = Seq(arg1, argN)
-
-  case class Parametric0Function2N(arg1: CHType, arg2: CHType, argN: CHType, output: CHType)
-      extends CHParametricFunctionNIO:
-    val kind = "parametric0Function2N"
-    override val parameters = Seq()
-    override val arguments = Seq(arg1, arg2, argN)
-
-  case class Parametric0Function1(arg1: CHType, output: CHType) extends CHParametricFunction:
-    val kind = "parametric0Function1"
-    override val parameters = Seq()
-    override val arguments = Seq(arg1)
-
-  case class Parametric0Function2(arg1: CHType, arg2: CHType, output: CHType) extends CHParametricFunction:
-    val kind = "parametric0Function2"
-    override val parameters = Seq()
-    override val arguments = Seq(arg1, arg2)
-
-  case class Parametric0Function3(arg1: CHType, arg2: CHType, arg3: CHType, output: CHType)
-      extends CHParametricFunction:
-    val kind = "parametric0Function3"
-    override val parameters = Seq()
-    override val arguments = Seq(arg1, arg2, arg3)
-
-  case class Parametric1Function0N(paramArg1: CHType, argN: CHType, output: CHType) extends CHParametricFunctionNIO:
-    val kind = "parametric1Function0N"
-    override val parameters = Seq(paramArg1)
-    override val arguments = Seq(argN)
-
-  case class Parametric1Function1N(paramArg1: CHType, arg1: CHType, argN: CHType, output: CHType)
-      extends CHParametricFunctionNIO:
-    val kind = "parametric1Function1N"
-    override val parameters = Seq(paramArg1)
-    override val arguments = Seq(arg1, argN)
-
-  case class Parametric1Function2N(paramArg1: CHType, arg1: CHType, arg2: CHType, argN: CHType, output: CHType)
-      extends CHParametricFunctionNIO:
-    val kind = "parametric1Function2N"
-    override val parameters = Seq(paramArg1)
-    override val arguments = Seq(arg1, arg2, argN)
-
-  case class Parametric1Function1(paramArg1: CHType, arg1: CHType, output: CHType) extends CHParametricFunction:
-    val kind = "parametric1Function1"
-    override val parameters = Seq(paramArg1)
-    override val arguments = Seq(arg1)
-
-  case class Parametric1Function2(paramArg1: CHType, arg1: CHType, arg2: CHType, output: CHType)
-      extends CHParametricFunction:
-    val kind = "parametric1Function2"
-    override val parameters = Seq(paramArg1)
-    override val arguments = Seq(arg1, arg2)
-
-  case class Parametric1Function3(paramArg1: CHType, arg1: CHType, arg2: CHType, arg3: CHType, output: CHType)
-      extends CHParametricFunction:
-    val kind = "parametric1Function3"
-    override val parameters = Seq(paramArg1)
-    override val arguments = Seq(arg1, arg2, arg3)
-
-  case class Parametric2Function0N(paramArg1: CHType, paramArg2: CHType, argN: CHType, output: CHType)
-      extends CHParametricFunctionNIO:
-    val kind = "parametric2Function0N"
-    override val parameters = Seq(paramArg1, paramArg2)
-    override val arguments = Seq(argN)
-
-  case class Parametric2Function1N(
-      paramArg1: CHType,
-      paramArg2: CHType,
-      arg1: CHType,
-      argN: CHType,
-      output: CHType
-  ) extends CHParametricFunctionNIO:
-    val kind = "parametric2Function1N"
-    override val parameters = Seq(paramArg1, paramArg2)
-    override val arguments = Seq(arg1, argN)
-
-  case class Parametric2Function2N(
-      paramArg1: CHType,
-      paramArg2: CHType,
-      arg1: CHType,
-      arg2: CHType,
-      argN: CHType,
-      output: CHType
-  ) extends CHParametricFunctionNIO:
-    val kind = "parametric2Function2N"
-    override val parameters = Seq(paramArg1, paramArg2)
-    override val arguments = Seq(arg1, arg2, argN)
-
-  case class Parametric2Function3N(
-      paramArg1: CHType,
-      paramArg2: CHType,
-      arg1: CHType,
-      arg2: CHType,
-      arg3: CHType,
-      argN: CHType,
-      output: CHType
-  ) extends CHParametricFunctionNIO:
-    val kind = "parametric2Function3N"
-    override val parameters = Seq(paramArg1, paramArg2)
-    override val arguments = Seq(arg1, arg2, arg3, argN)
-
-  case class Parametric2Function1(paramArg1: CHType, paramArg2: CHType, arg1: CHType, output: CHType)
-      extends CHParametricFunction:
-    val kind = "parametric2Function1"
-    override val parameters = Seq(paramArg1, paramArg2)
-    override val arguments = Seq(arg1)
-
-  case class Parametric2Function2(
-      paramArg1: CHType,
-      paramArg2: CHType,
-      arg1: CHType,
-      arg2: CHType,
-      output: CHType
-  ) extends CHParametricFunction:
-    val kind = "parametric2Function2"
-    override val parameters = Seq(paramArg1, paramArg2)
-    override val arguments = Seq(arg1, arg2)
-
-  case class Parametric2Function3(
-      paramArg1: CHType,
-      paramArg2: CHType,
-      arg1: CHType,
-      arg2: CHType,
-      arg3: CHType,
-      output: CHType
-  ) extends CHParametricFunction:
-    val kind = "parametric2Function3"
-    override val parameters = Seq(paramArg1, paramArg2)
-    override val arguments = Seq(arg1, arg2, arg3)
-
-  case class Parametric3Function0N(
-      paramArg1: CHType,
-      paramArg2: CHType,
-      paramArg3: CHType,
-      argN: CHType,
-      output: CHType
-  ) extends CHParametricFunctionNIO:
-    val kind = "parametric3Function0N"
-    override val parameters = Seq(paramArg1, paramArg2, paramArg3)
-    override val arguments = Seq(argN)
-
-  case class Parametric3Function1N(
-      paramArg1: CHType,
-      paramArg2: CHType,
-      paramArg3: CHType,
-      arg1: CHType,
-      argN: CHType,
-      output: CHType
-  ) extends CHParametricFunctionNIO:
-    val kind = "parametric3Function1N"
-    override val parameters = Seq(paramArg1, paramArg2, paramArg3)
-    override val arguments = Seq(arg1, argN)
-
-  case class Parametric3Function2N(
-      paramArg1: CHType,
-      paramArg2: CHType,
-      paramArg3: CHType,
-      arg1: CHType,
-      arg2: CHType,
-      argN: CHType,
-      output: CHType
-  ) extends CHParametricFunctionNIO:
-    val kind = "parametric3Function2N"
-    override val parameters = Seq(paramArg1, paramArg2, paramArg3)
-    override val arguments = Seq(arg1, arg2, argN)
-
-  case class Parametric3Function1(
-      paramArg1: CHType,
-      paramArg2: CHType,
-      paramArg3: CHType,
-      arg1: CHType,
-      output: CHType
-  ) extends CHParametricFunction:
-    val kind = "parametric3Function1"
-    override val parameters = Seq(paramArg1, paramArg2, paramArg3)
-    override val arguments = Seq(arg1)
-
-  case class Parametric3Function2(
-      paramArg1: CHType,
-      paramArg2: CHType,
-      paramArg3: CHType,
-      arg1: CHType,
-      arg2: CHType,
-      output: CHType
-  ) extends CHParametricFunction:
-    val kind = "parametric3Function2"
-    override val parameters = Seq(paramArg1, paramArg2, paramArg3)
-    override val arguments = Seq(arg1, arg2)
-
-  case class Parametric3Function3(
-      paramArg1: CHType,
-      paramArg2: CHType,
-      paramArg3: CHType,
-      arg1: CHType,
-      arg2: CHType,
-      arg3: CHType,
-      output: CHType
-  ) extends CHParametricFunction:
-    val kind = "parametric3Function3"
-    override val parameters = Seq(paramArg1, paramArg2, paramArg3)
-    override val arguments = Seq(arg1, arg2, arg3)
-
-  case class Parametric4Function0N(
-      paramArg1: CHType,
-      paramArg2: CHType,
-      paramArg3: CHType,
-      paramArg4: CHType,
-      argN: CHType,
-      output: CHType
-  ) extends CHParametricFunctionNIO:
-    val kind = "parametric4Function0N"
-    override val parameters = Seq(paramArg1, paramArg2, paramArg3, paramArg4)
-    override val arguments = Seq(argN)
-
-  case class Parametric4Function1N(
-      paramArg1: CHType,
-      paramArg2: CHType,
-      paramArg3: CHType,
-      paramArg4: CHType,
-      arg1: CHType,
-      argN: CHType,
-      output: CHType
-  ) extends CHParametricFunctionNIO:
-    val kind = "parametric4Function1N"
-    override val parameters = Seq(paramArg1, paramArg2, paramArg3, paramArg4)
-    override val arguments = Seq(arg1, argN)
-
-  case class Parametric4Function2N(
-      paramArg1: CHType,
-      paramArg2: CHType,
-      paramArg3: CHType,
-      paramArg4: CHType,
-      arg1: CHType,
-      arg2: CHType,
-      argN: CHType,
-      output: CHType
-  ) extends CHParametricFunctionNIO:
-    val kind = "parametric4Function2N"
-    override val parameters = Seq(paramArg1, paramArg2, paramArg3, paramArg4)
-    override val arguments = Seq(arg1, arg2, argN)
-
-  case class Parametric4Function1(
-      paramArg1: CHType,
-      paramArg2: CHType,
-      paramArg3: CHType,
-      paramArg4: CHType,
-      arg1: CHType,
-      output: CHType
-  ) extends CHParametricFunction:
-    val kind = "parametric4Function1"
-    override val parameters = Seq(paramArg1, paramArg2, paramArg3, paramArg4)
-    override val arguments = Seq(arg1)
-
-  case class Parametric4Function2(
-      paramArg1: CHType,
-      paramArg2: CHType,
-      paramArg3: CHType,
-      paramArg4: CHType,
-      arg1: CHType,
-      arg2: CHType,
-      output: CHType
-  ) extends CHParametricFunction:
-    val kind = "parametric4Function2"
-    override val parameters = Seq(paramArg1, paramArg2, paramArg3, paramArg4)
-    override val arguments = Seq(arg1, arg2)
-
-  case class Parametric4Function3(
-      paramArg1: CHType,
-      paramArg2: CHType,
-      paramArg3: CHType,
-      paramArg4: CHType,
-      arg1: CHType,
-      arg2: CHType,
-      arg3: CHType,
-      output: CHType
-  ) extends CHParametricFunction:
-    val kind = "parametric4Function3"
-    override val parameters = Seq(paramArg1, paramArg2, paramArg3, paramArg4)
-    override val arguments = Seq(arg1, arg2, arg3)
+    if aggregatedSignatures.size == functions.size then functions
+    else aggregate(aggregatedSignatures)
+  
 
   private def equalOrUnknown(t1: CHType, t2: CHType): Boolean =
     (t1, t2) match
@@ -799,7 +46,7 @@ object CHFunctionIO extends StrictLogging:
       case (_, CHSpecialType.UnknownType) => true
       case _                              => t1.name == t2.name
 
-  private def aggregateSimilarIOs(signatures: Seq[CHFunctionIO]): Seq[CHFunctionIO] =
+  private def aggregateSimilarIOs(signatures: Seq[CHFunctionIO])(using supportJson: SupportJson): Seq[CHFunctionIO] =
     var aggregatedSignatureIOs: Seq[Seq[CHType]] =
       signatures.map(s => (s.parameters ++ s.arguments :+ s.output).map(CHType.normalize))
     val paramCount = signatures.head.parameters.size
@@ -1021,7 +268,7 @@ object CHFunctionIO extends StrictLogging:
               .map { inputMetadata =>
                 val types = groupedSignatureIOs.map(_(inputMetadata.idx)).toSet
                 val aggregatedTypes = CHType
-                  .mergeInputTypes(types, supportJson = Settings.Fuzzer.supportJson)
+                  .mergeInputTypes(types, supportJson = supportJson)
                   .map(t => inputMetadata.converter.extract(CHType.normalize(t)))
 
                 if groupedSignatureIOs.size == aggregatedTypes.size then groupedSignatureIOs
@@ -1163,7 +410,7 @@ object CHFunctionIO extends StrictLogging:
 
   private def aggregateArrayArgumentsWithMapOutput(
       functions: Seq[CHFunctionIO]
-  ): Seq[CHFunctionIO] =
+  )(using supportJson: SupportJson): Seq[CHFunctionIO] =
     var aggregatedSignatures: Seq[CHFunctionIO] = functions
     Range.apply(0, functions.head.arguments.size).foreach { argumentIdx =>
       val argAndOutput = aggregatedSignatures.map(fn =>
@@ -1304,7 +551,7 @@ object CHFunctionIO extends StrictLogging:
 
   private def aggregateArrayArgumentsWithTupleArrayNullableOutput(
       functions: Seq[CHFunctionIO]
-  ): Seq[CHFunctionIO] =
+  )(using supportJson: SupportJson): Seq[CHFunctionIO] =
     val twoArgumentsFn =
       functions.filter(fn =>
         fn.output match
@@ -1489,7 +736,7 @@ object CHFunctionIO extends StrictLogging:
 
   private def aggregateArrayArgumentsWithTupleArrayOutput(
       functions: Seq[CHFunctionIO]
-  ): Seq[CHFunctionIO] =
+  )(using supportJson: SupportJson): Seq[CHFunctionIO] =
     val twoArgumentsFn =
       functions.filter(fn =>
         fn.output match
@@ -1661,7 +908,7 @@ object CHFunctionIO extends StrictLogging:
       aggregatedTypeGenerator: CHType => CHType,
       inputTypeGenerator: CHType => CHType,
       outputTypeGenerator: CHType => CHType
-  ): Seq[CHFunctionIO] =
+  )(using supportJson: SupportJson): Seq[CHFunctionIO] =
     if functions.map(typeSelector).distinct.size <= 1
     then functions
     else
@@ -1676,7 +923,7 @@ object CHFunctionIO extends StrictLogging:
         .toSeq
         .flatMap { case (groupingKey, groupedSignatures) =>
           val types = groupedSignatures.map(typeSelector).toSet
-          val aggregatedTypes = CHType.mergeInputTypes(types, supportJson = Settings.Fuzzer.supportJson).toSeq
+          val aggregatedTypes = CHType.mergeInputTypes(types, supportJson = supportJson).toSeq
 
           if aggregatedTypes.size < types.size then
             aggregatedTypes.map(aggregatedType =>
@@ -1710,7 +957,7 @@ object CHFunctionIO extends StrictLogging:
       inputTypeGenerator1: CHType => CHType,
       inputTypeGenerator2: CHType => CHType,
       outputTypeGenerator: (CHType, CHType) => CHType
-  ): Seq[CHFunctionIO] =
+  )(using supportJson: SupportJson): Seq[CHFunctionIO] =
     if functions.map(f => (typeSelector1(f), typeSelector2(f))).distinct.size <= 1
     then functions
     else
@@ -1746,7 +993,7 @@ object CHFunctionIO extends StrictLogging:
 
           if groupedSignatures.forall(f => typeSelectorT1(f) == typeSelectorT2(f)) then
             val types = groupedSignatures.map(typeSelectorT1).toSet
-            val aggregatedTypes = CHType.mergeInputTypes(types, supportJson = Settings.Fuzzer.supportJson).toSeq
+            val aggregatedTypes = CHType.mergeInputTypes(types, supportJson = supportJson).toSeq
 
             if aggregatedTypes.size < types.size then
               aggregatedTypes.map(aggregatedType =>
@@ -1776,8 +1023,8 @@ object CHFunctionIO extends StrictLogging:
           then
             val types1 = groupedSignatures.map(typeSelectorT1).toSet
             val types2 = groupedSignatures.map(typeSelectorT2).toSet
-            val aggregatedTypes1 = CHType.mergeInputTypes(types1, supportJson = Settings.Fuzzer.supportJson).toSeq
-            val aggregatedTypes2 = CHType.mergeInputTypes(types2, supportJson = Settings.Fuzzer.supportJson).toSeq
+            val aggregatedTypes1 = CHType.mergeInputTypes(types1, supportJson = supportJson).toSeq
+            val aggregatedTypes2 = CHType.mergeInputTypes(types2, supportJson = supportJson).toSeq
 
             if aggregatedTypes1.size < types1.size || aggregatedTypes2.size < types2.size then
               for
@@ -1833,7 +1080,7 @@ object CHFunctionIO extends StrictLogging:
       inputTypeGenerator2: CHType => CHType,
       inputTypeGenerator3: CHType => CHType,
       outputTypeGenerator: (CHType, CHType, CHType) => CHType
-  ): Seq[CHFunctionIO] =
+  )(using supportJson: SupportJson): Seq[CHFunctionIO] =
     if functions.map(f => (typeSelector1(f), typeSelector2(f))).distinct.size <= 1
     then functions
     else
@@ -1877,7 +1124,7 @@ object CHFunctionIO extends StrictLogging:
               .forall(f => typeSelectorT1(f) == typeSelectorT2(f) && typeSelectorT1(f) == typeSelectorT3(f))
           then
             val types = groupedSignatures.map(typeSelectorT1).toSet
-            val aggregatedTypes = CHType.mergeInputTypes(types, supportJson = Settings.Fuzzer.supportJson).toSeq
+            val aggregatedTypes = CHType.mergeInputTypes(types, supportJson = supportJson).toSeq
 
             if aggregatedTypes.size < types.size then
               aggregatedTypes.map(aggregatedType =>
@@ -1908,9 +1155,9 @@ object CHFunctionIO extends StrictLogging:
             val types1 = groupedSignatures.map(typeSelectorT1).toSet
             val types2 = groupedSignatures.map(typeSelectorT2).toSet
             val types3 = groupedSignatures.map(typeSelectorT3).toSet
-            val aggregatedTypes1 = CHType.mergeInputTypes(types1, supportJson = Settings.Fuzzer.supportJson).toSeq
-            val aggregatedTypes2 = CHType.mergeInputTypes(types2, supportJson = Settings.Fuzzer.supportJson).toSeq
-            val aggregatedTypes3 = CHType.mergeInputTypes(types3, supportJson = Settings.Fuzzer.supportJson).toSeq
+            val aggregatedTypes1 = CHType.mergeInputTypes(types1, supportJson = supportJson).toSeq
+            val aggregatedTypes2 = CHType.mergeInputTypes(types2, supportJson = supportJson).toSeq
+            val aggregatedTypes3 = CHType.mergeInputTypes(types3, supportJson = supportJson).toSeq
 
             if aggregatedTypes1.size < types1.size || aggregatedTypes2.size < types2.size || aggregatedTypes3.size < types3.size
             then
@@ -1975,14 +1222,14 @@ object CHFunctionIO extends StrictLogging:
     // Re-create our aggregated type, using the generic type
     converter.wrap(genericScalarType)
 
-  sealed private[CHFunctionIO] trait CHTypeConverter:
+  sealed private[CHFunctionIOAggregator] trait CHTypeConverter:
     def extract(t: CHType): CHType
     def wrap(t: CHType): CHType
 
     def compatibleConverters(): Seq[CHTypeConverter] = Seq(this)
-  object CHTypeConverter:
 
-    private[CHFunctionIO] def getConverter(types: Seq[CHType]) =
+  object CHTypeConverter:
+    private[CHFunctionIOAggregator] def getConverter(types: Seq[CHType]) =
       if types.forall(_.name.startsWith("Array(Array(")) then CHTypeConverter.ArrayArrayTypeConverter
       else if types.forall(t =>
           t.name.startsWith("Array(Tuple(") &&
@@ -2013,14 +1260,14 @@ object CHFunctionIO extends StrictLogging:
       then CHTypeConverter.TupleTypeConverter(Nil)
       else CHTypeConverter.ScalarTypeConverter
 
-    private[CHFunctionIO] case object ArrayArrayTypeConverter extends CHTypeConverter:
+    private[CHFunctionIOAggregator] case object ArrayArrayTypeConverter extends CHTypeConverter:
       override def extract(t: CHType): CHType =
         t.asInstanceOf[CHSpecialType.Array].innerType.asInstanceOf[CHSpecialType.Array].innerType
       override def wrap(t: CHType): CHType = CHSpecialType.Array(CHSpecialType.Array(t))
 
       override def compatibleConverters(): Seq[CHTypeConverter] = ArrayTypeConverter.compatibleConverters() :+ this
 
-    private[CHFunctionIO] case class ArrayTupleStringTypeConverter(tail: Seq[CHType]) extends CHTypeConverter:
+    private[CHFunctionIOAggregator] case class ArrayTupleStringTypeConverter(tail: Seq[CHType]) extends CHTypeConverter:
       override def extract(t: CHType): CHType =
         t.asInstanceOf[CHSpecialType.Array].innerType.asInstanceOf[CHSpecialType.Tuple].innerTypes(1)
       override def wrap(t: CHType): CHType =
@@ -2028,22 +1275,22 @@ object CHFunctionIO extends StrictLogging:
 
       override def compatibleConverters(): Seq[CHTypeConverter] = ArrayTypeConverter.compatibleConverters() :+ this
 
-    private[CHFunctionIO] case class ArrayTupleTypeConverter(tail: Seq[CHType]) extends CHTypeConverter:
+    private[CHFunctionIOAggregator] case class ArrayTupleTypeConverter(tail: Seq[CHType]) extends CHTypeConverter:
       override def extract(t: CHType): CHType =
         t.asInstanceOf[CHSpecialType.Array].innerType.asInstanceOf[CHSpecialType.Tuple].innerTypes.head
       override def wrap(t: CHType): CHType = CHSpecialType.Array(CHSpecialType.Tuple(t +: tail))
 
       override def compatibleConverters(): Seq[CHTypeConverter] = ArrayTypeConverter.compatibleConverters() :+ this
 
-    private[CHFunctionIO] case object ArrayTypeConverter extends CHTypeConverter:
+    private[CHFunctionIOAggregator] case object ArrayTypeConverter extends CHTypeConverter:
       override def extract(t: CHType): CHType = t.asInstanceOf[CHSpecialType.Array].innerType
       override def wrap(t: CHType): CHType = CHSpecialType.Array(t)
 
-    private[CHFunctionIO] case object BitmapTypeConverter extends CHTypeConverter:
+    private[CHFunctionIOAggregator] case object BitmapTypeConverter extends CHTypeConverter:
       override def extract(t: CHType): CHType = t.asInstanceOf[CHSpecialType.Bitmap].innerType
       override def wrap(t: CHType): CHType = CHSpecialType.Bitmap(t)
 
-    private[CHFunctionIO] case object LowCardinalityNullableTypeConverter extends CHTypeConverter:
+    private[CHFunctionIOAggregator] case object LowCardinalityNullableTypeConverter extends CHTypeConverter:
       override def extract(t: CHType): CHType =
         t.asInstanceOf[CHSpecialType.LowCardinality].innerType.asInstanceOf[CHSpecialType.Nullable].innerType
       override def wrap(t: CHType): CHType = CHSpecialType.LowCardinality(CHSpecialType.Nullable(t))
@@ -2051,23 +1298,23 @@ object CHFunctionIO extends StrictLogging:
       override def compatibleConverters(): Seq[CHTypeConverter] =
         LowCardinalityTypeConverter.compatibleConverters() :+ this
 
-    private[CHFunctionIO] case object LowCardinalityTypeConverter extends CHTypeConverter:
+    private[CHFunctionIOAggregator] case object LowCardinalityTypeConverter extends CHTypeConverter:
       override def extract(t: CHType): CHType = t.asInstanceOf[CHSpecialType.LowCardinality].innerType
       override def wrap(t: CHType): CHType = CHSpecialType.LowCardinality(t)
 
-    private[CHFunctionIO] case class MapTypeConverter(valueType: CHType) extends CHTypeConverter:
+    private[CHFunctionIOAggregator] case class MapTypeConverter(valueType: CHType) extends CHTypeConverter:
       override def extract(t: CHType): CHType = t.asInstanceOf[CHSpecialType.Map].keyType
       override def wrap(t: CHType): CHType = CHSpecialType.Map(t, valueType)
 
-    private[CHFunctionIO] case object NullableTypeConverter extends CHTypeConverter:
+    private[CHFunctionIOAggregator] case object NullableTypeConverter extends CHTypeConverter:
       override def extract(t: CHType): CHType = t.asInstanceOf[CHSpecialType.Nullable].innerType
       override def wrap(t: CHType): CHType = CHSpecialType.Nullable(t)
 
-    private[CHFunctionIO] case object ScalarTypeConverter extends CHTypeConverter:
+    private[CHFunctionIOAggregator] case object ScalarTypeConverter extends CHTypeConverter:
       override def extract(t: CHType): CHType = t
       override def wrap(t: CHType): CHType = t
 
-    private[CHFunctionIO] case class TupleArrayNullableTypeConverter(tail: Seq[CHType]) extends CHTypeConverter:
+    private[CHFunctionIOAggregator] case class TupleArrayNullableTypeConverter(tail: Seq[CHType]) extends CHTypeConverter:
       override def extract(t: CHType): CHType = t
         .asInstanceOf[CHSpecialType.Tuple]
         .innerTypes
@@ -2081,7 +1328,7 @@ object CHFunctionIO extends StrictLogging:
       override def compatibleConverters(): Seq[CHTypeConverter] =
         TupleArrayTypeConverter(tail).compatibleConverters() :+ this
 
-    private[CHFunctionIO] case class TupleArrayTypeConverter(tail: Seq[CHType]) extends CHTypeConverter:
+    private[CHFunctionIOAggregator] case class TupleArrayTypeConverter(tail: Seq[CHType]) extends CHTypeConverter:
       override def extract(t: CHType): CHType =
         t.asInstanceOf[CHSpecialType.Tuple].innerTypes.head.asInstanceOf[CHSpecialType.Array].innerType
       override def wrap(t: CHType): CHType = CHSpecialType.Tuple(CHSpecialType.Array(t) +: tail)
@@ -2089,7 +1336,7 @@ object CHFunctionIO extends StrictLogging:
       override def compatibleConverters(): Seq[CHTypeConverter] =
         TupleTypeConverter(tail).compatibleConverters() :+ this
 
-    private[CHFunctionIO] case class TupleTypeConverter(tail: Seq[CHType]) extends CHTypeConverter:
+    private[CHFunctionIOAggregator] case class TupleTypeConverter(tail: Seq[CHType]) extends CHTypeConverter:
       override def extract(t: CHType): CHType = t.asInstanceOf[CHSpecialType.Tuple].innerTypes.head
       override def wrap(t: CHType): CHType = CHSpecialType.Tuple(t +: tail)
 
@@ -2097,3 +1344,5 @@ object CHFunctionIO extends StrictLogging:
   extension (in: InputMetadata)
     def idx: Int = in._1
     def converter: CHTypeConverter = in._2
+
+  opaque type SupportJson = Boolean

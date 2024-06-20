@@ -1,6 +1,9 @@
 package com.amendil.signature.entities
 
-import com.amendil.signature.entities.CHFunctionIO.*
+import com.amendil.common.entities.function.{CHFunction, CHFunctionIO}
+import com.amendil.common.entities.function.CHFunctionIO.*
+import com.amendil.common.helper.CHFunctionIOAggregator
+import com.amendil.signature.Settings
 import com.typesafe.scalalogging.StrictLogging
 
 /**
@@ -210,4 +213,28 @@ object CHFunctionFuzzResult:
       specialFunction0Ns = Nil,
       specialParametric2Function2Ns = Nil,
       specialParametric2Function3Ns = Nil
+    )
+
+  // TODO: Write tests
+  def toCHFunction(fuzzResult: CHFunctionFuzzResult): CHFunction =
+    val signatures: Seq[CHFunctionIO] =
+      // productIterator is an internal method in all "case class" to iterate over its constructor arguments
+      fuzzResult.productIterator.toSeq.flatMap {
+        case s: Seq[?] if s.nonEmpty => // Look for functions that we discovered
+          s.head match
+            case _: CHFunctionIO =>
+              val functions = s.asInstanceOf[Seq[CHFunctionIO]]
+              if Settings.Fuzzer.aggregateSignature
+              then Some(CHFunctionIOAggregator.aggregate(functions, Settings.Fuzzer.supportJson))
+              else Some(functions)
+            case _ => None // This argument is a Sequence but not of functions
+        case Some(fn) if fn.isInstanceOf[CHFunctionIO] => Some(Seq(fn.asInstanceOf[CHFunctionIO]))
+        case _                                         => None // This argument is not a Sequence of functions
+      }.flatten
+
+    CHFunction(
+      name = fuzzResult.name,
+      signatures = signatures,
+      modes = fuzzResult.modes.toSeq.sortWith(_.ordinal < _.ordinal),
+      isExperimental = false // FIXME
     )

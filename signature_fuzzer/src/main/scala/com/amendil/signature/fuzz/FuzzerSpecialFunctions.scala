@@ -2,6 +2,7 @@ package com.amendil.signature.fuzz
 
 import com.amendil.common.entities.*
 import com.amendil.common.entities.`type`.*
+import com.amendil.common.entities.function.{CHFunction, CHFunctionIO}
 import com.amendil.common.http.CHClient
 import com.amendil.signature.entities.*
 import com.typesafe.scalalogging.StrictLogging

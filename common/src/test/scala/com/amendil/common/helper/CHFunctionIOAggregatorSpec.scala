@@ -1,7 +1,8 @@
-package com.amendil.signature.entities
+package com.amendil.common.helper
 
 import com.amendil.common.entities.*
 import com.amendil.common.entities.`type`.*
+import com.amendil.common.entities.function.CHFunctionIO
 import com.amendil.common.http.CHClient
 import org.scalatest.freespec.AnyFreeSpec
 import org.scalatest.matchers.should.Matchers
@@ -9,9 +10,9 @@ import org.scalatest.matchers.should.Matchers
 import java.util.concurrent.Executors
 import scala.concurrent.{ExecutionContext, Future}
 
-class CHFunctionIOSpec extends AnyFreeSpec with Matchers:
+class CHFunctionIOAggregatorSpec extends AnyFreeSpec with Matchers:
 
-  "CHFunctionIO" - {
+  "CHFunctionIOAggregator" - {
     given ExecutionContext = ExecutionContext.fromExecutorService(Executors.newFixedThreadPool(1))
     given client: CHClient = new CHClient:
       override def execute(query: String): Future[CHResponse] = ???
@@ -25,7 +26,7 @@ class CHFunctionIOSpec extends AnyFreeSpec with Matchers:
           val genericTypes = innerTypes.map(t => CHSpecialType.GenericType("T1", t))
           val nonAggregatedFunctions = genericTypes.map(t => CHFunctionIO.Function2(t, t, CHFuzzableType.UInt8))
 
-          val actual = CHFunctionIO.aggregate(nonAggregatedFunctions)
+          val actual = CHFunctionIOAggregator.aggregate(nonAggregatedFunctions)
           val expected = nonAggregatedFunctions
 
           actual.map(_.asString()) shouldBe expected.map(_.asString())
@@ -38,7 +39,7 @@ class CHFunctionIOSpec extends AnyFreeSpec with Matchers:
             CHFunctionIO.Function2(CHSpecialType.Array(t), CHSpecialType.Array(t), CHFuzzableType.UInt8)
           )
 
-          val actual = CHFunctionIO.aggregate(nonAggregatedFunctions)
+          val actual = CHFunctionIOAggregator.aggregate(nonAggregatedFunctions)
           val expected = nonAggregatedFunctions
 
           actual.map(_.asString()) shouldBe expected.map(_.asString())
@@ -50,7 +51,7 @@ class CHFunctionIOSpec extends AnyFreeSpec with Matchers:
           val nonAggregatedFunctions =
             genericTypes.map(t => CHFunctionIO.Function2(CHSpecialType.Array(t), t, CHFuzzableType.UInt8))
 
-          val actual = CHFunctionIO.aggregate(nonAggregatedFunctions)
+          val actual = CHFunctionIOAggregator.aggregate(nonAggregatedFunctions)
           val expected = nonAggregatedFunctions
 
           actual.map(_.asString()) shouldBe expected.map(_.asString())
@@ -101,13 +102,13 @@ class CHFunctionIOSpec extends AnyFreeSpec with Matchers:
         val outputType = CHAggregatedType.Any
 
         "when a argument accept all numbers" in {
-          val actual1 = CHFunctionIO.aggregate(
+          val actual1 = CHFunctionIOAggregator.aggregate(
             numberTypes.map(CHFunctionIO.Function2(_, CHFuzzableType.StringType, outputType))
           )
           val expected1 = Seq(CHFunctionIO.Function2(CHAggregatedType.Number, CHFuzzableType.StringType, outputType))
           actual1.map(_.asString()) shouldBe expected1.map(_.asString())
 
-          val actual2 = CHFunctionIO.aggregate(
+          val actual2 = CHFunctionIOAggregator.aggregate(
             numberTypes.map(CHFunctionIO.Function2(CHFuzzableType.StringType, _, outputType))
           )
           val expected2 = Seq(CHFunctionIO.Function2(CHFuzzableType.StringType, CHAggregatedType.Number, outputType))
@@ -115,7 +116,7 @@ class CHFunctionIOSpec extends AnyFreeSpec with Matchers:
         }
 
         "when a parameter accept all numbers" in {
-          val actual1 = CHFunctionIO.aggregate(
+          val actual1 = CHFunctionIOAggregator.aggregate(
             numberTypes.map(
               CHFunctionIO.Parametric2Function1(_, CHFuzzableType.StringType, CHFuzzableType.StringType, outputType)
             )
@@ -130,7 +131,7 @@ class CHFunctionIOSpec extends AnyFreeSpec with Matchers:
           )
           actual1.map(_.asString()) shouldBe expected1.map(_.asString())
 
-          val actual2 = CHFunctionIO.aggregate(
+          val actual2 = CHFunctionIOAggregator.aggregate(
             numberTypes.map(
               CHFunctionIO.Parametric2Function1(CHFuzzableType.StringType, _, CHFuzzableType.StringType, outputType)
             )
@@ -147,7 +148,7 @@ class CHFunctionIOSpec extends AnyFreeSpec with Matchers:
         }
 
         "when multiple columns accept aggregatable types" in {
-          val actual = CHFunctionIO.aggregate(
+          val actual = CHFunctionIOAggregator.aggregate(
             for
               number <- numberTypes
               str <- stringTypes
@@ -170,7 +171,7 @@ class CHFunctionIOSpec extends AnyFreeSpec with Matchers:
         }
 
         "when multiple columns accept the exact same type" in {
-          val actual = CHFunctionIO.aggregate(
+          val actual = CHFunctionIOAggregator.aggregate(
             for
               number <- numberTypes
               arrayType <- arrayTypes
@@ -196,7 +197,7 @@ class CHFunctionIOSpec extends AnyFreeSpec with Matchers:
 
       "having a non unique output" - {
         "scalar input column == output column" in {
-          val actual1 = CHFunctionIO.aggregate(
+          val actual1 = CHFunctionIOAggregator.aggregate(
             numberTypes.map(t => CHFunctionIO.Function2(t, CHFuzzableType.StringType, t))
           )
 
@@ -208,7 +209,7 @@ class CHFunctionIOSpec extends AnyFreeSpec with Matchers:
 
           // Only in this test case: we check the aggregation works on another column
           // Let's keep the other tests simple
-          val actual2 = CHFunctionIO.aggregate(
+          val actual2 = CHFunctionIOAggregator.aggregate(
             numberTypes.map(t => CHFunctionIO.Function2(CHFuzzableType.StringType, t, t))
           )
 
@@ -219,7 +220,7 @@ class CHFunctionIOSpec extends AnyFreeSpec with Matchers:
         }
 
         "Array(input column) == Array(output type)" in {
-          val actual = CHFunctionIO.aggregate(
+          val actual = CHFunctionIOAggregator.aggregate(
             arrayTypes.map(t => CHFunctionIO.Function1(t, t))
           )
 
@@ -231,7 +232,7 @@ class CHFunctionIOSpec extends AnyFreeSpec with Matchers:
         }
 
         "Map(input column, UnknownType) == Map(input column, Int8)" in {
-          val actual = CHFunctionIO.aggregate(
+          val actual = CHFunctionIOAggregator.aggregate(
             mapTypes.map(t =>
               CHFunctionIO.Function2(
                 t,
@@ -254,7 +255,7 @@ class CHFunctionIOSpec extends AnyFreeSpec with Matchers:
         }
 
         "Array(input column) == output type" in {
-          val actual = CHFunctionIO.aggregate(
+          val actual = CHFunctionIOAggregator.aggregate(
             arrayTypes.map(t => CHFunctionIO.Function1(t, t.innerType))
           )
 
@@ -266,7 +267,7 @@ class CHFunctionIOSpec extends AnyFreeSpec with Matchers:
         }
 
         "input column == Array(output type)" in {
-          val actual = CHFunctionIO.aggregate(
+          val actual = CHFunctionIOAggregator.aggregate(
             arrayTypes.map(t => CHFunctionIO.Function1(t.innerType, t))
           )
 
@@ -278,7 +279,7 @@ class CHFunctionIOSpec extends AnyFreeSpec with Matchers:
         }
 
         "Array(input column) == Array(Array(output type))" in {
-          val actual = CHFunctionIO.aggregate(
+          val actual = CHFunctionIOAggregator.aggregate(
             arrayTypes.map(t => CHFunctionIO.Function1(t, CHSpecialType.Array(t)))
           )
 
@@ -294,7 +295,7 @@ class CHFunctionIOSpec extends AnyFreeSpec with Matchers:
         }
 
         "Bitmap(input column) == output type" in {
-          val actual = CHFunctionIO.aggregate(
+          val actual = CHFunctionIOAggregator.aggregate(
             bitmapTypes.map(t => CHFunctionIO.Function1(t, t.innerType))
           )
 
@@ -306,7 +307,7 @@ class CHFunctionIOSpec extends AnyFreeSpec with Matchers:
         }
 
         "Map(input column, UnknownType) == output type" in {
-          val actual = CHFunctionIO.aggregate(
+          val actual = CHFunctionIOAggregator.aggregate(
             mapTypes.map(t => CHFunctionIO.Function1(t, t.keyType))
           )
 
@@ -319,7 +320,7 @@ class CHFunctionIOSpec extends AnyFreeSpec with Matchers:
         }
 
         "input column == Map(output type, UInt32)" in {
-          val actual = CHFunctionIO.aggregate(
+          val actual = CHFunctionIOAggregator.aggregate(
             mapTypes.map(t => CHFunctionIO.Function1(t.keyType, CHSpecialType.Map(t.keyType, CHFuzzableType.UInt32)))
           )
 
@@ -334,7 +335,7 @@ class CHFunctionIOSpec extends AnyFreeSpec with Matchers:
           val arrayTupleTypes = numberTypes.map(n =>
             CHSpecialType.Array(CHSpecialType.Tuple(Seq(n, CHFuzzableType.UInt8, CHFuzzableType.UInt32)))
           )
-          val actual = CHFunctionIO.aggregate(
+          val actual = CHFunctionIOAggregator.aggregate(
             arrayTupleTypes.map(t =>
               CHFunctionIO.Function1(t.innerType.asInstanceOf[CHSpecialType.Tuple].innerTypes.head, t)
             )
@@ -350,7 +351,7 @@ class CHFunctionIOSpec extends AnyFreeSpec with Matchers:
         }
 
         "Array(input column) == Map(output column, UInt32)" in {
-          val actual = CHFunctionIO.aggregate(
+          val actual = CHFunctionIOAggregator.aggregate(
             numberTypes.map(t =>
               CHFunctionIO.Function1(
                 CHSpecialType.Array(t),
@@ -371,7 +372,7 @@ class CHFunctionIOSpec extends AnyFreeSpec with Matchers:
         }
 
         "Array(input column) == Array(Tuple(output column))" in {
-          val actual = CHFunctionIO.aggregate(
+          val actual = CHFunctionIOAggregator.aggregate(
             numberTypes.map(t =>
               CHFunctionIO.Function1(
                 CHSpecialType.Array(t),
@@ -392,7 +393,7 @@ class CHFunctionIOSpec extends AnyFreeSpec with Matchers:
         }
 
         "Array(input column1), Array(input column2) == Map(output column1, output column2) with numbers on second arg" in {
-          val actual = CHFunctionIO.aggregate(
+          val actual = CHFunctionIOAggregator.aggregate(
             for
               numberType1 <- numberTypes
               numberType2 <- numberTypes
@@ -417,7 +418,7 @@ class CHFunctionIOSpec extends AnyFreeSpec with Matchers:
         }
 
         "Array(input column1), Array(input column2) == Map(output column1, output column2) with maps on second arg" in {
-          val actual = CHFunctionIO.aggregate(
+          val actual = CHFunctionIOAggregator.aggregate(
             for
               numberType <- numberTypes
               mapKeyType <- mapTypes.map(_.keyType)
@@ -445,7 +446,7 @@ class CHFunctionIOSpec extends AnyFreeSpec with Matchers:
         }
 
         "Array(input column1), Array(input column2) == Map(output column1, output column2) with numbers and maps on second arg" in {
-          val actual = CHFunctionIO.aggregate(
+          val actual = CHFunctionIOAggregator.aggregate(
             (for
               numberType1 <- numberTypes
               numberType2 <- numberTypes
@@ -488,7 +489,7 @@ class CHFunctionIOSpec extends AnyFreeSpec with Matchers:
         }
 
         "Array(input column1) == Tuple(Array(output column1))" in {
-          val actual = CHFunctionIO.aggregate(
+          val actual = CHFunctionIOAggregator.aggregate(
             for floatType1 <- floatTypes
             yield CHFunctionIO.Function1(
               CHSpecialType.Array(floatType1),
@@ -508,7 +509,7 @@ class CHFunctionIOSpec extends AnyFreeSpec with Matchers:
         }
 
         "Array(input column1), Array(input column2) == Tuple(Array(output column1), Array(Nullableoutput column2))" in {
-          val actual = CHFunctionIO.aggregate(
+          val actual = CHFunctionIOAggregator.aggregate(
             for
               floatType1 <- floatTypes
               floatType2 <- floatTypes
@@ -535,7 +536,7 @@ class CHFunctionIOSpec extends AnyFreeSpec with Matchers:
         }
 
         "Array(input column1), Array(input column2), Array(input column3) == Tuple(Array(output column1), Array(Nullableoutput column2), Array(output column3))" in {
-          val actual = CHFunctionIO.aggregate(
+          val actual = CHFunctionIOAggregator.aggregate(
             for
               floatType1 <- floatTypes
               floatType2 <- floatTypes
@@ -572,7 +573,7 @@ class CHFunctionIOSpec extends AnyFreeSpec with Matchers:
         }
 
         "Array(input column1) == Tuple(Array(Nullable(output column1)))" in {
-          val actual = CHFunctionIO.aggregate(
+          val actual = CHFunctionIOAggregator.aggregate(
             for floatType1 <- floatTypes
             yield CHFunctionIO.Function1(
               CHSpecialType.Array(floatType1),
@@ -592,7 +593,7 @@ class CHFunctionIOSpec extends AnyFreeSpec with Matchers:
         }
 
         "Array(input column1), Array(input column2) == Tuple(Array(Nullable(output column1)), Array(Nullable(output column2)))" in {
-          val actual = CHFunctionIO.aggregate(
+          val actual = CHFunctionIOAggregator.aggregate(
             for
               floatType1 <- floatTypes
               floatType2 <- floatTypes
@@ -627,7 +628,7 @@ class CHFunctionIOSpec extends AnyFreeSpec with Matchers:
         }
 
         "Array(input column1), Array(input column2), Array(input column3) == Tuple(Array(Nullable(output column1)), Array(Nullable(output column2)), Array(Nullable(output column3)))" in {
-          val actual = CHFunctionIO.aggregate(
+          val actual = CHFunctionIOAggregator.aggregate(
             for
               floatType1 <- floatTypes
               floatType2 <- floatTypes
@@ -668,7 +669,7 @@ class CHFunctionIOSpec extends AnyFreeSpec with Matchers:
         }
 
         "Variant(Array(input column), Map(input column1, input column2)) == Variant(output column, Tuple(output column1, output column2))" in {
-          val actual = CHFunctionIO.aggregate(
+          val actual = CHFunctionIOAggregator.aggregate(
             (for numberType <- numberTypes
             yield CHFunctionIO.Function1(CHSpecialType.Array(numberType), numberType))
               ++
@@ -697,7 +698,7 @@ class CHFunctionIOSpec extends AnyFreeSpec with Matchers:
       }
 
       "having a String and a Timezone in the same column but for different signatures" in {
-        val actual = CHFunctionIO.aggregate(
+        val actual = CHFunctionIOAggregator.aggregate(
           Seq(
             CHFunctionIO.Function2(CHFuzzableType.Date, CHFuzzableType.StringType, CHFuzzableType.StringType),
             CHFunctionIO.Function2(CHFuzzableType.Date32, CHFuzzableType.StringType, CHFuzzableType.StringType),

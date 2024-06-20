@@ -3,7 +3,7 @@ package com.amendil.signature
 import com.amendil.common.{ConcurrencyUtils, Settings as CommonSettings}
 import com.amendil.common.entities.`type`.CHFuzzableType
 import com.amendil.common.http.{CHClient, CHClientImpl}
-import com.amendil.signature.entities.{CHFunction, CHFunctionFuzzResult, CHFuzzableAbstractType}
+import com.amendil.signature.entities.{CHFunctionFuzzResult, CHFuzzableAbstractType}
 import com.amendil.signature.fuzz.*
 import com.typesafe.scalalogging.Logger
 
@@ -64,7 +64,7 @@ import scala.util.{Failure, Success, Try}
                 .map { (fuzzResult: CHFunctionFuzzResult) =>
                   if !fuzzResult.atLeastOneSignatureFound then
                     logger.error(s"No signatures found for method ${function.name}")
-                  pw.write(s"${CHFunction.fromCHFunctionFuzzResult(fuzzResult).asString()}\n")
+                  pw.write(s"${CHFunctionFuzzResult.toCHFunction(fuzzResult).asString()}\n")
                   pw.flush()
                   fuzzResult
                 }
