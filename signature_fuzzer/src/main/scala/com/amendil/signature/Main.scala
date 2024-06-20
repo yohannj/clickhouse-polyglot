@@ -30,7 +30,9 @@ import scala.util.{Failure, Success, Try}
       // functions =
       //   unknownFunctions.map(
       //     CHFunctionFuzzResult(_, isAggregate = false, aliasTo = "")
-      //   ) ++ unknownFunctionsWithAlias.map((name, alias) => CHFunctionFuzzResult(name, isAggregate = false, aliasTo = alias))
+      //   ) ++ unknownFunctionsWithAlias.map((name, alias) =>
+      //     CHFunctionFuzzResult(name, isAggregate = false, aliasTo = alias)
+      //   )
       functionsToFuzz = functions.filter { fn =>
         Settings.Fuzzer.supportJson || !fn.name.toLowerCase().contains("json")
       }
@@ -43,7 +45,7 @@ import scala.util.{Failure, Success, Try}
       val functionsFuzzResultsF: Future[Seq[CHFunctionFuzzResult]] =
         ConcurrencyUtils
           .executeInSequence(
-            functionsToFuzz.zipWithIndex.filter(_._1.name >= "neighbor"),
+            functionsToFuzz.zipWithIndex, // .filter(_._1.name >= "tupleHammingDistance"),
             (function: CHFunctionFuzzResult, idx: Int) =>
               if idx % Math.max(functionCount / 20, 1) == 0 then
                 logger.info(s"===============================================================")

@@ -33,7 +33,10 @@ final case class CHFunctionFuzzResult(
     lambdaArrayFunction0NOpt: Option[LambdaArrayFunction0N],
     lambdaArrayFunction1NOpt: Option[LambdaArrayFunction1N],
     lambdaArrayFunction1N1Opt: Option[LambdaArrayFunction1N1],
+    lambdaMapFunction0NOpt: Option[LambdaMapFunction0N],
     lambdaMapFunction1Opt: Option[LambdaMapFunction1],
+    lambdaMapFunction1N: Seq[LambdaMapFunction1N],
+    lambdaMapFunction2: Seq[LambdaMapFunction2],
     parametric0NFunction0Ns: Seq[Parametric0NFunction0N],
     parametric0NFunction1Ns: Seq[Parametric0NFunction1N],
     parametric0NFunction2Ns: Seq[Parametric0NFunction2N],
@@ -116,7 +119,9 @@ final case class CHFunctionFuzzResult(
     specialFunction0Ns.nonEmpty || specialParametric2Function2Ns.nonEmpty || specialParametric2Function3Ns.nonEmpty
 
   val isLambda: Boolean =
-    lambdaArrayFunction0NOpt.nonEmpty || lambdaArrayFunction1NOpt.nonEmpty || lambdaArrayFunction1N1Opt.nonEmpty || lambdaMapFunction1Opt.nonEmpty
+    lambdaArrayFunction0NOpt.nonEmpty || lambdaArrayFunction1NOpt.nonEmpty || lambdaArrayFunction1N1Opt.nonEmpty ||
+      lambdaMapFunction0NOpt.nonEmpty || lambdaMapFunction1Opt.nonEmpty || lambdaMapFunction1N.nonEmpty ||
+      lambdaMapFunction2.nonEmpty
 
 object CHFunctionFuzzResult:
   def apply(name: String, isAggregate: Boolean, aliasTo: String): CHFunctionFuzzResult =
@@ -144,7 +149,10 @@ object CHFunctionFuzzResult:
       lambdaArrayFunction0NOpt = None,
       lambdaArrayFunction1NOpt = None,
       lambdaArrayFunction1N1Opt = None,
+      lambdaMapFunction0NOpt = None,
       lambdaMapFunction1Opt = None,
+      lambdaMapFunction1N = Nil,
+      lambdaMapFunction2 = Nil,
       parametric0NFunction0Ns = Nil,
       parametric0NFunction1Ns = Nil,
       parametric0NFunction2Ns = Nil,

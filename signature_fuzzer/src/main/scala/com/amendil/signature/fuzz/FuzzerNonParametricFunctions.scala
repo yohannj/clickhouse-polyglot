@@ -61,7 +61,8 @@ object FuzzerNonParametricFunctions extends StrictLogging:
       fn: CHFunctionFuzzResult
   )(using CHClient, ExecutionContext): Future[CHFunctionFuzzResult] =
     logger.debug("fuzzFunction1Or0N")
-    if fn.isSpecialRepeatedFunction then Future.successful(fn)
+    if (fn.isLambda && fn.lambdaArrayFunction0NOpt.isEmpty && fn.lambdaMapFunction0NOpt.isEmpty && fn.lambdaMapFunction1Opt.isEmpty) || fn.isSpecialRepeatedFunction
+    then Future.successful(fn)
     else
       fuzzNonParametric(
         fn,
@@ -77,7 +78,8 @@ object FuzzerNonParametricFunctions extends StrictLogging:
       fn: CHFunctionFuzzResult
   )(using CHClient, ExecutionContext): Future[CHFunctionFuzzResult] =
     logger.debug("fuzzFunction2Or1N")
-    if fn.isLambda || fn.isSpecialRepeatedFunction || fn.function0Ns.nonEmpty then Future.successful(fn)
+    if (fn.isLambda && fn.lambdaArrayFunction1NOpt.isEmpty && fn.lambdaMapFunction1N.isEmpty && fn.lambdaMapFunction2.isEmpty) || fn.isSpecialRepeatedFunction || fn.function0Ns.nonEmpty
+    then Future.successful(fn)
     else
       fuzzNonParametric(
         fn,
@@ -379,9 +381,9 @@ object FuzzerNonParametricFunctions extends StrictLogging:
               Range.apply(0, abstractInput.size),
               (idx: Int) =>
                 val indexedInput = abstractInput.zipWithIndex
-                val fuzzingValuesBeforeColumn = indexedInput.filter(_._2 < idx).map(_._1.fuzzingValues)
+                val fuzzingValuesBeforeColumn = indexedInput.filter(_._2 < idx).map(_._1.exhaustiveFuzzingValues)
                 val currentArgumentAbstractType = indexedInput.find(_._2 == idx).get._1
-                val fuzzingValuesAfterColumn = indexedInput.filter(_._2 > idx).map(_._1.fuzzingValues)
+                val fuzzingValuesAfterColumn = indexedInput.filter(_._2 > idx).map(_._1.exhaustiveFuzzingValues)
 
                 executeInSequenceOnlySuccess( // For each possible type of the current argument
                   currentArgumentAbstractType.chFuzzableTypes,
@@ -395,14 +397,14 @@ object FuzzerNonParametricFunctions extends StrictLogging:
                       queries,
                       client.executeNoResult
                     ).map(_ => fuzzableType)
-                ).map { filteredFuzzableType =>
-                  if filteredFuzzableType.isEmpty then
+                ).map { filteredFuzzableTypes =>
+                  if filteredFuzzableTypes.isEmpty then
                     val errorMsg =
                       s"No individual value found for argument idx $idx, while we know the combination [${abstractInput.mkString(", ")}] is valid."
                     logger.error(errorMsg)
                     throw Exception(errorMsg)
 
-                  (currentArgumentAbstractType, filteredFuzzableType)
+                  (currentArgumentAbstractType, filteredFuzzableTypes)
                 }
               ,
               maxConcurrency = abstractInputs.head.size
@@ -446,7 +448,7 @@ object FuzzerNonParametricFunctions extends StrictLogging:
         newSignatures,
         signature =>
           val queries = buildFuzzingValuesArgs(
-            signature._1.map(_._1.fuzzingValues) ++ signature._2.map(_.fuzzingValues)
+            signature._1.map(_._1.exhaustiveFuzzingValues) ++ signature._2.map(_.fuzzingValues)
           ).map(args => query(fnName, args, fuzzOverWindow))
 
           executeInSequenceUntilSuccess(
@@ -495,7 +497,7 @@ object FuzzerNonParametricFunctions extends StrictLogging:
       argCount: Int,
       argsOfPreviouslyFoundSignatureOpt: Option[Seq[CHFuzzableType]]
   )(using client: CHClient, ec: ExecutionContext): Future[Boolean] =
-    if fnName.equals("nested") && argCount == 2 then Future.successful(false)
+    if fnName.equals("nth_value") then Future.successful(argCount != 2)
     else if fnName.equals("arrayEnumerateRanked") then Future.successful(false) // Unsure about the expected arg count
     else
       val args = argsOfPreviouslyFoundSignatureOpt match

@@ -16,23 +16,7 @@ object FuzzerParametricFunctions extends StrictLogging:
 
   // Remove some types that are obviously not parameters
   private[fuzz] val parametricAbstractType: Seq[CHFuzzableAbstractType] =
-    CHFuzzableAbstractType.values.toSeq.filterNot { abstractType =>
-      abstractType.fuzzingValues.isEmpty ||
-      abstractType.fuzzingValues.head.contains("::Map(") ||
-      abstractType.fuzzingValues.head.contains("map(") ||
-      abstractType.fuzzingValues.head.contains("::Tuple(") ||
-      abstractType.fuzzingValues.head.contains("::Date") ||
-      abstractType.fuzzingValues.head.contains("::IPv4") ||
-      abstractType.fuzzingValues.head.contains("::IPv6") ||
-      abstractType.fuzzingValues.head.contains("::JSON") ||
-      abstractType.fuzzingValues.head.contains("::UUID") ||
-      abstractType.fuzzingValues.head.contains("::Enum") ||
-      abstractType.fuzzingValues.head.contains("::Point") ||
-      abstractType.fuzzingValues.head.contains("::Ring") ||
-      abstractType.fuzzingValues.head.contains("::Polygon") ||
-      abstractType.fuzzingValues.head.contains("::MultiPolygon") ||
-      abstractType.fuzzingValues.head.contains("::Interval")
-    }
+    CHFuzzableAbstractType.nonCustomFuzzableAbstractTypes
 
   private[fuzz] def fuzzingFunctionWithCost(
       using client: CHClient,
@@ -100,7 +84,9 @@ object FuzzerParametricFunctions extends StrictLogging:
       fn: CHFunctionFuzzResult
   )(using CHClient, ExecutionContext): Future[CHFunctionFuzzResult] =
     logger.debug("fuzzFunction2Or1NWith0Parameter")
-    if fn.parametric0Function0Ns.nonEmpty
+    if fn.parametric0Function0Ns.nonEmpty || (fn.functions.exists(_.parameters.size > 0) && !fn.functions.exists(
+        _.parameters.size <= 0
+      ))
     then Future.successful(fn)
     else
       fuzzParametric(
@@ -128,7 +114,7 @@ object FuzzerParametricFunctions extends StrictLogging:
     logger.debug("fuzzFunction3Or2NWith0Parameter")
     if fn.parametric0Function0Ns.nonEmpty || fn.parametric0Function1Ns.nonEmpty || (
         fn.parametric0Function1s.filterNot(_.arg1.name.startsWith("Tuple")).nonEmpty && fn.parametric0Function2s.isEmpty
-      )
+      ) || (fn.functions.exists(_.parameters.size > 0) && !fn.functions.exists(_.parameters.size <= 0))
     then Future.successful(fn)
     else
       fuzzParametric(
@@ -206,7 +192,9 @@ object FuzzerParametricFunctions extends StrictLogging:
       fn: CHFunctionFuzzResult
   )(using CHClient, ExecutionContext): Future[CHFunctionFuzzResult] =
     logger.debug("fuzzFunction2Or1NWith1Or0NParameter")
-    if fn.parametric0NFunction0Ns.nonEmpty || fn.parametric1Function0Ns.nonEmpty
+    if fn.parametric0NFunction0Ns.nonEmpty || fn.parametric1Function0Ns.nonEmpty || (fn.functions.exists(
+        _.parameters.size > 1
+      ) && !fn.functions.exists(_.parameters.size <= 1))
     then Future.successful(fn)
     else
       fuzzParametric(
@@ -845,99 +833,111 @@ object FuzzerParametricFunctions extends StrictLogging:
     // Expand abstract types to retrieve all types combinations and their output
     validCHFuzzableAbstractTypeCombinationsF.flatMap:
       (validCHFuzzableAbstractTypeCombinations: Seq[ParametricFunctionAbstractInput]) =>
-        logger.trace(
-          s"fuzzFiniteParamsAndArgsFunction - detected ${validCHFuzzableAbstractTypeCombinations.size} abstract input combinations"
+        fuzzAbstractInputCombinations(fnName, validCHFuzzableAbstractTypeCombinations, fuzzOverWindow)
+
+  private[fuzz] def fuzzAbstractInputCombinations(
+      fnName: String,
+      abstractInputCombinations: Seq[(Seq[CHFuzzableAbstractType], Seq[CHFuzzableAbstractType])],
+      fuzzOverWindow: Boolean
+  )(
+      using client: CHClient,
+      ec: ExecutionContext
+  ): Future[Seq[((Seq[CHFuzzableType], Seq[CHFuzzableType]), OutputType)]] =
+    // Expand abstract types to retrieve all types combinations and their output
+    logger.trace(
+      s"fuzzFiniteParamsAndArgsFunction - detected ${abstractInputCombinations.size} abstract input combinations"
+    )
+    if abstractInputCombinations.isEmpty then Future.successful(Nil)
+    else
+      assume(
+        abstractInputCombinations
+          .groupBy(_.parameters)
+          .values
+          .map( // For each combination of parameters, we retrieve all the kind of available arguments
+            _.map(_.arguments)
+          )
+          .toSet
+          .size == 1, // All combination of parameters should support exactly the same combinations of arguments.
+        s"While fuzzing $fnName with ${abstractInputCombinations.head._1.size} parameters and" +
+          s" ${abstractInputCombinations.head._1.size} arguments, found some combinations of parameters" +
+          s" that does not support the same combinations of arguments."
+      )
+
+      // As we previously assessed arguments and parameters have no relationship whatsoever
+      // We will now fuzz their exact type (non abstract) separately.
+      val argumentsAndSqlQuery: Seq[(NonParametricArguments, Seq[String])] =
+        abstractInputCombinations
+          .groupBy(_.parameters)
+          .values
+          .head // We only need one kind of parameters!
+          .flatMap { (input: ParametricFunctionAbstractInput) =>
+            generateCHFuzzableTypeCombinations(input.arguments)
+              .map((input.parameters, _))
+          }
+          .map { (paramAbstractTypes, nonParamTypes) =>
+            val queries = crossJoin(
+              buildFuzzingValuesArgs(paramAbstractTypes.map(_.exhaustiveFuzzingValues)),
+              buildFuzzingValuesArgs(nonParamTypes.map(_.fuzzingValues))
+            ).map { (paramArgs, nonParamArgs) => query(fnName, paramArgs, nonParamArgs, fuzzOverWindow) }
+
+            (nonParamTypes, queries)
+          }
+      val parametersAndSqlQuery: Seq[(ParametricArguments, Seq[String])] =
+        abstractInputCombinations
+          .groupBy(_.arguments)
+          .values
+          .head // We only need one kind of arguments!
+          .flatMap { (input: ParametricFunctionAbstractInput) =>
+            generateCHFuzzableTypeCombinations(input.parameters)
+              .map((_, input.arguments))
+          }
+          .map { (paramTypes, nonParamAbstractTypes) =>
+            val queries = crossJoin(
+              buildFuzzingValuesArgs(paramTypes.map(_.fuzzingValues)),
+              buildFuzzingValuesArgs(nonParamAbstractTypes.map(_.exhaustiveFuzzingValues))
+            ).map { (paramArgs, nonParamArgs) => query(fnName, paramArgs, nonParamArgs, fuzzOverWindow) }
+
+            (paramTypes, queries)
+          }
+
+      logger.trace(
+        s"fuzzFiniteParamsAndArgsFunction - testing ${argumentsAndSqlQuery.size} arguments combinations and " +
+          s"${parametersAndSqlQuery.size} parameters combinations"
+      )
+
+      for
+        // Fuzz arguments
+        outputTypeByArguments: Map[NonParametricArguments, OutputType] <-
+          executeInParallelOnlySuccess(
+            argumentsAndSqlQuery,
+            (nonParamTypes, queries) =>
+              executeInSequenceOnlySuccess(queries, client.execute(_).map(_.data.head.head.asInstanceOf[String]))
+                .map(outputTypes => (nonParamTypes, outputTypes.map(CHType.getByName).reduce(CHType.mergeOutputType))),
+            maxConcurrency = Settings.ClickHouse.maxSupportedConcurrency
+          ).map(_.toMap)
+
+        _ = logger.trace(
+          s"fuzzFiniteParamsAndArgsFunction - ${outputTypeByArguments.size} arguments combinations are valid"
         )
-        if validCHFuzzableAbstractTypeCombinations.isEmpty then Future.successful(Nil)
-        else
-          assume(
-            validCHFuzzableAbstractTypeCombinations
-              .groupBy(_.parameters)
-              .values
-              .map( // For each combination of parameters, we retrieve all the kind of available arguments
-                _.map(_.arguments)
-              )
-              .toSet
-              .size == 1, // All combination of parameters should support exactly the same combinations of arguments.
-            s"While fuzzing $fnName with $paramCount parameters and $argCount arguments," +
-              s" found some combinations of parameters that does not support the same combinations of arguments."
+
+        // Fuzz parameters
+        validParameters: Seq[ParametricArguments] <-
+          executeInParallelOnlySuccess(
+            parametersAndSqlQuery,
+            (
+                paramTypes,
+                queries
+            ) => executeInSequenceUntilSuccess(queries, client.executeNoResult).map(_ => paramTypes),
+            maxConcurrency = Settings.ClickHouse.maxSupportedConcurrency
           )
 
-          // As we previously assessed arguments and parameters have no relationship whatsoever
-          // We will now fuzz their exact type (non abstract) separately.
-          val argumentsAndSqlQuery: Seq[(NonParametricArguments, Seq[String])] =
-            validCHFuzzableAbstractTypeCombinations
-              .groupBy(_.parameters)
-              .values
-              .head // We only need one kind of parameters!
-              .flatMap { (input: ParametricFunctionAbstractInput) =>
-                generateCHFuzzableTypeCombinations(input.arguments)
-                  .map((input.parameters, _))
-              }
-              .map { (paramAbstractTypes, nonParamTypes) =>
-                val queries = crossJoin(
-                  buildFuzzingValuesArgs(paramAbstractTypes.map(_.fuzzingValues)),
-                  buildFuzzingValuesArgs(nonParamTypes.map(_.fuzzingValues))
-                ).map { (paramArgs, nonParamArgs) => query(fnName, paramArgs, nonParamArgs, fuzzOverWindow) }
-
-                (nonParamTypes, queries)
-              }
-          val parametersAndSqlQuery: Seq[(ParametricArguments, Seq[String])] =
-            validCHFuzzableAbstractTypeCombinations
-              .groupBy(_.arguments)
-              .values
-              .head // We only need one kind of arguments!
-              .flatMap { (input: ParametricFunctionAbstractInput) =>
-                generateCHFuzzableTypeCombinations(input.parameters)
-                  .map((_, input.arguments))
-              }
-              .map { (paramTypes, nonParamAbstractTypes) =>
-                val queries = crossJoin(
-                  buildFuzzingValuesArgs(paramTypes.map(_.fuzzingValues)),
-                  buildFuzzingValuesArgs(nonParamAbstractTypes.map(_.fuzzingValues))
-                ).map { (paramArgs, nonParamArgs) => query(fnName, paramArgs, nonParamArgs, fuzzOverWindow) }
-
-                (paramTypes, queries)
-              }
-
-          logger.trace(
-            s"fuzzFiniteParamsAndArgsFunction - testing ${argumentsAndSqlQuery.size} arguments combinations and " +
-              s"${parametersAndSqlQuery.size} parameters combinations"
-          )
-
-          for
-            // Fuzz arguments
-            outputTypeByArguments: Map[NonParametricArguments, OutputType] <-
-              executeInParallelOnlySuccess(
-                argumentsAndSqlQuery,
-                (nonParamTypes, queries) =>
-                  executeInSequenceOnlySuccess(queries, client.execute(_).map(_.data.head.head.asInstanceOf[String]))
-                    .map(outputTypes =>
-                      (nonParamTypes, outputTypes.map(CHType.getByName).reduce(CHType.mergeOutputType))
-                    ),
-                maxConcurrency = Settings.ClickHouse.maxSupportedConcurrency
-              ).map(_.toMap)
-
-            _ = logger.trace(
-              s"fuzzFiniteParamsAndArgsFunction - ${outputTypeByArguments.size} arguments combinations are valid"
-            )
-
-            // Fuzz parameters
-            validParameters: Seq[ParametricArguments] <-
-              executeInParallelOnlySuccess(
-                parametersAndSqlQuery,
-                (paramTypes, queries) =>
-                  executeInSequenceUntilSuccess(queries, client.executeNoResult).map(_ => paramTypes),
-                maxConcurrency = Settings.ClickHouse.maxSupportedConcurrency
-              )
-
-            _ = logger.trace(
-              s"fuzzFiniteParamsAndArgsFunction - ${validParameters.size} parameters combinations are valid"
-            )
-          yield for
-            parameters <- validParameters
-            (arguments, outputType) <- outputTypeByArguments.toSeq
-          yield ((parameters, arguments), outputType)
+        _ = logger.trace(
+          s"fuzzFiniteParamsAndArgsFunction - ${validParameters.size} parameters combinations are valid"
+        )
+      yield for
+        parameters <- validParameters
+        (arguments, outputType) <- outputTypeByArguments.toSeq
+      yield ((parameters, arguments), outputType)
 
   /**
     * Build all combinations of function input having argCount arguments
@@ -1166,23 +1166,25 @@ object FuzzerParametricFunctions extends StrictLogging:
       using client: CHClient,
       ec: ExecutionContext
   ): Future[Boolean] =
-    client
-      .executeNoResult(
-        query(
-          fnName,
-          Range(0, paramCount).mkString(", "),
-          Range(0, argCount).mkString(", "),
-          false
+    if fnName.equals("ntile") && argCount != 1 then Future.successful(true)
+    else
+      client
+        .executeNoResult(
+          query(
+            fnName,
+            Range(0, paramCount).mkString(", "),
+            Range(0, argCount).mkString(", "),
+            false
+          )
         )
-      )
-      .map(_ => false)
-      .recover { err =>
-        Seq(
-          "(TOO_FEW_ARGUMENTS_FOR_FUNCTION)",
-          "(NUMBER_OF_ARGUMENTS_DOESNT_MATCH)",
-          "(TOO_MANY_ARGUMENTS_FOR_FUNCTION)"
-        ).exists(err.getMessage().contains)
-      }
+        .map(_ => false)
+        .recover { err =>
+          Seq(
+            "(TOO_FEW_ARGUMENTS_FOR_FUNCTION)",
+            "(NUMBER_OF_ARGUMENTS_DOESNT_MATCH)",
+            "(TOO_MANY_ARGUMENTS_FOR_FUNCTION)"
+          ).exists(err.getMessage().contains)
+        }
 
   private def toFn[T <: CHFunctionIO](
       io: (ParametricFunctionInput, OutputType),

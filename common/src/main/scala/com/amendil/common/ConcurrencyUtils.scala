@@ -79,23 +79,6 @@ object ConcurrencyUtils:
     Future.sequence(futures).map(_.flatten.flatten)
 
   /**
-    * Executes all calls in parallel.
-    *
-    * Results of failing queries are skipped.
-    *
-    * The order of the elements is kept. This function can be seen like an asynchronous `collect` operation.
-    *
-    * @return A sequence which maximum size is the number of provided elements
-    */
-  def executeInParallelOnlySuccess[T, U](elements: Seq[T], fn: (T) => Future[U])(
-      using ExecutionContext
-  ): Future[Seq[U]] =
-    val futures = elements.map { el =>
-      fn(el).map[Option[U]](Some(_)).recover(_ => None)
-    }
-    Future.sequence(futures).map(_.flatten)
-
-  /**
     * Executes all calls in parallel until receiving a Future.Success
     * This is done by calling one function followed by recoverWith to call the next one.
     *

@@ -42,10 +42,23 @@ object FuzzerSpecialFunctions extends StrictLogging:
     client
       .execute(s"SELECT toTypeName(${fn.name}($exprs1)), toTypeName(${fn.name}($exprs2))")
       .map { (resp: CHResponse) =>
+        val returnType = CHType.getByName(resp.data.head.head.asInstanceOf[String]) match
+          case CHSpecialType.Tuple(
+                Seq(
+                  CHSpecialType.Array(CHFuzzableType.Date),
+                  CHFuzzableType.UInt8,
+                  CHFuzzableType.StringType,
+                  CHFuzzableType.DateTime,
+                  CHFuzzableType.IPv4
+                )
+              ) =>
+            CHSpecialType.TupleN(CHAggregatedType.Any)
+          case t => t
+
         fn.copy(
           modes = fn.modes + CHFunction.Mode.NoOverWindow,
           specialFunction0Ns = Seq(
-            CHFunctionIO.Function0N(CHAggregatedType.Any, CHType.getByName(resp.data.head.head.asInstanceOf[String]))
+            CHFunctionIO.Function0N(CHAggregatedType.Any, returnType)
           )
         )
       }

@@ -1,5 +1,6 @@
 package com.amendil.signature.fuzz
 
+import com.amendil.common.ConcurrencyUtils
 import com.amendil.common.ConcurrencyUtils.executeChain
 import com.amendil.common.entities.`type`.CHFuzzableType
 import com.amendil.common.http.CHClient
@@ -105,7 +106,38 @@ object Fuzzer extends StrictLogging:
       using client: CHClient,
       ec: ExecutionContext
   ): Future[Boolean] =
-    val hardcodedNonParametricFnNames = Seq("rankCorr")
+    val hardcodedNonParametricFnNames =
+      Seq(
+        "contingency",
+        "cramersV",
+        "cramersVBiasCorrected",
+        "globalIn",
+        "globalInIgnoreSet",
+        "globalNotIn",
+        "globalNotInIgnoreSet",
+        "globalNotNullIn",
+        "globalNotNullInIgnoreSet",
+        "globalNullIn",
+        "globalNullInIgnoreSet",
+        "groupArrayIntersect",
+        "in",
+        "inIgnoreSet",
+        "maxIntersections",
+        "maxIntersectionsPosition",
+        "maxMappedArrays",
+        "minMappedArrays",
+        "notIn",
+        "notInIgnoreSet",
+        "notNullIn",
+        "notNullInIgnoreSet",
+        "nth_value",
+        "nullIn",
+        "nullInIgnoreSet",
+        "rankCorr",
+        "sumMappedArrays",
+        "sumMapWithOverflow",
+        "theilsU"
+      )
 
     if hardcodedNonParametricFnNames.contains(fn.name) || hardcodedNonParametricFnNames.contains(fn.aliasTo)
     then Future.successful(false)

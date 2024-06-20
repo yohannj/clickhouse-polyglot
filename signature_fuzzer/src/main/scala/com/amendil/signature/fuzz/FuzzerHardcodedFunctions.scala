@@ -78,9 +78,7 @@ object FuzzerHardcodedFunctions extends StrictLogging {
           )
         )
       case "arrayEnumerateDenseRanked" | "arrayEnumerateUniqRanked" =>
-        val anyNonArrayTypes = CHFuzzableAbstractType.values.toSeq
-          .filterNot(_.isInstanceOf[CustomAbstractType])
-          .flatMap(_.chFuzzableTypes)
+        val anyNonArrayTypes = CHFuzzableAbstractType.nonCustomFuzzableTypes
           .filterNot(_.name.startsWith("Array("))
           .map(t => (t, t.fuzzingValues))
 
@@ -141,20 +139,20 @@ object FuzzerHardcodedFunctions extends StrictLogging {
             fn.copy(
               function0Ns = Seq(
                 CHFunctionIO
-                  .Function0N(CHSpecialType.Array(CHAggregatedType.Any), CHSpecialType.Array(CHAggregatedType.Any))
+                  .Function0N(CHSpecialType.Array(CHAggregatedType.Any), CHSpecialType.Array(CHFuzzableType.UInt32))
               ),
               function1Ns = clearDepthTypes.map(clearDepthType =>
                 CHFunctionIO.Function1N(
                   clearDepthType,
                   CHSpecialType.Array(CHAggregatedType.Any),
-                  CHSpecialType.Array(CHAggregatedType.Any)
+                  CHSpecialType.Array(CHFuzzableType.UInt32)
                 )
               ),
               function0N1s = maxArrayDepthTypes.map(maxArrayDepthType =>
                 CHFunctionIO.Function0N1(
                   CHSpecialType.Array(CHAggregatedType.Any),
                   maxArrayDepthType,
-                  CHSpecialType.Array(CHAggregatedType.Any)
+                  CHSpecialType.Array(CHFuzzableType.UInt32)
                 )
               ),
               function1N1s = crossJoin(clearDepthTypes, maxArrayDepthTypes).map((clearDepthType, maxArrayDepthType) =>
@@ -162,6 +160,31 @@ object FuzzerHardcodedFunctions extends StrictLogging {
                   clearDepthType,
                   CHSpecialType.Array(CHAggregatedType.Any),
                   maxArrayDepthType,
+                  CHSpecialType.Array(CHFuzzableType.UInt32)
+                )
+              )
+            )
+      case "arrayFlatten" =>
+        for isValidSignature <-
+            client
+              .execute(
+                s"SELECT toTypeName(arrayFlatten([[[[[1, 2, 3]]]], [[[[2, 3, 4]]]]]::Array(Array(Array(Array(Array(UInt8)))))))"
+              )
+              .map { res =>
+                res.data.head.head == "Array(UInt8)"
+              }
+              .recover(_ => false)
+        yield
+          if !isValidSignature then
+            logger.error(
+              s"Unexpected result for hardcoded function ${fn.name}, it may not exists anymore. Skipping it."
+            )
+            fn
+          else
+            fn.copy(
+              function1s = Seq(
+                CHFunctionIO.Function1(
+                  CHSpecialType.Array(CHAggregatedType.Any),
                   CHSpecialType.Array(CHAggregatedType.Any)
                 )
               )
@@ -261,6 +284,115 @@ object FuzzerHardcodedFunctions extends StrictLogging {
               modes = fn.modes + CHFunction.Mode.NoOverWindow,
               function2Ns = function2Ns
             )
+      case "arrayZip" =>
+        for isValidSignature <-
+            client
+              .execute(s"SELECT toTypeName(${fn.name}([1::UInt8], [today()::Date], ['116.106.34.242'::IPv4]))")
+              .map { res =>
+                res.data.head.head == "Array(Tuple(UInt8, Date, IPv4))"
+              }
+              .recover(_ => false)
+        yield
+          if !isValidSignature then
+            logger.error(
+              s"Unexpected result for hardcoded function ${fn.name}, it may not exists anymore. Skipping it."
+            )
+            fn
+          else
+            val genericTypes = Range(1, 10).map(i => CHSpecialType.GenericType(s"T$i", CHAggregatedType.Any))
+
+            fn.copy(
+              function1s = Seq(
+                CHFunctionIO.Function1(
+                  CHSpecialType.Array(genericTypes(0)),
+                  CHSpecialType.Array(CHSpecialType.Tuple(genericTypes.take(1)))
+                )
+              ),
+              function2s = Seq(
+                CHFunctionIO.Function2(
+                  CHSpecialType.Array(genericTypes(0)),
+                  CHSpecialType.Array(genericTypes(1)),
+                  CHSpecialType.Array(CHSpecialType.Tuple(genericTypes.take(2)))
+                )
+              ),
+              function3s = Seq(
+                CHFunctionIO.Function3(
+                  CHSpecialType.Array(genericTypes(0)),
+                  CHSpecialType.Array(genericTypes(1)),
+                  CHSpecialType.Array(genericTypes(2)),
+                  CHSpecialType.Array(CHSpecialType.Tuple(genericTypes.take(3)))
+                )
+              ),
+              function4s = Seq(
+                CHFunctionIO.Function4(
+                  CHSpecialType.Array(genericTypes(0)),
+                  CHSpecialType.Array(genericTypes(1)),
+                  CHSpecialType.Array(genericTypes(2)),
+                  CHSpecialType.Array(genericTypes(3)),
+                  CHSpecialType.Array(CHSpecialType.Tuple(genericTypes.take(4)))
+                )
+              ),
+              function5s = Seq(
+                CHFunctionIO.Function5(
+                  CHSpecialType.Array(genericTypes(0)),
+                  CHSpecialType.Array(genericTypes(1)),
+                  CHSpecialType.Array(genericTypes(2)),
+                  CHSpecialType.Array(genericTypes(3)),
+                  CHSpecialType.Array(genericTypes(4)),
+                  CHSpecialType.Array(CHSpecialType.Tuple(genericTypes.take(5)))
+                )
+              ),
+              function6s = Seq(
+                CHFunctionIO.Function6(
+                  CHSpecialType.Array(genericTypes(0)),
+                  CHSpecialType.Array(genericTypes(1)),
+                  CHSpecialType.Array(genericTypes(2)),
+                  CHSpecialType.Array(genericTypes(3)),
+                  CHSpecialType.Array(genericTypes(4)),
+                  CHSpecialType.Array(genericTypes(5)),
+                  CHSpecialType.Array(CHSpecialType.Tuple(genericTypes.take(6)))
+                )
+              ),
+              function7s = Seq(
+                CHFunctionIO.Function7(
+                  CHSpecialType.Array(genericTypes(0)),
+                  CHSpecialType.Array(genericTypes(1)),
+                  CHSpecialType.Array(genericTypes(2)),
+                  CHSpecialType.Array(genericTypes(3)),
+                  CHSpecialType.Array(genericTypes(4)),
+                  CHSpecialType.Array(genericTypes(5)),
+                  CHSpecialType.Array(genericTypes(6)),
+                  CHSpecialType.Array(CHSpecialType.Tuple(genericTypes.take(7)))
+                )
+              ),
+              function8s = Seq(
+                CHFunctionIO.Function8(
+                  CHSpecialType.Array(genericTypes(0)),
+                  CHSpecialType.Array(genericTypes(1)),
+                  CHSpecialType.Array(genericTypes(2)),
+                  CHSpecialType.Array(genericTypes(3)),
+                  CHSpecialType.Array(genericTypes(4)),
+                  CHSpecialType.Array(genericTypes(5)),
+                  CHSpecialType.Array(genericTypes(6)),
+                  CHSpecialType.Array(genericTypes(7)),
+                  CHSpecialType.Array(CHSpecialType.Tuple(genericTypes.take(8)))
+                )
+              ),
+              function9s = Seq(
+                CHFunctionIO.Function9(
+                  CHSpecialType.Array(genericTypes(0)),
+                  CHSpecialType.Array(genericTypes(1)),
+                  CHSpecialType.Array(genericTypes(2)),
+                  CHSpecialType.Array(genericTypes(3)),
+                  CHSpecialType.Array(genericTypes(4)),
+                  CHSpecialType.Array(genericTypes(5)),
+                  CHSpecialType.Array(genericTypes(6)),
+                  CHSpecialType.Array(genericTypes(7)),
+                  CHSpecialType.Array(genericTypes(8)),
+                  CHSpecialType.Array(CHSpecialType.Tuple(genericTypes.take(9)))
+                )
+              )
+            )
       case "catboostEvaluate" =>
         // Number and type of arguments depend on the model, which we don't know at compile time.
 
@@ -275,13 +407,11 @@ object FuzzerHardcodedFunctions extends StrictLogging {
             )
           )
         )
-      case "DATE" | "toDate" =>
+      case "DATE" | "toDate" | "toDate32" =>
         // Second argument (TimeZone) is sometimes accepted as any String, and not check is done to verify the String is a TimeZone.
         // In the automatic signature detectionm it leads us to incorrectly believe the second argument is a String and not a TimeZone.
 
-        val anyType = CHFuzzableAbstractType.values.toSeq
-          .filterNot(_.isInstanceOf[CustomAbstractType])
-          .flatMap(_.chFuzzableTypes)
+        val anyType = CHFuzzableAbstractType.nonCustomFuzzableTypes
           .map(t => (t, t.fuzzingValues))
 
         val stringType = Seq((CHFuzzableType.StringType, Seq("''")))
@@ -398,9 +528,7 @@ object FuzzerHardcodedFunctions extends StrictLogging {
               )
             )
           )
-        val idExprType = CHFuzzableAbstractType.values.toSeq
-          .filterNot(_.isInstanceOf[CustomAbstractType])
-          .flatMap(_.chFuzzableTypes)
+        val idExprType = CHFuzzableAbstractType.nonCustomFuzzableTypes
           .map(t => (t, t.fuzzingValues))
         for attributeNamesTypes <-
             fuzzSignatures(
@@ -492,12 +620,12 @@ object FuzzerHardcodedFunctions extends StrictLogging {
               )
             )
           )
-        val idExprType = CHFuzzableAbstractType.values.toSeq
-          .filterNot(_.isInstanceOf[CustomAbstractType])
-          .flatMap(_.chFuzzableTypes)
+        val idExprType = CHFuzzableAbstractType.nonCustomFuzzableTypes
           .map(t => (t, t.fuzzingValues))
         val defaultValueType =
-          CHFuzzableAbstractType.values.toSeq.flatMap(_.chFuzzableTypes).map(t => (t, t.fuzzingValues))
+          CHFuzzableAbstractType.nonCustomFuzzableAbstractTypes
+            .flatMap(_.chFuzzableTypes)
+            .map(t => (t, t.fuzzingValues))
 
         for attributeNamesTypes <-
             fuzzSignatures(
@@ -570,9 +698,7 @@ object FuzzerHardcodedFunctions extends StrictLogging {
               )
             )
           )
-        val idExprType = CHFuzzableAbstractType.values.toSeq
-          .filterNot(_.isInstanceOf[CustomAbstractType])
-          .flatMap(_.chFuzzableTypes)
+        val idExprType = CHFuzzableAbstractType.nonCustomFuzzableTypes
           .map(t => (t, t.fuzzingValues))
         for function3s <-
             fuzzSignatures(
@@ -625,12 +751,12 @@ object FuzzerHardcodedFunctions extends StrictLogging {
               )
             )
           )
-        val idExprType = CHFuzzableAbstractType.values.toSeq
-          .filterNot(_.isInstanceOf[CustomAbstractType])
-          .flatMap(_.chFuzzableTypes)
+        val idExprType = CHFuzzableAbstractType.nonCustomFuzzableTypes
           .map(t => (t, t.fuzzingValues))
         val defaultValueType =
-          CHFuzzableAbstractType.values.toSeq.flatMap(_.chFuzzableTypes).map(t => (t, t.fuzzingValues))
+          CHFuzzableAbstractType.nonCustomFuzzableAbstractTypes
+            .flatMap(_.chFuzzableTypes)
+            .map(t => (t, t.fuzzingValues))
 
         for
           function3s <-
@@ -672,9 +798,7 @@ object FuzzerHardcodedFunctions extends StrictLogging {
         )
       case "dictHas" =>
         val dictionaryNameType = Seq((CHFuzzableType.DictionaryName, CHFuzzableType.DictionaryName.fuzzingValues))
-        val idExprType = CHFuzzableAbstractType.values.toSeq
-          .filterNot(_.isInstanceOf[CustomAbstractType])
-          .flatMap(_.chFuzzableTypes)
+        val idExprType = CHFuzzableAbstractType.nonCustomFuzzableTypes
           .map(t => (t, t.fuzzingValues))
         for outputTypes <-
             fuzzSignatures(
@@ -705,9 +829,7 @@ object FuzzerHardcodedFunctions extends StrictLogging {
           else fn
       case "dictGetChildren" | "dictGetHierarchy" =>
         val dictionaryNameType = Seq((CHFuzzableType.DictionaryName, CHFuzzableType.DictionaryName.fuzzingValues))
-        val idExprType = CHFuzzableAbstractType.values.toSeq
-          .filterNot(_.isInstanceOf[CustomAbstractType])
-          .flatMap(_.chFuzzableTypes)
+        val idExprType = CHFuzzableAbstractType.nonCustomFuzzableTypes
           .map(t => (t, t.fuzzingValues))
         for function2s <-
             fuzzSignatures(
@@ -729,9 +851,7 @@ object FuzzerHardcodedFunctions extends StrictLogging {
         )
       case "dictGetDescendants" =>
         val dictionaryNameType = Seq((CHFuzzableType.DictionaryName, CHFuzzableType.DictionaryName.fuzzingValues))
-        val idExprType = CHFuzzableAbstractType.values.toSeq
-          .filterNot(_.isInstanceOf[CustomAbstractType])
-          .flatMap(_.chFuzzableTypes)
+        val idExprType = CHFuzzableAbstractType.nonCustomFuzzableTypes
           .map(t => (t, t.fuzzingValues))
         for function2s <-
             fuzzSignatures(
@@ -753,9 +873,7 @@ object FuzzerHardcodedFunctions extends StrictLogging {
         )
       case "dictIsIn" =>
         val dictionaryNameType = Seq((CHFuzzableType.DictionaryName, CHFuzzableType.DictionaryName.fuzzingValues))
-        val idExprType = CHFuzzableAbstractType.values.toSeq
-          .filterNot(_.isInstanceOf[CustomAbstractType])
-          .flatMap(_.chFuzzableTypes)
+        val idExprType = CHFuzzableAbstractType.nonCustomFuzzableTypes
           .map(t => (t, t.fuzzingValues))
         for function3s <-
             fuzzSignatures(
@@ -899,20 +1017,17 @@ object FuzzerHardcodedFunctions extends StrictLogging {
         )
       case "groupArrayInsertAt" =>
         val xType =
-          CHFuzzableAbstractType.values.toSeq
-            .filterNot(_.isInstanceOf[CustomAbstractType])
-            .flatMap(_.chFuzzableTypes)
+          CHFuzzableAbstractType.nonCustomFuzzableTypes
+            .filterNot(_.name.toLowerCase().contains("enum"))
             .map(t => (t, t.fuzzingValues.take(3)))
-        val numbersType = Seq(
-          // Only unsigned are working while writing this comment
-          // Adding signed too in case the behaviour changes in a later version.
-          (CHFuzzableType.UInt8, Seq("1::UInt8")),
-          (CHFuzzableType.UInt16, Seq("256::UInt16")),
-          (CHFuzzableType.UInt32, Seq("65536::UInt32")),
-          (CHFuzzableType.Int8, Seq("1::Int8")),
-          (CHFuzzableType.Int16, Seq("256::Int16")),
-          (CHFuzzableType.Int32, Seq("65536::Int32"))
-        )
+        val numbersType =
+          CHFuzzableAbstractType.Number.chFuzzableTypes.map(t => (t, Seq(t.fuzzingValues.head)))
+        val posType =
+          Seq(
+            (CHFuzzableType.UInt8, Seq("1::UInt8")),
+            (CHFuzzableType.UInt16, Seq("256::UInt16")),
+            (CHFuzzableType.UInt32, Seq("65536::UInt32"))
+          )
 
         for
           parametric0Function2 <-
@@ -924,6 +1039,9 @@ object FuzzerHardcodedFunctions extends StrictLogging {
                 numbersType
               ).map(_.toList)
             ).map { signatures =>
+              logger.trace(
+                s"FuzzerHardcodedFunctions - groupArrayInsertAt - fuzzed ${signatures.size} valid signatures with 0 parameters"
+              )
               signatures.map { io =>
                 (io._1, io._2) match
                   case (Seq(), Seq(arg1, arg2)) => Parametric0Function2(arg1, arg2, io._3)
@@ -943,6 +1061,9 @@ object FuzzerHardcodedFunctions extends StrictLogging {
                 numbersType
               ).map(_.toList)
             ).map { signatures =>
+              logger.trace(
+                s"FuzzerHardcodedFunctions - groupArrayInsertAt - fuzzed ${signatures.size} valid signatures with 1 parameter"
+              )
               signatures.map { io =>
                 (io._1, io._2) match
                   case (Seq(param1), Seq(arg1, arg2)) => Parametric1Function2(param1, arg1, arg2, io._3)
@@ -958,13 +1079,16 @@ object FuzzerHardcodedFunctions extends StrictLogging {
               fn.name,
               crossJoin(
                 xType,
-                numbersType
+                posType
               ).map(_.toList),
               crossJoin(
                 xType,
                 numbersType
               ).map(_.toList)
             ).map { signatures =>
+              logger.trace(
+                s"FuzzerHardcodedFunctions - groupArrayInsertAt - fuzzed ${signatures.size} valid signatures with 2 parameters"
+              )
               signatures.map { io =>
                 (io._1, io._2) match
                   case (Seq(param1, param2), Seq(arg1, arg2)) => Parametric2Function2(param1, param2, arg1, arg2, io._3)
@@ -1431,9 +1555,45 @@ object FuzzerHardcodedFunctions extends StrictLogging {
           parametric1Function2s = parametric1Function2,
           parametric2Function2s = parametric2Function2
         )
+      case "map" =>
+        // We should use generic types here,
+        val anyType = CHFuzzableAbstractType.nonCustomFuzzableTypes
+          .map(t => (t, Seq(t.fuzzingValues.head)))
+
+        for kvTypes <-
+            fuzzSignatures(
+              fn.name,
+              crossJoin(
+                anyType,
+                anyType
+              ).map(_.toList)
+            ).map { signatures =>
+              signatures.map { io =>
+                io._1 match
+                  case Seq(arg1, arg2) => (arg1, arg2)
+                  case _               => throw Exception(s"Expected 2 arguments, but found ${io._1.size} arguments")
+              }.distinct
+            }
+        yield
+          require(
+            kvTypes.map(_._1).distinct.size * kvTypes.map(_._2).distinct.size == kvTypes.size,
+            "Expected each map keys to support exactly the same types of values. But it's apparently not the case anymore."
+          )
+
+          val t1 = CHType.mergeInputTypes(kvTypes.map(_._1).toSet, supportJson = Settings.Fuzzer.supportJson)
+          val t2 = CHType.mergeInputTypes(kvTypes.map(_._2).toSet, supportJson = Settings.Fuzzer.supportJson)
+          require(t1.size == 1, "Map key type should be aggregatable to a single type")
+          require(t2.size == 1, "Map value type should be aggregatable to a single type")
+
+          // This signature is wrong, t1 and t2 should be generic types
+          // Yet right now I don't have a good idea to express those parameters must be repeated as a duo
+          fn.copy(
+            modes = fn.modes + CHFunction.Mode.NoOverWindow,
+            function1Ns = Seq(Function1N(t1.head, t2.head, CHSpecialType.Map(t1.head, t2.head)))
+          )
       case "mapApply" => // Any Map working with identity actually
         val typeT = CHSpecialType.GenericType("T1", CHAggregatedType.MapKey)
-        val typeU = CHSpecialType.GenericType("U", CHAggregatedType.Any)
+        val typeU = CHSpecialType.GenericType("T2", CHAggregatedType.Any)
         val lambdaIdentityType: (CHSpecialType.LambdaType, Seq[String]) =
           (CHSpecialType.LambdaType(CHSpecialType.Tuple(Seq(typeT, typeU))), Seq("x, y -> (x, y)"))
         val mapType: (CHSpecialType.Map, Seq[String]) = (CHSpecialType.Map(typeT, typeU), Seq("map(now(), today())"))
@@ -1689,9 +1849,7 @@ object FuzzerHardcodedFunctions extends StrictLogging {
           (CHFuzzableType.StringType, Seq("'.'::String"))
         )
 
-        val timestampType = CHFuzzableAbstractType.values.toSeq
-          .filterNot(_.isInstanceOf[CustomAbstractType])
-          .flatMap(_.chFuzzableTypes)
+        val timestampType = CHFuzzableAbstractType.nonCustomFuzzableTypes
           .map(t => (t, t.fuzzingValues))
 
         val conditionType = Seq(
@@ -1745,6 +1903,16 @@ object FuzzerHardcodedFunctions extends StrictLogging {
         import CHSpecialType.*
 
         // format: off
+        val timestampTypes =
+          Seq(
+            BooleanType, UInt8, UInt16, UInt32, UInt64, Date, DateTime, LowCardinalityBoolean,
+            LowCardinalityUInt8, LowCardinalityUInt16, LowCardinalityUInt32, LowCardinalityUInt64,
+            LowCardinalityDate, LowCardinalityDateTime, LowCardinalityNullableBoolean, LowCardinalityNullableUInt8,
+            LowCardinalityNullableUInt16, LowCardinalityNullableUInt32, LowCardinalityNullableUInt64,
+            LowCardinalityNullableDate, LowCardinalityNullableDateTime, NullableBoolean, NullableUInt8,
+            NullableUInt16, NullableUInt32, NullableUInt64, NullableDate, NullableDateTime
+          ).filter(CHFuzzableAbstractType.nonCustomFuzzableTypes.contains) // Removes Nullable etc. based on Configuration values
+
         Future.successful(
           fn.copy(
             specialParametric2Function2Ns =
@@ -1754,17 +1922,7 @@ object FuzzerHardcodedFunctions extends StrictLogging {
                     (SequenceDirectionForward, SequenceBaseHead),
                     (SequenceDirectionBackward, SequenceBaseTail)
                   )
-
-                timestamp <-
-                  Seq(
-                    BooleanType, UInt8, UInt16, UInt32, UInt64, Date, DateTime, LowCardinalityBoolean,
-                    LowCardinalityUInt8, LowCardinalityUInt16, LowCardinalityUInt32, LowCardinalityUInt64,
-                    LowCardinalityDate, LowCardinalityDateTime, LowCardinalityNullableBoolean, LowCardinalityNullableUInt8,
-                    LowCardinalityNullableUInt16, LowCardinalityNullableUInt32, LowCardinalityNullableUInt64,
-                    LowCardinalityNullableDate, LowCardinalityNullableDateTime, NullableBoolean, NullableUInt8,
-                    NullableUInt16, NullableUInt32, NullableUInt64, NullableDate, NullableDateTime
-                  )
-
+                timestamp <- timestampTypes
               yield {
                 CHFunctionIO.Parametric2Function2N(direction, base, timestamp, StringType, BooleanType, CHSpecialType.Nullable(CHFuzzableType.StringType))
               },
@@ -1777,17 +1935,7 @@ object FuzzerHardcodedFunctions extends StrictLogging {
                     (SequenceDirectionBackward, SequenceBaseFirstMatch),
                     (SequenceDirectionBackward, SequenceBaseLastMatch)
                   )
-
-                timestamp <-
-                  Seq(
-                    BooleanType, UInt8, UInt16, UInt32, UInt64, Date, DateTime, LowCardinalityBoolean,
-                    LowCardinalityUInt8, LowCardinalityUInt16, LowCardinalityUInt32, LowCardinalityUInt64,
-                    LowCardinalityDate, LowCardinalityDateTime, LowCardinalityNullableBoolean, LowCardinalityNullableUInt8,
-                    LowCardinalityNullableUInt16, LowCardinalityNullableUInt32, LowCardinalityNullableUInt64,
-                    LowCardinalityNullableDate, LowCardinalityNullableDateTime, NullableBoolean, NullableUInt8,
-                    NullableUInt16, NullableUInt32, NullableUInt64, NullableDate, NullableDateTime
-                  )
-
+                timestamp <- timestampTypes
               yield {
                 CHFunctionIO.Parametric2Function3N(direction, base, timestamp, StringType, BooleanType, BooleanType, CHSpecialType.Nullable(CHFuzzableType.StringType))
               }
@@ -1869,7 +2017,7 @@ object FuzzerHardcodedFunctions extends StrictLogging {
             ) || t.name.startsWith("Decimal")
           )
 
-        if nonExpectedNumberTypes.isEmpty then
+        if nonExpectedNumberTypes.nonEmpty then
           throw Exception(
             s"Expected to handle only signed, unsigned, floating numbers, as well as Decimal. Found: ${nonExpectedNumberTypes.map(_.name).mkString(", ")}"
           )
@@ -1918,6 +2066,85 @@ object FuzzerHardcodedFunctions extends StrictLogging {
           function2s = function2s,
           function3s = function3s
         )
+      case "tupleElement" =>
+        val indexOrNameTypes = CHFuzzableAbstractType.nonCustomFuzzableTypes
+          .map(t => (t, t.fuzzingValues))
+
+        for
+          validIndexOrNameTypes <-
+            fuzzSignatures(
+              fn.name,
+              crossJoin(
+                Seq((CHFuzzableType.ArrayTuple1UUID, CHFuzzableType.ArrayTuple1UUID.fuzzingValues)),
+                indexOrNameTypes
+              ).map(_.toList)
+            ).map { signatures =>
+              signatures.map { io =>
+                io._1 match
+                  case Seq(_, arg2) => arg2.asInstanceOf[CHFuzzableType]
+                  case _            => throw Exception(s"Expected 2 arguments, but found ${io._1.size} arguments")
+              }
+            }
+
+          isValidSignature <-
+            client
+              .executeNoResult(
+                s"SELECT toTypeName(${fn.name}(${CHFuzzableType.ArrayTuple1UUID.fuzzingValues.head}, 1))"
+              )
+              .flatMap(_ =>
+                client.executeNoResult(
+                  s"SELECT toTypeName(${fn.name}(${CHFuzzableType.Tuple1Date.fuzzingValues.head}, 1))"
+                )
+              )
+              .flatMap(_ =>
+                client.executeNoResult(
+                  s"SELECT toTypeName(${fn.name}(${CHFuzzableType.ArrayTuple1UUID.fuzzingValues.head}, 1, 1))"
+                )
+              )
+              .flatMap(_ =>
+                client.executeNoResult(
+                  s"SELECT toTypeName(${fn.name}(${CHFuzzableType.Tuple1Date.fuzzingValues.head}, 1, 1))"
+                )
+              )
+              .map(_ => true)
+              .recover(_ => false)
+        yield
+          if !isValidSignature then
+            logger.error(
+              s"Unexpected result for hardcoded function ${fn.name}, it may not exists anymore. Skipping it."
+            )
+            fn
+          else
+            fn.copy(
+              modes = fn.modes + CHFunction.Mode.NoOverWindow,
+              function2s = validIndexOrNameTypes.flatMap(indexOrNameType =>
+                Seq(
+                  CHFunctionIO.Function2(
+                    CHSpecialType.Array(CHSpecialType.TupleN(CHAggregatedType.Any)),
+                    indexOrNameType,
+                    CHAggregatedType.Any
+                  ),
+                  CHFunctionIO
+                    .Function2(CHSpecialType.TupleN(CHAggregatedType.Any), indexOrNameType, CHAggregatedType.Any)
+                )
+              ),
+              function3s = validIndexOrNameTypes.flatMap(indexOrNameType =>
+                Seq(
+                  CHFunctionIO.Function3(
+                    CHSpecialType.Array(CHSpecialType.TupleN(CHAggregatedType.Any)),
+                    indexOrNameType,
+                    CHAggregatedType.Any,
+                    CHAggregatedType.Any
+                  ),
+                  CHFunctionIO.Function3(
+                    CHSpecialType.TupleN(CHAggregatedType.Any),
+                    indexOrNameType,
+                    CHAggregatedType.Any,
+                    CHAggregatedType.Any
+                  )
+                )
+              )
+            )
       case "variantElement" =>
         val variantColumn = Seq((CHFuzzableType.Variant, Seq("123456::Variant(UInt64, String, Array(UInt64))")))
         val typeColumn = Seq(
@@ -2060,6 +2287,8 @@ object FuzzerHardcodedFunctions extends StrictLogging {
               outputTypes.map(CHType.getByName).reduce(CHType.mergeOutputType)
             )
         )
+      ,
+      maxConcurrency = Settings.ClickHouse.maxSupportedConcurrency
     )
 
   private type InputTypesWithFuzzingValues = Seq[(CHType, Seq[String])]

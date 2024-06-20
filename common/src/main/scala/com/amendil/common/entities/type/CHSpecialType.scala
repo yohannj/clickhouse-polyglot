@@ -4,6 +4,7 @@ enum CHSpecialType(val name: String) extends CHType:
   case AggregateFunction(fnName: String, innerType: CHType)
       extends CHSpecialType(s"AggregateFunction($fnName, ${innerType.name})")
   case Array(innerType: CHType) extends CHSpecialType(s"Array(${innerType.name})") with InnerType
+  case Bitmap(innerType: CHType) extends CHSpecialType(s"Bitmap(${innerType.name})") with InnerType
   case GenericType(typeName: String, superType: CHType) extends CHSpecialType(typeName)
   case LambdaType(outputType: CHType) extends CHSpecialType(s"Lambda(${outputType.name})")
   case LowCardinality(innerType: CHType) extends CHSpecialType(s"LowCardinality(${innerType.name})") with InnerType

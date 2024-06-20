@@ -10,11 +10,51 @@ import scala.util.Try
 class CHFuzzableTypeSpec extends AnyFreeSpec with Matchers:
 
   "CHType" - {
+    "should not merge" - {
+      "input types" - {
+        "from GenericType" in {
+          val innerTypes = Seq(CHAggregatedType.Float, CHAggregatedType.NonDecimalNorFloat)
+          val genericTypes = innerTypes.map(t => CHSpecialType.GenericType("T1", t))
+
+          val actual1 = CHType.mergeInputTypes(innerTypes.toSet)
+          val expected1 = Set(CHAggregatedType.NonDecimal)
+          actual1 shouldBe expected1
+
+          val actual2 = CHType.mergeInputTypes(genericTypes.toSet)
+          val expected2 = genericTypes.toSet
+          actual2 shouldBe expected2
+        }
+      }
+    }
     "should merge" - {
       "input types" - {
         "to Any" in {
           val actual = CHType.mergeInputTypes(CHFuzzableType.values.toSet - CHFuzzableType.Variant)
           val expected = Set(CHAggregatedType.Any)
+
+          actual shouldBe expected
+        }
+        "to AnyNonBitmapNonNullableNonLowCardinality" in {
+          val actual = CHType.mergeInputTypes(
+            CHFuzzableType.values
+              .filterNot(_.name.startsWith("Bitmap"))
+              .filterNot(_.name.contains("Nullable"))
+              .filterNot(_.name.contains("LowCardinality"))
+              .toSet - CHFuzzableType.Variant
+          )
+          val expected = Set(CHAggregatedType.AnyNonBitmapNonNullableNonLowCardinality)
+
+          actual shouldBe expected
+        }
+        "to AnyNonMapNonNullableNonLowCardinality" in {
+          val actual = CHType.mergeInputTypes(
+            CHFuzzableType.values
+              .filterNot(_.name.startsWith("Map"))
+              .filterNot(_.name.contains("Nullable"))
+              .filterNot(_.name.contains("LowCardinality"))
+              .toSet - CHFuzzableType.Variant
+          )
+          val expected = Set(CHAggregatedType.AnyNonMapNonNullableNonLowCardinality)
 
           actual shouldBe expected
         }
@@ -26,6 +66,13 @@ class CHFuzzableTypeSpec extends AnyFreeSpec with Matchers:
               .toSet - CHFuzzableType.Variant
           )
           val expected = Set(CHAggregatedType.AnyNonNullableNonLowCardinality)
+
+          actual shouldBe expected
+        }
+        "to Bitmap" in {
+          val bitmapTypes = CHFuzzableType.values.filter(_.name.startsWith("Bitmap("))
+          val actual = CHType.mergeInputTypes(bitmapTypes.toSet)
+          val expected = Set(CHSpecialType.Bitmap(CHAggregatedType.NonDecimalNorFloatMax64Bits))
 
           actual shouldBe expected
         }
@@ -195,7 +242,7 @@ class CHFuzzableTypeSpec extends AnyFreeSpec with Matchers:
         "of type Map" - {
           "to Map(MapKey, Int)" in {
             val actual = CHType.mergeInputTypes(CHFuzzableType.values.filter(_.name.startsWith("Map(")).toSet)
-            val expected = Set(CHSpecialType.Map(CHAggregatedType.MapKey, CHAggregatedType.Int))
+            val expected = Set(CHSpecialType.Map(CHAggregatedType.MapKey, CHSpecialType.UnknownType))
 
             actual shouldBe expected
           }
@@ -205,7 +252,7 @@ class CHFuzzableTypeSpec extends AnyFreeSpec with Matchers:
               CHFuzzableType.values.filter(_.name.startsWith("Map(Int")).filterNot(_.name.startsWith("Map(Interval"))
             val actual1 = CHType.mergeInputTypes(intTypes.toSet)
             val actual2 = CHType.mergeInputTypes(intTypes.toSet + CHFuzzableType.MapBooleanInt)
-            val expected = Set(CHSpecialType.Map(CHAggregatedType.Int, CHAggregatedType.Int))
+            val expected = Set(CHSpecialType.Map(CHAggregatedType.Int, CHSpecialType.UnknownType))
 
             actual1 shouldBe expected
             actual2 shouldBe expected
@@ -228,7 +275,7 @@ class CHFuzzableTypeSpec extends AnyFreeSpec with Matchers:
                 CHFuzzableType.MapInt64Int
               )
             )
-            val expected = Set(CHSpecialType.Map(CHAggregatedType.IntMax64Bits, CHAggregatedType.Int))
+            val expected = Set(CHSpecialType.Map(CHAggregatedType.IntMax64Bits, CHSpecialType.UnknownType))
 
             actual1 shouldBe expected
             actual2 shouldBe expected
@@ -236,20 +283,20 @@ class CHFuzzableTypeSpec extends AnyFreeSpec with Matchers:
           "to Map(NonDecimalNorFloat, Int)" in {
             val actual1 = CHType.mergeInputTypes(
               Set(
-                CHSpecialType.Map(CHAggregatedType.Int, CHAggregatedType.Int),
-                CHSpecialType.Map(CHAggregatedType.UInt, CHAggregatedType.Int)
+                CHSpecialType.Map(CHAggregatedType.Int, CHSpecialType.UnknownType),
+                CHSpecialType.Map(CHAggregatedType.UInt, CHSpecialType.UnknownType)
               )
             )
             val actual2 = CHType.mergeInputTypes(
               Set(
-                CHSpecialType.Map(CHAggregatedType.NonDecimalNorFloatMax64Bits, CHAggregatedType.Int),
+                CHSpecialType.Map(CHAggregatedType.NonDecimalNorFloatMax64Bits, CHSpecialType.UnknownType),
                 CHFuzzableType.MapInt128Int,
                 CHFuzzableType.MapInt256Int,
                 CHFuzzableType.MapUInt128Int,
                 CHFuzzableType.MapUInt256Int
               )
             )
-            val expected = Set(CHSpecialType.Map(CHAggregatedType.NonDecimalNorFloat, CHAggregatedType.Int))
+            val expected = Set(CHSpecialType.Map(CHAggregatedType.NonDecimalNorFloat, CHSpecialType.UnknownType))
 
             actual1 shouldBe expected
             actual2 shouldBe expected
@@ -257,11 +304,12 @@ class CHFuzzableTypeSpec extends AnyFreeSpec with Matchers:
           "to Map(NonDecimalNorFloatMax64Bits, Int)" in {
             val actual = CHType.mergeInputTypes(
               Set(
-                CHSpecialType.Map(CHAggregatedType.IntMax64Bits, CHAggregatedType.Int),
-                CHSpecialType.Map(CHAggregatedType.UIntMax64Bits, CHAggregatedType.Int)
+                CHSpecialType.Map(CHAggregatedType.IntMax64Bits, CHSpecialType.UnknownType),
+                CHSpecialType.Map(CHAggregatedType.UIntMax64Bits, CHSpecialType.UnknownType)
               )
             )
-            val expected = Set(CHSpecialType.Map(CHAggregatedType.NonDecimalNorFloatMax64Bits, CHAggregatedType.Int))
+            val expected =
+              Set(CHSpecialType.Map(CHAggregatedType.NonDecimalNorFloatMax64Bits, CHSpecialType.UnknownType))
 
             actual shouldBe expected
           }
@@ -270,12 +318,12 @@ class CHFuzzableTypeSpec extends AnyFreeSpec with Matchers:
             val actual2 =
               CHType.mergeInputTypes(
                 Set(
-                  CHSpecialType.Map(CHAggregatedType.UIntMax64Bits, CHAggregatedType.Int),
+                  CHSpecialType.Map(CHAggregatedType.UIntMax64Bits, CHSpecialType.UnknownType),
                   CHFuzzableType.MapUInt128Int,
                   CHFuzzableType.MapUInt256Int
                 )
               )
-            val expected = Set(CHSpecialType.Map(CHAggregatedType.UInt, CHAggregatedType.Int))
+            val expected = Set(CHSpecialType.Map(CHAggregatedType.UInt, CHSpecialType.UnknownType))
 
             actual1 shouldBe expected
             actual2 shouldBe expected
@@ -289,7 +337,7 @@ class CHFuzzableTypeSpec extends AnyFreeSpec with Matchers:
                 CHFuzzableType.MapUInt64Int
               )
             )
-            val expected = Set(CHSpecialType.Map(CHAggregatedType.UIntMax64Bits, CHAggregatedType.Int))
+            val expected = Set(CHSpecialType.Map(CHAggregatedType.UIntMax64Bits, CHSpecialType.UnknownType))
 
             actual shouldBe expected
           }

@@ -60,36 +60,36 @@ enum CHFuzzableType(
   case UInt8
       extends CHFuzzableType(
         "UInt8",
-        Seq("0::UInt8", "1::UInt8", "8::UInt8", "255::UInt8")
+        Seq("0::UInt8", "255::UInt8", "1::UInt8", "8::UInt8", "12::UInt8")
       )
   case UInt16
       extends CHFuzzableType(
         "UInt16",
-        Seq("0::UInt16", "1::UInt16", "8::UInt16", "65535::UInt16")
+        Seq("0::UInt16", "65535::UInt16", "1::UInt16", "8::UInt16")
       )
   case UInt32
       extends CHFuzzableType(
         "UInt32",
-        Seq("0::UInt32", "1::UInt32", "8::UInt32", "4294967295::UInt32")
+        Seq("0::UInt32", "4294967295::UInt32", "1::UInt32", "8::UInt32")
       )
   case UInt64
       extends CHFuzzableType(
         "UInt64",
-        Seq("0::UInt64", "1::UInt64", "8::UInt64", "18446744073709551615::UInt64")
+        Seq("0::UInt64", "18446744073709551615::UInt64", "1::UInt64", "8::UInt64")
       )
   case UInt128
       extends CHFuzzableType(
         "UInt128",
-        Seq("0::UInt128", "1::UInt128", "8::UInt128", "340282366920938463463374607431768211455::UInt128")
+        Seq("0::UInt128", "340282366920938463463374607431768211455::UInt128", "1::UInt128", "8::UInt128")
       )
   case UInt256
       extends CHFuzzableType(
         "UInt256",
         Seq(
           "0::UInt256",
+          "115792089237316195423570985008687907853269984665640564039457584007913129639935::UInt256",
           "1::UInt256",
-          "8::UInt256",
-          "115792089237316195423570985008687907853269984665640564039457584007913129639935::UInt256"
+          "8::UInt256"
         )
       )
 
@@ -107,6 +107,7 @@ enum CHFuzzableType(
       extends CHFuzzableType(
         "Decimal32",
         Seq(
+          "-99999999::Decimal32(1)",
           "-999999999::Decimal32(0)",
           "1::Decimal32(0)",
           "8::Decimal32(0)",
@@ -119,6 +120,7 @@ enum CHFuzzableType(
       extends CHFuzzableType(
         "Decimal64",
         Seq(
+          "-99999999999999999::Decimal64(1)",
           "-999999999999999999::Decimal64(0)",
           "1::Decimal64(0)",
           "8::Decimal64(0)",
@@ -135,6 +137,7 @@ enum CHFuzzableType(
       extends CHFuzzableType(
         "Decimal128",
         Seq(
+          "-99999999999999999999999999999999999::Decimal128(1)",
           "-999999999999999999999999999999999999::Decimal128(0)",
           "1::Decimal128(0)",
           "8::Decimal128(0)",
@@ -147,6 +150,7 @@ enum CHFuzzableType(
       extends CHFuzzableType(
         "Decimal256",
         Seq(
+          "-99999999999999999999999999999999999999999999999999999999999999999999999::Decimal256(1)",
           "-999999999999999999999999999999999999999999999999999999999999999999999999::Decimal256(0)",
           "1::Decimal256(0)",
           "8::Decimal256(0)",
@@ -165,6 +169,11 @@ enum CHFuzzableType(
       )
 
   // Bitmap
+  case BitmapBoolean
+      extends CHFuzzableType(
+        "Bitmap(Bool)",
+        Seq("bitmapBuild([true::Bool])")
+      )
   case BitmapInt8
       extends CHFuzzableType(
         "Bitmap(Int8)",
@@ -215,7 +224,7 @@ enum CHFuzzableType(
   case Date32
       extends CHFuzzableType(
         "Date32",
-        Seq("'1900-01-01'::Date32", "'2299-12-31'::Date32")
+        Seq("'1900-01-01'::Date32", "'1900-01-02'::Date32", "'2299-12-31'::Date32")
       )
   case DateTime
       extends CHFuzzableType(
@@ -224,6 +233,7 @@ enum CHFuzzableType(
           "'1970-01-01 00:00:00'::DateTime('Asia/Istanbul')",
           "'2106-02-07 06:28:15'::DateTime('Asia/Istanbul')",
           "'1970-01-01 00:00:00'::DateTime",
+          "'1970-01-01 00:00:01'::DateTime",
           "'2106-02-07 06:28:15'::DateTime"
         )
       )
@@ -332,7 +342,10 @@ enum CHFuzzableType(
         "FixedString",
         Seq(
           "'a'::FixedString(1)",
-          "'azertyuiop'::FixedString(10)"
+          "'azertyuiop'::FixedString(10)",
+          "'2020-20-20'::FixedString(10)",
+          "'2020-20-20 20:20:20'::FixedString(19)",
+          "'2020'::FixedString(4)"
         )
       )
   case IPv4 extends CHFuzzableType("IPv4", Seq("'116.106.34.242'::IPv4"))
@@ -463,10 +476,70 @@ enum CHFuzzableType(
         "LowCardinality(FixedString)",
         CHFuzzableType.lowCardinalityFuzzingValues(FixedString.fuzzingValues)
       )
+  case LowCardinalityIntervalNanosecond
+      extends CHFuzzableType(
+        "LowCardinality(IntervalNanosecond)",
+        CHFuzzableType.lowCardinalityFuzzingValues(IntervalNanosecond.fuzzingValues)
+      )
+  case LowCardinalityIntervalMicrosecond
+      extends CHFuzzableType(
+        "LowCardinality(IntervalMicrosecond)",
+        CHFuzzableType.lowCardinalityFuzzingValues(IntervalMicrosecond.fuzzingValues)
+      )
+  case LowCardinalityIntervalMillisecond
+      extends CHFuzzableType(
+        "LowCardinality(IntervalMillisecond)",
+        CHFuzzableType.lowCardinalityFuzzingValues(IntervalMillisecond.fuzzingValues)
+      )
+  case LowCardinalityIntervalSecond
+      extends CHFuzzableType(
+        "LowCardinality(IntervalSecond)",
+        CHFuzzableType.lowCardinalityFuzzingValues(IntervalSecond.fuzzingValues)
+      )
+  case LowCardinalityIntervalMinute
+      extends CHFuzzableType(
+        "LowCardinality(IntervalMinute)",
+        CHFuzzableType.lowCardinalityFuzzingValues(IntervalMinute.fuzzingValues)
+      )
+  case LowCardinalityIntervalHour
+      extends CHFuzzableType(
+        "LowCardinality(IntervalHour)",
+        CHFuzzableType.lowCardinalityFuzzingValues(IntervalHour.fuzzingValues)
+      )
+  case LowCardinalityIntervalDay
+      extends CHFuzzableType(
+        "LowCardinality(IntervalDay)",
+        CHFuzzableType.lowCardinalityFuzzingValues(IntervalDay.fuzzingValues)
+      )
+  case LowCardinalityIntervalWeek
+      extends CHFuzzableType(
+        "LowCardinality(IntervalWeek)",
+        CHFuzzableType.lowCardinalityFuzzingValues(IntervalWeek.fuzzingValues)
+      )
+  case LowCardinalityIntervalMonth
+      extends CHFuzzableType(
+        "LowCardinality(IntervalMonth)",
+        CHFuzzableType.lowCardinalityFuzzingValues(IntervalMonth.fuzzingValues)
+      )
+  case LowCardinalityIntervalQuarter
+      extends CHFuzzableType(
+        "LowCardinality(IntervalQuarter)",
+        CHFuzzableType.lowCardinalityFuzzingValues(IntervalQuarter.fuzzingValues)
+      )
+  case LowCardinalityIntervalYear
+      extends CHFuzzableType(
+        "LowCardinality(IntervalYear)",
+        CHFuzzableType.lowCardinalityFuzzingValues(IntervalYear.fuzzingValues)
+      )
   case LowCardinalityString
       extends CHFuzzableType(
         "LowCardinality(String)",
         CHFuzzableType.lowCardinalityFuzzingValues(StringType.fuzzingValues)
+      )
+  case LowCardinalityUUID
+      extends CHFuzzableType(
+        "LowCardinality(UUID)",
+        CHFuzzableType.lowCardinalityFuzzingValues(UUID.fuzzingValues)
       )
 
   // LowCardinality(Nullable)
@@ -567,10 +640,76 @@ enum CHFuzzableType(
         "LowCardinality(Nullable(FixedString))",
         CHFuzzableType.lowCardinalityFuzzingValues(CHFuzzableType.nullableFuzzingValues(FixedString.fuzzingValues))
       )
+  case LowCardinalityNullableIntervalNanosecond
+      extends CHFuzzableType(
+        "LowCardinality(Nullable(IntervalNanosecond))",
+        CHFuzzableType.lowCardinalityFuzzingValues(
+          CHFuzzableType.nullableFuzzingValues(IntervalNanosecond.fuzzingValues)
+        )
+      )
+  case LowCardinalityNullableIntervalMicrosecond
+      extends CHFuzzableType(
+        "LowCardinality(Nullable(IntervalMicrosecond))",
+        CHFuzzableType.lowCardinalityFuzzingValues(
+          CHFuzzableType.nullableFuzzingValues(IntervalMicrosecond.fuzzingValues)
+        )
+      )
+  case LowCardinalityNullableIntervalMillisecond
+      extends CHFuzzableType(
+        "LowCardinality(Nullable(IntervalMillisecond))",
+        CHFuzzableType.lowCardinalityFuzzingValues(
+          CHFuzzableType.nullableFuzzingValues(IntervalMillisecond.fuzzingValues)
+        )
+      )
+  case LowCardinalityNullableIntervalSecond
+      extends CHFuzzableType(
+        "LowCardinality(Nullable(IntervalSecond))",
+        CHFuzzableType.lowCardinalityFuzzingValues(CHFuzzableType.nullableFuzzingValues(IntervalSecond.fuzzingValues))
+      )
+  case LowCardinalityNullableIntervalMinute
+      extends CHFuzzableType(
+        "LowCardinality(Nullable(IntervalMinute))",
+        CHFuzzableType.lowCardinalityFuzzingValues(CHFuzzableType.nullableFuzzingValues(IntervalMinute.fuzzingValues))
+      )
+  case LowCardinalityNullableIntervalHour
+      extends CHFuzzableType(
+        "LowCardinality(Nullable(IntervalHour))",
+        CHFuzzableType.lowCardinalityFuzzingValues(CHFuzzableType.nullableFuzzingValues(IntervalHour.fuzzingValues))
+      )
+  case LowCardinalityNullableIntervalDay
+      extends CHFuzzableType(
+        "LowCardinality(Nullable(IntervalDay))",
+        CHFuzzableType.lowCardinalityFuzzingValues(CHFuzzableType.nullableFuzzingValues(IntervalDay.fuzzingValues))
+      )
+  case LowCardinalityNullableIntervalWeek
+      extends CHFuzzableType(
+        "LowCardinality(Nullable(IntervalWeek))",
+        CHFuzzableType.lowCardinalityFuzzingValues(CHFuzzableType.nullableFuzzingValues(IntervalWeek.fuzzingValues))
+      )
+  case LowCardinalityNullableIntervalMonth
+      extends CHFuzzableType(
+        "LowCardinality(Nullable(IntervalMonth))",
+        CHFuzzableType.lowCardinalityFuzzingValues(CHFuzzableType.nullableFuzzingValues(IntervalMonth.fuzzingValues))
+      )
+  case LowCardinalityNullableIntervalQuarter
+      extends CHFuzzableType(
+        "LowCardinality(Nullable(IntervalQuarter))",
+        CHFuzzableType.lowCardinalityFuzzingValues(CHFuzzableType.nullableFuzzingValues(IntervalQuarter.fuzzingValues))
+      )
+  case LowCardinalityNullableIntervalYear
+      extends CHFuzzableType(
+        "LowCardinality(Nullable(IntervalYear))",
+        CHFuzzableType.lowCardinalityFuzzingValues(CHFuzzableType.nullableFuzzingValues(IntervalYear.fuzzingValues))
+      )
   case LowCardinalityNullableString
       extends CHFuzzableType(
         "LowCardinality(Nullable(String))",
         CHFuzzableType.lowCardinalityFuzzingValues(CHFuzzableType.nullableFuzzingValues(StringType.fuzzingValues))
+      )
+  case LowCardinalityNullableUUID
+      extends CHFuzzableType(
+        "LowCardinality(Nullable(UUID))",
+        CHFuzzableType.lowCardinalityFuzzingValues(CHFuzzableType.nullableFuzzingValues(UUID.fuzzingValues))
       )
 
   // Nullable
@@ -795,7 +934,8 @@ enum CHFuzzableType(
         "Array(Bool)",
         Seq(
           s"[${BooleanType.fuzzingValues.mkString(", ")}]::Array(Bool)",
-          s"[${BooleanType.fuzzingValues.head}]::Array(Bool)"
+          s"[${BooleanType.fuzzingValues(0)}]::Array(Bool)",
+          s"[${BooleanType.fuzzingValues(1)}]::Array(Bool)"
         )
       )
   case ArrayInt8
@@ -803,7 +943,8 @@ enum CHFuzzableType(
         "Array(Int8)",
         Seq(
           s"[${Int8.fuzzingValues.mkString(", ")}]::Array(Int8)",
-          s"[${Int8.fuzzingValues.head}]::Array(Int8)"
+          s"[${Int8.fuzzingValues(0)}]::Array(Int8)",
+          s"[${Int8.fuzzingValues(1)}]::Array(Int8)"
         )
       )
   case ArrayInt16
@@ -811,7 +952,8 @@ enum CHFuzzableType(
         "Array(Int16)",
         Seq(
           s"[${Int16.fuzzingValues.mkString(", ")}]::Array(Int16)",
-          s"[${Int16.fuzzingValues.head}]::Array(Int16)"
+          s"[${Int16.fuzzingValues(0)}]::Array(Int16)",
+          s"[${Int16.fuzzingValues(1)}]::Array(Int16)"
         )
       )
   case ArrayInt32
@@ -819,7 +961,8 @@ enum CHFuzzableType(
         "Array(Int32)",
         Seq(
           s"[${Int32.fuzzingValues.mkString(", ")}]::Array(Int32)",
-          s"[${Int32.fuzzingValues.head}]::Array(Int32)"
+          s"[${Int32.fuzzingValues(0)}]::Array(Int32)",
+          s"[${Int32.fuzzingValues(1)}]::Array(Int32)"
         )
       )
   case ArrayInt64
@@ -827,7 +970,8 @@ enum CHFuzzableType(
         "Array(Int64)",
         Seq(
           s"[${Int64.fuzzingValues.mkString(", ")}]::Array(Int64)",
-          s"[${Int64.fuzzingValues.head}]::Array(Int64)"
+          s"[${Int64.fuzzingValues(0)}]::Array(Int64)",
+          s"[${Int64.fuzzingValues(1)}]::Array(Int64)"
         )
       )
   case ArrayInt128
@@ -835,7 +979,8 @@ enum CHFuzzableType(
         "Array(Int128)",
         Seq(
           s"[${Int128.fuzzingValues.mkString(", ")}]::Array(Int128)",
-          s"[${Int128.fuzzingValues.head}]::Array(Int128)"
+          s"[${Int128.fuzzingValues(0)}]::Array(Int128)",
+          s"[${Int128.fuzzingValues(1)}]::Array(Int128)"
         )
       )
   case ArrayInt256
@@ -843,7 +988,8 @@ enum CHFuzzableType(
         "Array(Int256)",
         Seq(
           s"[${Int256.fuzzingValues.mkString(", ")}]::Array(Int256)",
-          s"[${Int256.fuzzingValues.head}]::Array(Int256)"
+          s"[${Int256.fuzzingValues(0)}]::Array(Int256)",
+          s"[${Int256.fuzzingValues(1)}]::Array(Int256)"
         )
       )
   case ArrayUInt8
@@ -851,7 +997,8 @@ enum CHFuzzableType(
         "Array(UInt8)",
         Seq(
           s"[${UInt8.fuzzingValues.mkString(", ")}]::Array(UInt8)",
-          s"[${UInt8.fuzzingValues.head}]::Array(UInt8)"
+          s"[${UInt8.fuzzingValues(0)}]::Array(UInt8)",
+          s"[${UInt8.fuzzingValues(1)}]::Array(UInt8)"
         )
       )
   case ArrayUInt16
@@ -859,7 +1006,8 @@ enum CHFuzzableType(
         "Array(UInt16)",
         Seq(
           s"[${UInt16.fuzzingValues.mkString(", ")}]::Array(UInt16)",
-          s"[${UInt16.fuzzingValues.head}]::Array(UInt16)"
+          s"[${UInt16.fuzzingValues(0)}]::Array(UInt16)",
+          s"[${UInt16.fuzzingValues(1)}]::Array(UInt16)"
         )
       )
   case ArrayUInt32
@@ -867,7 +1015,8 @@ enum CHFuzzableType(
         "Array(UInt32)",
         Seq(
           s"[${UInt32.fuzzingValues.mkString(", ")}]::Array(UInt32)",
-          s"[${UInt32.fuzzingValues.head}]::Array(UInt32)"
+          s"[${UInt32.fuzzingValues(0)}]::Array(UInt32)",
+          s"[${UInt32.fuzzingValues(1)}]::Array(UInt32)"
         )
       )
   case ArrayUInt64
@@ -875,7 +1024,8 @@ enum CHFuzzableType(
         "Array(UInt64)",
         Seq(
           s"[${UInt64.fuzzingValues.mkString(", ")}]::Array(UInt64)",
-          s"[${UInt64.fuzzingValues.head}]::Array(UInt64)"
+          s"[${UInt64.fuzzingValues(0)}]::Array(UInt64)",
+          s"[${UInt64.fuzzingValues(1)}]::Array(UInt64)"
         )
       )
   case ArrayUInt128
@@ -883,7 +1033,8 @@ enum CHFuzzableType(
         "Array(UInt128)",
         Seq(
           s"[${UInt128.fuzzingValues.mkString(", ")}]::Array(UInt128)",
-          s"[${UInt128.fuzzingValues.head}]::Array(UInt128)"
+          s"[${UInt128.fuzzingValues(0)}]::Array(UInt128)",
+          s"[${UInt128.fuzzingValues(1)}]::Array(UInt128)"
         )
       )
   case ArrayUInt256
@@ -891,7 +1042,8 @@ enum CHFuzzableType(
         "Array(UInt256)",
         Seq(
           s"[${UInt256.fuzzingValues.mkString(", ")}]::Array(UInt256)",
-          s"[${UInt256.fuzzingValues.head}]::Array(UInt256)"
+          s"[${UInt256.fuzzingValues(0)}]::Array(UInt256)",
+          s"[${UInt256.fuzzingValues(1)}]::Array(UInt256)"
         )
       )
   case ArrayFloat32
@@ -899,7 +1051,8 @@ enum CHFuzzableType(
         "Array(Float32)",
         Seq(
           s"[${Float32.fuzzingValues.mkString(", ")}]::Array(Float32)",
-          s"[${Float32.fuzzingValues.head}]::Array(Float32)"
+          s"[${Float32.fuzzingValues(0)}]::Array(Float32)",
+          s"[${Float32.fuzzingValues(1)}]::Array(Float32)"
         )
       )
   case ArrayFloat64
@@ -907,7 +1060,8 @@ enum CHFuzzableType(
         "Array(Float64)",
         Seq(
           s"[${Float64.fuzzingValues.mkString(", ")}]::Array(Float64)",
-          s"[${Float64.fuzzingValues.head}]::Array(Float64)"
+          s"[${Float64.fuzzingValues(0)}]::Array(Float64)",
+          s"[${Float64.fuzzingValues(1)}]::Array(Float64)"
         )
       )
   case ArrayDecimal32
@@ -943,7 +1097,8 @@ enum CHFuzzableType(
         "Array(Date)",
         Seq(
           s"[${Date.fuzzingValues.mkString(", ")}]::Array(Date)",
-          s"[${Date.fuzzingValues.head}]::Array(Date)"
+          s"[${Date.fuzzingValues(0)}]::Array(Date)",
+          s"[${Date.fuzzingValues(1)}]::Array(Date)"
         )
       )
   case ArrayDate32
@@ -951,21 +1106,24 @@ enum CHFuzzableType(
         "Array(Date32)",
         Seq(
           s"[${Date32.fuzzingValues.mkString(", ")}]::Array(Date32)",
-          s"[${Date32.fuzzingValues.head}]::Array(Date32)"
+          s"[${Date32.fuzzingValues(0)}]::Array(Date32)",
+          s"[${Date32.fuzzingValues(1)}]::Array(Date32)"
         )
       )
   case ArrayDateTime
       extends CHFuzzableType(
         "Array(DateTime)",
         Seq(
-          s"['1970-01-01 00:00:00'::DateTime('Asia/Istanbul')]::Array(DateTime('Asia/Istanbul'))"
+          s"['1970-01-01 00:00:00'::DateTime('Asia/Istanbul')]::Array(DateTime('Asia/Istanbul'))",
+          s"['1970-01-02 00:00:00'::DateTime('Asia/Istanbul')]::Array(DateTime('Asia/Istanbul'))"
         )
       )
   case ArrayDateTime64
       extends CHFuzzableType(
         "Array(DateTime64)",
         Seq(
-          s"['1900-01-01 00:00:00'::DateTime64(0, 'Asia/Istanbul')]::Array(DateTime64(0, 'Asia/Istanbul'))"
+          s"['1900-01-01 00:00:00'::DateTime64(0, 'Asia/Istanbul')]::Array(DateTime64(0, 'Asia/Istanbul'))",
+          s"['1900-01-02 00:00:00'::DateTime64(0, 'Asia/Istanbul')]::Array(DateTime64(0, 'Asia/Istanbul'))"
         )
       )
   case ArrayIntervalNanosecond
@@ -1249,168 +1407,129 @@ enum CHFuzzableType(
   case Tuple1Boolean
       extends CHFuzzableType(
         "Tuple(Bool)",
-        Seq(
-          s"tuple(${BooleanType.fuzzingValues.head})::Tuple(Bool)",
-          s"tuple(${BooleanType.fuzzingValues.head})::Tuple(a Bool)"
-        )
+        BooleanType.fuzzingValues.flatMap(v => Seq(s"tuple($v)::Tuple(Bool)", s"tuple($v)::Tuple(a Bool)"))
       )
   case Tuple1Int8
       extends CHFuzzableType(
         "Tuple(Int8)",
-        Seq(s"tuple(${Int8.fuzzingValues.head})::Tuple(Int8)", s"tuple(${Int8.fuzzingValues.head})::Tuple(a Int8)")
+        Int8.fuzzingValues.flatMap(v => Seq(s"tuple($v)::Tuple(Int8)", s"tuple($v)::Tuple(a Int8)"))
       )
   case Tuple1Int16
       extends CHFuzzableType(
         "Tuple(Int16)",
-        Seq(s"tuple(${Int16.fuzzingValues.head})::Tuple(Int16)", s"tuple(${Int16.fuzzingValues.head})::Tuple(a Int16)")
+        Int16.fuzzingValues.flatMap(v => Seq(s"tuple($v)::Tuple(Int16)", s"tuple($v)::Tuple(a Int16)"))
       )
   case Tuple1Int32
       extends CHFuzzableType(
         "Tuple(Int32)",
-        Seq(s"tuple(${Int32.fuzzingValues.head})::Tuple(Int32)", s"tuple(${Int32.fuzzingValues.head})::Tuple(a Int32)")
+        Int32.fuzzingValues.flatMap(v => Seq(s"tuple($v)::Tuple(Int32)", s"tuple($v)::Tuple(a Int32)"))
       )
   case Tuple1Int64
       extends CHFuzzableType(
         "Tuple(Int64)",
-        Seq(s"tuple(${Int64.fuzzingValues.head})::Tuple(Int64)", s"tuple(${Int64.fuzzingValues.head})::Tuple(a Int64)")
+        Int64.fuzzingValues.flatMap(v => Seq(s"tuple($v)::Tuple(Int64)", s"tuple($v)::Tuple(a Int64)"))
       )
   case Tuple1Int128
       extends CHFuzzableType(
         "Tuple(Int128)",
-        Seq(
-          s"tuple(${Int128.fuzzingValues.head})::Tuple(Int128)",
-          s"tuple(${Int128.fuzzingValues.head})::Tuple(a Int128)"
-        )
+        Int128.fuzzingValues.flatMap(v => Seq(s"tuple($v)::Tuple(Int128)", s"tuple($v)::Tuple(a Int128)"))
       )
   case Tuple1Int256
       extends CHFuzzableType(
         "Tuple(Int256)",
-        Seq(
-          s"tuple(${Int256.fuzzingValues.head})::Tuple(Int256)",
-          s"tuple(${Int256.fuzzingValues.head})::Tuple(a Int256)"
-        )
+        Int256.fuzzingValues.flatMap(v => Seq(s"tuple($v)::Tuple(Int256)", s"tuple($v)::Tuple(a Int256)"))
       )
   case Tuple1UInt8
       extends CHFuzzableType(
         "Tuple(UInt8)",
-        Seq(s"tuple(${UInt8.fuzzingValues.head})::Tuple(UInt8)", s"tuple(${UInt8.fuzzingValues.head})::Tuple(a UInt8)")
+        UInt8.fuzzingValues.flatMap(v => Seq(s"tuple($v)::Tuple(UInt8)", s"tuple($v)::Tuple(a UInt8)"))
       )
   case Tuple1UInt16
       extends CHFuzzableType(
         "Tuple(UInt16)",
-        Seq(
-          s"tuple(${UInt16.fuzzingValues.head})::Tuple(UInt16)",
-          s"tuple(${UInt16.fuzzingValues.head})::Tuple(a UInt16)"
-        )
+        UInt16.fuzzingValues.flatMap(v => Seq(s"tuple($v)::Tuple(UInt16)", s"tuple($v)::Tuple(a UInt16)"))
       )
   case Tuple1UInt32
       extends CHFuzzableType(
         "Tuple(UInt32)",
-        Seq(
-          s"tuple(${UInt32.fuzzingValues.head})::Tuple(UInt32)",
-          s"tuple(${UInt32.fuzzingValues.head})::Tuple(a UInt32)"
-        )
+        UInt32.fuzzingValues.flatMap(v => Seq(s"tuple($v)::Tuple(UInt32)", s"tuple($v)::Tuple(a UInt32)"))
       )
   case Tuple1UInt64
       extends CHFuzzableType(
         "Tuple(UInt64)",
-        Seq(
-          s"tuple(${UInt64.fuzzingValues.head})::Tuple(UInt64)",
-          s"tuple(${UInt64.fuzzingValues.head})::Tuple(a UInt64)"
-        )
+        UInt64.fuzzingValues.flatMap(v => Seq(s"tuple($v)::Tuple(UInt64)", s"tuple($v)::Tuple(a UInt64)"))
       )
   case Tuple1UInt128
       extends CHFuzzableType(
         "Tuple(UInt128)",
-        Seq(
-          s"tuple(${UInt128.fuzzingValues.head})::Tuple(UInt128)",
-          s"tuple(${UInt128.fuzzingValues.head})::Tuple(a UInt128)"
-        )
+        UInt128.fuzzingValues.flatMap(v => Seq(s"tuple($v)::Tuple(UInt128)", s"tuple($v)::Tuple(a UInt128)"))
       )
   case Tuple1UInt256
       extends CHFuzzableType(
         "Tuple(UInt256)",
-        Seq(
-          s"tuple(${UInt256.fuzzingValues.head})::Tuple(UInt256)",
-          s"tuple(${UInt256.fuzzingValues.head})::Tuple(a UInt256)"
-        )
+        UInt256.fuzzingValues.flatMap(v => Seq(s"tuple($v)::Tuple(UInt256)", s"tuple($v)::Tuple(a UInt256)"))
       )
   case Tuple1Float32
       extends CHFuzzableType(
         "Tuple(Float32)",
-        Seq(
-          s"tuple(${Float32.fuzzingValues.head})::Tuple(Float32)",
-          s"tuple(${Float32.fuzzingValues.head})::Tuple(a Float32)"
-        )
+        Float32.fuzzingValues.flatMap(v => Seq(s"tuple($v)::Tuple(Float32)", s"tuple($v)::Tuple(a Float32)"))
       )
   case Tuple1Float64
       extends CHFuzzableType(
         "Tuple(Float64)",
-        Seq(
-          s"tuple(${Float64.fuzzingValues.head})::Tuple(Float64)",
-          s"tuple(${Float64.fuzzingValues.head})::Tuple(a Float64)"
-        )
+        Float64.fuzzingValues.flatMap(v => Seq(s"tuple($v)::Tuple(Float64)", s"tuple($v)::Tuple(a Float64)"))
       )
   case Tuple1Decimal32
       extends CHFuzzableType(
         "Tuple(Decimal32)",
-        Seq(
-          s"tuple(${Decimal32.fuzzingValues.head})::Tuple(Decimal32(0))",
-          s"tuple(${Decimal32.fuzzingValues.head})::Tuple(a Decimal32(0))"
-        )
+        Decimal32.fuzzingValues.flatMap { v =>
+          val (_, innerType) = CHFuzzableType.extractValueAndType(v)
+          Seq(s"tuple($v)::Tuple($innerType)", s"tuple($v)::Tuple(a $innerType)")
+        }
       )
   case Tuple1Decimal64
       extends CHFuzzableType(
         "Tuple(Decimal64)",
-        Seq(
-          s"tuple(${Decimal64.fuzzingValues.head})::Tuple(Decimal64(0))",
-          s"tuple(${Decimal64.fuzzingValues.head})::Tuple(a Decimal64(0))"
-        )
+        Decimal64.fuzzingValues.flatMap { v =>
+          val (_, innerType) = CHFuzzableType.extractValueAndType(v)
+          Seq(s"tuple($v)::Tuple($innerType)", s"tuple($v)::Tuple(a $innerType)")
+        }
       )
   case Tuple1Decimal128
       extends CHFuzzableType(
         "Tuple(Decimal128)",
-        Seq(
-          s"tuple(${Decimal128.fuzzingValues.head})::Tuple(Decimal128(0))",
-          s"tuple(${Decimal128.fuzzingValues.head})::Tuple(a Decimal128(0))"
-        )
+        Decimal128.fuzzingValues.flatMap { v =>
+          val (_, innerType) = CHFuzzableType.extractValueAndType(v)
+          Seq(s"tuple($v)::Tuple($innerType)", s"tuple($v)::Tuple(a $innerType)")
+        }
       )
   case Tuple1Decimal256
       extends CHFuzzableType(
         "Tuple(Decimal256)",
-        Seq(
-          s"tuple(${Decimal256.fuzzingValues.head})::Tuple(Decimal256(0))",
-          s"tuple(${Decimal256.fuzzingValues.head})::Tuple(a Decimal256(0))"
-        )
+        Decimal256.fuzzingValues.flatMap { v =>
+          val (_, innerType) = CHFuzzableType.extractValueAndType(v)
+          Seq(s"tuple($v)::Tuple($innerType)", s"tuple($v)::Tuple(a $innerType)")
+        }
       )
   case Tuple1Date
       extends CHFuzzableType(
         "Tuple(Date)",
-        Seq(s"tuple(${Date.fuzzingValues.head})::Tuple(Date)", s"tuple(${Date.fuzzingValues.head})::Tuple(a Date)")
+        Date.fuzzingValues.flatMap(v => Seq(s"tuple($v)::Tuple(Date)", s"tuple($v)::Tuple(a Date)"))
       )
   case Tuple1Date32
       extends CHFuzzableType(
         "Tuple(Date32)",
-        Seq(
-          s"tuple(${Date32.fuzzingValues.head})::Tuple(Date32)",
-          s"tuple(${Date32.fuzzingValues.head})::Tuple(a Date32)"
-        )
+        Date32.fuzzingValues.flatMap(v => Seq(s"tuple($v)::Tuple(Date32)", s"tuple($v)::Tuple(a Date32)"))
       )
   case Tuple1DateTime
       extends CHFuzzableType(
         "Tuple(DateTime)",
-        Seq(
-          s"tuple(${DateTime.fuzzingValues.head})::Tuple(DateTime)",
-          s"tuple(${DateTime.fuzzingValues.head})::Tuple(a DateTime)"
-        )
+        DateTime.fuzzingValues.flatMap(v => Seq(s"tuple($v)::Tuple(DateTime)", s"tuple($v)::Tuple(a DateTime)"))
       )
   case Tuple1DateTime64
       extends CHFuzzableType(
         "Tuple(DateTime64)",
-        Seq(
-          s"tuple(${DateTime64.fuzzingValues.head})::Tuple(DateTime64)",
-          s"tuple(${DateTime64.fuzzingValues.head})::Tuple(a DateTime64)"
-        )
+        DateTime64.fuzzingValues.flatMap(v => Seq(s"tuple($v)::Tuple(DateTime64)", s"tuple($v)::Tuple(a DateTime64)"))
       )
   case Tuple1IntervalNanosecond
       extends CHFuzzableType(
@@ -1489,6 +1608,7 @@ enum CHFuzzableType(
       extends CHFuzzableType(
         "Tuple(Enum8)",
         Seq(
+          s"tuple('hello'::Enum8('hello' = 1, 'world' = 2))::Tuple(Enum8('hello' = 1, 'world' = 2))",
           s"tuple('hello'::Enum8('hello' = -128, 'world' = 2))::Tuple(Enum8('hello' = -128, 'world' = 2))",
           s"tuple('hello'::Enum8('hello' = -128, 'world' = 2))::Tuple(a Enum8('hello' = -128, 'world' = 2))"
         )
@@ -1497,6 +1617,7 @@ enum CHFuzzableType(
       extends CHFuzzableType(
         "Tuple(Enum16)",
         Seq(
+          s"tuple('hello'::Enum16('hello' = 1, 'world' = 2))::Tuple(Enum16('hello' = 1, 'world' = 2))",
           s"tuple('hello'::Enum16('hello' = -32768, 'world' = 2))::Tuple(Enum16('hello' = -32768, 'world' = 2))",
           s"tuple('hello'::Enum16('hello' = -32768, 'world' = 2))::Tuple(a Enum16('hello' = -32768, 'world' = 2))"
         )
@@ -1547,35 +1668,38 @@ enum CHFuzzableType(
       )
 
   // Nested
-  case ArrayArrayString
+  case ArrayArrayUUID
       extends CHFuzzableType(
-        "Array(Array(String))",
-        Seq(s"[[${StringType.fuzzingValues.head}]]::Array(Array(String))")
+        "Array(Array(UUID))",
+        Seq(s"[[${UUID.fuzzingValues.head}]]::Array(Array(UUID))")
       )
-  case ArrayMapStringInt
+  case ArrayMapUUIDInt
       extends CHFuzzableType(
-        "Array(Map(String, UnknownType))",
-        Seq(s"[map(${StringType.fuzzingValues.head}, 1)::Map(String, Int8)]::Array(Map(String, Int8))")
+        "Array(Map(UUID, UnknownType))",
+        Seq(s"[map(${UUID.fuzzingValues.head}, 1)::Map(UUID, Int8)]::Array(Map(UUID, Int8))")
       )
-  case ArrayTuple1UInt8
+  case ArrayTuple1UUID
       extends CHFuzzableType(
-        "Array(Tuple(UInt8))",
-        Seq(s"[${Tuple1UInt8.fuzzingValues.head}]::Array(Tuple(UInt8))")
-      )
-  case Tuple1ArrayUInt8
-      extends CHFuzzableType(
-        "Tuple(Array(UInt8))",
+        "Array(Tuple(UUID))",
         Seq(
-          s"tuple(${ArrayUInt8.fuzzingValues.head})::Tuple(Array(UInt8))",
-          s"tuple(${ArrayUInt8.fuzzingValues.head})::Tuple(a Array(UInt8))"
+          s"[tuple(${UUID.fuzzingValues.head})::Tuple(UUID)]::Array(Tuple(UUID))",
+          s"[tuple(${UUID.fuzzingValues.head})::Tuple(a UUID)]::Array(Tuple(a UUID))"
         )
       )
-  case Tuple1MapStringInt
+  case Tuple1ArrayUUID
       extends CHFuzzableType(
-        "Tuple(Map(String, UnknownType))",
+        "Tuple(Array(UUID))",
         Seq(
-          s"tuple(map(${StringType.fuzzingValues.head}, 1)::Map(String, Int8))::Tuple(Map(String, Int8))",
-          s"tuple(map(${StringType.fuzzingValues.head}, 1)::Map(String, Int8))::Tuple(a Map(String, Int8))"
+          s"tuple(${ArrayUUID.fuzzingValues.head})::Tuple(Array(UUID))",
+          s"tuple(${ArrayUUID.fuzzingValues.head})::Tuple(a Array(UUID))"
+        )
+      )
+  case Tuple1MapUUIDInt
+      extends CHFuzzableType(
+        "Tuple(Map(UUID, UnknownType))",
+        Seq(
+          s"tuple(map(${UUID.fuzzingValues.head}, 1)::Map(UUID, Int8))::Tuple(Map(UUID, Int8))",
+          s"tuple(map(${UUID.fuzzingValues.head}, 1)::Map(UUID, Int8))::Tuple(a Map(UUID, Int8))"
         )
       )
 
@@ -1646,7 +1770,11 @@ enum CHFuzzableType(
   case ClickHouseType
       extends CHFuzzableType(
         "ClickHouseType",
-        CHBaseType.values.toSeq.map(baseType => s"'${baseType.name}'")
+        CHBaseType.values.toSeq
+          .filterNot(
+            _.name.startsWith("Dec")
+          ) // Filter values that would be understood as valid month (December) by parseDateTime64BestEffort, and functions that rely on the same behavior (e.g. toWeek / toYearWeek / week / yearweek)
+          .map(baseType => s"'${baseType.name}'")
       )
   case DictionaryName
       extends CHFuzzableType(
@@ -1752,7 +1880,8 @@ enum CHFuzzableType(
           "'uint32Value'::FixedString(53)",
           "'uint64Value'::FixedString(53)",
           "'uint8Value'::FixedString(53)",
-          "'uuidValue'::FixedString(53)"
+          "'uuidValue'::FixedString(53)",
+          "'Dec'::FixedString(53)"
         )
       )
   // Separate from String because those values are specific to some functions.
@@ -1776,7 +1905,8 @@ enum CHFuzzableType(
           "'POLYGON((2 0,10 0,10 10,0 10,2 0))'",
           "'POINT (1.2 3.4)'",
           "'LINESTRING (1 1, 2 2, 3 3, 1 1)'",
-          "'column1 String, column2 UInt32, column3 Array(String)'"
+          "'column1 String, column2 UInt32, column3 Array(String)'",
+          "'Dec'::String"
         )
       )
   case SpecialArrayFixedString
@@ -1843,23 +1973,33 @@ enum CHFuzzableType(
 
 object CHFuzzableType:
 
-  private def lowCardinalityFuzzingValues(baseFuzzingValues: Seq[String]) =
-    // Build a sample fuzzingValue and fetch its type
-    val firstFuzzingValue = baseFuzzingValues.head
-    val typeIndex = firstFuzzingValue.lastIndexOf("::")
-    val fuzzingValueWithoutType = firstFuzzingValue.substring(0, typeIndex)
-    val fuzzingType = firstFuzzingValue.substring(typeIndex + "::".size)
+  private def lowCardinalityFuzzingValues(baseFuzzingValues: Seq[String]): Seq[String] =
+    val (fuzzingValueWithoutType, fuzzingType) = extractValueAndType(baseFuzzingValues.head)
 
     Seq(s"$fuzzingValueWithoutType::LowCardinality($fuzzingType)")
 
-  private def nullableFuzzingValues(baseFuzzingValues: Seq[String]) =
-    // Build a sample fuzzingValue and fetch its type
-    val firstFuzzingValue = baseFuzzingValues.head
-    val typeIndex = firstFuzzingValue.lastIndexOf("::")
-    val fuzzingValueWithoutType = firstFuzzingValue.substring(0, typeIndex)
-    val fuzzingType = firstFuzzingValue.substring(typeIndex + "::".size)
+  private def nullableFuzzingValues(baseFuzzingValues: Seq[String]): Seq[String] =
+    val (fuzzingValueWithoutType, fuzzingType) = extractValueAndType(baseFuzzingValues.head)
 
     Seq(
       s"$fuzzingValueWithoutType::Nullable($fuzzingType)",
       s"null::Nullable($fuzzingType)"
     )
+
+  /**
+    * This function looks for the last cast operator (::)
+    * It considers everything before as the value, and what's after as the type.
+    *
+    * This function requires the fuzzing value to be cast!
+    * If that's not the case, it will lead to issues
+    * Given 'tuple(1::UInt8)' we would say 'tuple(1' is the value, and 'UInt8)' the type.
+    *
+    * @param fuzzingValue
+    * @return A tuple of the fuzzing value and its type.
+    */
+  private def extractValueAndType(fuzzingValue: String): (String, String) =
+    val typeIndex = fuzzingValue.lastIndexOf("::")
+    val fuzzingValueWithoutType = fuzzingValue.substring(0, typeIndex)
+    val fuzzingType = fuzzingValue.substring(typeIndex + "::".size)
+
+    (fuzzingValueWithoutType, fuzzingType)
