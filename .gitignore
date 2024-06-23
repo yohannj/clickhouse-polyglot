@@ -1,3 +1,5 @@
+res/*.part*
+
 running_clickhouse/host/*/clickhouse-server.pid
 running_clickhouse/host/*/config/config.d/z_path_update.xml
 running_clickhouse/host/*/var/lib/clickhouse/data/
@@ -10,3 +12,4 @@ running_clickhouse/host/*/var/log/clickhouse-server/*
 
 **/libcatboostmodel.so
 **/application.conf
+

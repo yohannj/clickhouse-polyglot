@@ -1,6 +1,6 @@
 package com.amendil.common.http
 
-import com.amendil.common.entities.CHResponse
+import com.amendil.common.entities.{CHResponse, CHSetting}
 import com.fasterxml.jackson.databind.json.JsonMapper
 import com.fasterxml.jackson.module.scala.DefaultScalaModule
 
@@ -19,18 +19,28 @@ trait CHClient:
   def executeNoResultNoSettings(query: String): Future[Unit]
 
 object CHClient:
-  val settings: String = Seq(
-    "allow_deprecated_error_prone_window_functions=1",
-    "allow_experimental_funnel_functions=1",
-    "allow_experimental_object_type=1",
-    "allow_experimental_nlp_functions=1",
-    "allow_experimental_variant_type=1",
-    "allow_get_client_http_header=1",
-    "allow_introspection_functions=1",
-    "allow_suspicious_low_cardinality_types=1",
-    "decimal_check_overflow=0",
-    "log_queries=0"
-  ).mkString(", ")
+  val baseSettings = Seq(
+    CHSetting.AllowGetClientHttpHeader(true),
+    CHSetting.AllowSuspiciousLowCardinalityTypes(true),
+    CHSetting.DecimalCheckOverflow(false),
+    CHSetting.LogQueries(false)
+  )
+
+  val unlockFunctionsSettingNames = Seq(
+    CHSetting.AllowDeprecatedErrorProneWindowFunctions,
+    CHSetting.AllowExperimentalDynamicType,
+    CHSetting.AllowExperimentalFunnelFunctions,
+    CHSetting.AllowExperimentalObjectType,
+    CHSetting.AllowExperimentalNlpFunctions,
+    CHSetting.AllowExperimentalVariantType,
+    CHSetting.AllowIntrospectionFunctions
+  )
+
+  val settings: String =
+    (
+      baseSettings ++
+        unlockFunctionsSettingNames.map(_.apply(true))
+    ).map(_.asString).mkString(", ")
 
 class CHClientImpl(url: String)(using ExecutionContext) extends CHClient:
 

@@ -197,49 +197,8 @@ object FuzzerNonParametricFunctions extends StrictLogging:
   )(using client: CHClient, ec: ExecutionContext): Future[Seq[(InputTypes, OutputType)]] =
     logger.trace(s"fuzzFiniteArgsFunctions - init")
     for
-      // Build all combinations of function input having argCount arguments
-      // Those combinations are described using AbstractTypes!
-      // They are all used to query ClickHouse and we are retrieving here only the ones that succeeded.
-      abstractInputCombinationsNoSpecialType: Seq[Seq[CHFuzzableAbstractType]] <-
-        executeInParallelOnlySuccess(
-          generateCHFuzzableAbstractTypeCombinations(argCount).filterNot(
-            _.exists(_.isInstanceOf[CustomAbstractType])
-          ),
-          (abstractTypes: Seq[CHFuzzableAbstractType]) =>
-            executeInParallelUntilSuccess(
-              buildFuzzingValuesArgs(abstractTypes.map(_.fuzzingValues)).map(args =>
-                query(fnName, args, fuzzOverWindow)
-              ),
-              client.executeNoResult,
-              maxConcurrency = Settings.ClickHouse.maxSupportedConcurrencyInnerLoop
-            ).map(_ => abstractTypes),
-          maxConcurrency = Settings.ClickHouse.maxSupportedConcurrencyOuterLoop
-        )
-      _ = logger.trace(
-        s"fuzzFiniteArgsFunctions - detected ${abstractInputCombinationsNoSpecialType.size} abstract input combinations (excluding special types)"
-      )
-
       abstractInputCombinations: Seq[Seq[CHFuzzableAbstractType]] <-
-        if abstractInputCombinationsNoSpecialType.nonEmpty then
-          Future.successful(abstractInputCombinationsNoSpecialType)
-        else
-          executeInParallelOnlySuccess(
-            generateCHFuzzableAbstractTypeCombinations(argCount).filter(
-              _.exists(_.isInstanceOf[CustomAbstractType])
-            ),
-            (abstractTypes: Seq[CHFuzzableAbstractType]) =>
-              executeInParallelUntilSuccess(
-                buildFuzzingValuesArgs(abstractTypes.map(_.fuzzingValues)).map(args =>
-                  query(fnName, args, fuzzOverWindow)
-                ),
-                client.executeNoResult,
-                maxConcurrency = Settings.ClickHouse.maxSupportedConcurrencyInnerLoop
-              ).map(_ => abstractTypes),
-            maxConcurrency = Settings.ClickHouse.maxSupportedConcurrencyOuterLoop
-          )
-      _ = logger.trace(
-        s"fuzzFiniteArgsFunctions - detected ${abstractInputCombinations.size} abstract input combinations"
-      )
+        getValidAbstractTypeCombinations(fnName, argCount, fuzzOverWindow)
 
       res <- fuzzAbstractInputCombinations(fnName, abstractInputCombinations, fuzzOverWindow)
     yield res
@@ -270,9 +229,20 @@ object FuzzerNonParametricFunctions extends StrictLogging:
 
       _ = logger.trace(s"fuzzAbstractInputCombinations - detected ${inputSignatures.size} input signatures")
 
+      res <- fuzzInputCombinations(fnName, inputSignatures, fuzzOverWindow, returnFirstOutputTypeFound)
+    yield res
+
+  private[fuzz] def fuzzInputCombinations(
+      fnName: String,
+      inputCombinations: Seq[Seq[CHFuzzableType]],
+      fuzzOverWindow: Boolean,
+      returnFirstOutputTypeFound: Boolean = false
+  )(using client: CHClient, ec: ExecutionContext): Future[Seq[(InputTypes, OutputType)]] =
+    logger.trace(s"fuzzInputCombinations - init")
+    for
       res <-
         executeInParallelOnlySuccess(
-          inputSignatures,
+          inputCombinations,
           inputTypes =>
             val queries =
               buildFuzzingValuesArgs(inputTypes.map(_.fuzzingValues)).map(args => query(fnName, args, fuzzOverWindow))
@@ -280,17 +250,13 @@ object FuzzerNonParametricFunctions extends StrictLogging:
             if returnFirstOutputTypeFound then
               executeInParallelUntilSuccess(
                 queries,
-                client
-                  .execute(_)
-                  .map(_.data.head.head.asInstanceOf[String]),
+                client.execute(_).map(_.data.head.head.asInstanceOf[String]),
                 Settings.ClickHouse.maxSupportedConcurrencyInnerLoop
               ).map(outputType => (inputTypes, CHTypeParser.getByName(outputType)))
             else
               executeInParallelOnlySuccess(
                 queries,
-                client
-                  .execute(_)
-                  .map(_.data.head.head.asInstanceOf[String]),
+                client.execute(_).map(_.data.head.head.asInstanceOf[String]),
                 Settings.ClickHouse.maxSupportedConcurrencyInnerLoop
               ).map(outputTypes =>
                 (inputTypes, outputTypes.map(CHTypeParser.getByName).reduce(CHTypeMerger.mergeOutputType))
@@ -298,7 +264,7 @@ object FuzzerNonParametricFunctions extends StrictLogging:
           ,
           maxConcurrency = Settings.ClickHouse.maxSupportedConcurrencyOuterLoop
         )
-      _ = logger.trace(s"fuzzAbstractInputCombinations - signatures output detected")
+      _ = logger.trace(s"fuzzInputCombinations - signatures output detected")
     yield res
 
   /**
@@ -316,15 +282,13 @@ object FuzzerNonParametricFunctions extends StrictLogging:
       // For performance reasons, we first exclude custom types that also work as String.
       abstractInputCombinationsNoSpecialType: Seq[Seq[CHFuzzableAbstractType]] <-
         bruteforceAbstractTypeCombinations(
-          generateCHFuzzableAbstractTypeCombinations(argCount).filterNot(
-            _.exists(_.isInstanceOf[CustomAbstractType])
-          ),
+          generateCHFuzzableAbstractTypeCombinations(argCount).filterNot(_.exists(_.isInstanceOf[CustomAbstractType])),
           fnName,
           fuzzOverWindow
         )
 
       _ = logger.trace(
-        s"bruteforceAbstractTypeCombinations - detected ${abstractInputCombinationsNoSpecialType.size} abstract input combinations (excluding special types)"
+        s"getValidAbstractTypeCombinations - detected ${abstractInputCombinationsNoSpecialType.size} abstract input combinations (excluding special types)"
       )
 
       // If nothing was found previously, then it might be because we need a custom types that also work as String.
@@ -333,15 +297,13 @@ object FuzzerNonParametricFunctions extends StrictLogging:
           Future.successful(abstractInputCombinationsNoSpecialType)
         else
           bruteforceAbstractTypeCombinations(
-            generateCHFuzzableAbstractTypeCombinations(argCount).filter(
-              _.exists(_.isInstanceOf[CustomAbstractType])
-            ),
+            generateCHFuzzableAbstractTypeCombinations(argCount).filter(_.exists(_.isInstanceOf[CustomAbstractType])),
             fnName,
             fuzzOverWindow
           )
 
       _ = logger.trace(
-        s"bruteforceAbstractTypeCombinations - detected ${abstractInputCombinations.size} abstract input combinations"
+        s"getValidAbstractTypeCombinations - detected ${abstractInputCombinations.size} abstract input combinations"
       )
     yield abstractInputCombinations
 
@@ -494,7 +456,7 @@ object FuzzerNonParametricFunctions extends StrictLogging:
     else s"SELECT toTypeName($fnName($args))"
 
   /**
-    * @return true if a NUMBER_OF_ARGUMENTS_DOESNT_MATCH error was returned by ClickHouse, false otherwise
+    * @return true if it might be possible to call the function with the provided number of arguments, false otherwise
     */
   private def checkArgMismatch(
       fnName: String,
@@ -508,18 +470,12 @@ object FuzzerNonParametricFunctions extends StrictLogging:
         case None =>
           Range(0, argCount)
         case Some(argsOfPreviouslyFoundSignature) =>
-          argsOfPreviouslyFoundSignature.map(_.fuzzingValues.head) ++ Range(
-            0,
-            argCount - argsOfPreviouslyFoundSignature.size
-          )
+          argsOfPreviouslyFoundSignature.map(_.fuzzingValues.head) ++
+            Range(0, argCount - argsOfPreviouslyFoundSignature.size)
 
       client
         .executeNoResult(
-          query(
-            fnName,
-            args.mkString(", "),
-            false
-          )
+          query(fnName, args.mkString(", "), false)
         )
         .map(_ => false)
         .recover { err =>

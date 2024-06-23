@@ -58,7 +58,7 @@ object FuzzerHardcodedFunctions extends StrictLogging {
       case "makeDateTime64"                                                                 => fuzzMakeDateTime64(fn)
       case "mannWhitneyUTest"                                                               => fuzzMannWhitneyUTest(fn)
       case "map"                                                                            => fuzzMap(fn)
-      case "mapApply"                                                                       => fuzzMapApply(fn) // Any Map working with identity actually
+      case "mapApply" /* Any Map working with identity actually */                          => fuzzMapApply(fn)
       case "meanZTest"                                                                      => fuzzMeanZTest(fn)
       case "minSampleSizeContinous" | "minSampleSizeContinuous"                             => fuzzMinSampleSizeContinous(fn)
       case "minSampleSizeConversion"                                                        => fuzzMinSampleSizeConversion(fn)
@@ -1877,19 +1877,33 @@ object FuzzerHardcodedFunctions extends StrictLogging {
   private def fuzzMinSampleSizeContinous(
       fn: CHFunctionFuzzResult
   )(using client: CHClient, ec: ExecutionContext): Future[CHFunctionFuzzResult] =
-    for function5s <-
-        FuzzerNonParametricFunctions
-          .fuzzAbstractInputCombinations(
-            fn.name,
-            Seq(
-              Seq(
-                CHFuzzableAbstractType.Number,
-                CHFuzzableAbstractType.Number,
-                CHFuzzableAbstractType.Number,
-                CHFuzzableAbstractType.Number,
-                CHFuzzableAbstractType.Number
+    for
+      Seq(baselineTypes, sigmaTypes, mdeTypes, powerTypes, alphaTypes) <-
+        ConcurrencyUtils.executeInSequence(
+          Range(0, 5), // we are going to test the types of this method's five arguments separately
+          argIdx =>
+            FuzzerNonParametricFunctions
+              .fuzzInputCombinations(
+                fn.name,
+                CHFuzzableAbstractType.Number.chFuzzableTypes
+                  .map(t => Range(0, 5).map(idx => if idx == argIdx then t else CHFuzzableType.UInt8)),
+                fuzzOverWindow = false,
+                returnFirstOutputTypeFound = true
               )
-            ),
+              .map { signatures =>
+                signatures.map { io =>
+                  io._1 match
+                    case s: Seq[CHFuzzableType] if s.size == 5 => s(argIdx)
+                    case _                                     => throw Exception(s"Expected 5 arguments, but found ${io._1.size} arguments")
+                }
+              }
+        )
+
+      function5s <-
+        FuzzerNonParametricFunctions
+          .fuzzInputCombinations(
+            fn.name,
+            crossJoin(baselineTypes, sigmaTypes, mdeTypes, powerTypes, alphaTypes).map(_.toList),
             fuzzOverWindow = false,
             returnFirstOutputTypeFound = true
           )
@@ -1908,18 +1922,33 @@ object FuzzerHardcodedFunctions extends StrictLogging {
   private def fuzzMinSampleSizeConversion(
       fn: CHFunctionFuzzResult
   )(using client: CHClient, ec: ExecutionContext): Future[CHFunctionFuzzResult] =
-    for function4s <-
-        FuzzerNonParametricFunctions
-          .fuzzAbstractInputCombinations(
-            fn.name,
-            Seq(
-              Seq(
-                CHFuzzableAbstractType.Number,
-                CHFuzzableAbstractType.Number,
-                CHFuzzableAbstractType.Number,
-                CHFuzzableAbstractType.Number
+    for
+      Seq(baselineTypes, mdeTypes, powerTypes, alphaTypes) <-
+        ConcurrencyUtils.executeInSequence(
+          Range(0, 4), // we are going to test the types of this method's four arguments separately
+          argIdx =>
+            FuzzerNonParametricFunctions
+              .fuzzInputCombinations(
+                fn.name,
+                CHFuzzableAbstractType.Number.chFuzzableTypes
+                  .map(t => Range(0, 4).map(idx => if idx == argIdx then t else CHFuzzableType.Float64)),
+                fuzzOverWindow = false,
+                returnFirstOutputTypeFound = true
               )
-            ),
+              .map { signatures =>
+                signatures.map { io =>
+                  io._1 match
+                    case s: Seq[CHFuzzableType] if s.size == 4 => s(argIdx)
+                    case _                                     => throw Exception(s"Expected 4 arguments, but found ${io._1.size} arguments")
+                }
+              }
+        )
+
+      function4s <-
+        FuzzerNonParametricFunctions
+          .fuzzInputCombinations(
+            fn.name,
+            crossJoin(baselineTypes, mdeTypes, powerTypes, alphaTypes).map(_.toList),
             fuzzOverWindow = false,
             returnFirstOutputTypeFound = true
           )

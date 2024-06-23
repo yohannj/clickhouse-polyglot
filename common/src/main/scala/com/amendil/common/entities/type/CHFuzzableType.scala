@@ -3,10 +3,19 @@ package com.amendil.common.entities.`type`
 import com.amendil.common.Settings
 import com.amendil.common.entities.*
 
+/**
+  * CHFuzzableType contains types available in ClickHouse alongside values that can be used for fuzzing.
+  *
+  * It is important to always have extreme values and few others to cover some edge cases.
+  * For example abs(-127::UInt8) is the only UInt8 value for which the function returns a UInt16.
+  * Well few years ago there was an overflow leading to abs(-127::UInt8) = -127::UInt8
+  *
+  * There are also some functions that return an error when using neutral value (e.g. divide by 0).
+  * So it's good to have those neutral value, alongside others.
+  */
 enum CHFuzzableType(
     val name: String,
-    val fuzzingValues: Seq[String],
-    val aliasOpt: Option[String] = None
+    val fuzzingValues: Seq[String]
 ) extends CHType:
 
   // Numbers
@@ -310,6 +319,11 @@ enum CHFuzzableType(
       )
 
   // Misc
+  case Dynamic
+      extends CHFuzzableType(
+        "Dynamic",
+        Seq(s"'foo'::Dynamic", s"1::Dynamic")
+      )
   case Enum
       extends CHFuzzableType(
         "Enum",
@@ -1705,33 +1719,29 @@ enum CHFuzzableType(
 
   // Special
   // Special - Geo
-  case Point extends CHFuzzableType("Point", Seq("(0, 0)::Point"), aliasOpt = Some("Tuple(Float64, Float64)"))
+  case Point extends CHFuzzableType("Point", Seq("(0, 0)::Point"))
   case Ring
       extends CHFuzzableType(
         "Ring",
-        Seq("[(0, 0), (10, 0), (10, 10), (0, 10)]::Ring"),
-        aliasOpt = Some("Array(Tuple(Float64, Float64))")
+        Seq("[(0, 0), (10, 0), (10, 10), (0, 10)]::Ring")
       )
   case Polygon
       extends CHFuzzableType(
         "Polygon",
-        Seq("[[(20, 20), (50, 20), (50, 50), (20, 50)], [(30, 30), (50, 50), (50, 30)]]::Polygon"),
-        aliasOpt = Some("Array(Array(Tuple(Float64, Float64)))")
+        Seq("[[(20, 20), (50, 20), (50, 50), (20, 50)], [(30, 30), (50, 50), (50, 30)]]::Polygon")
       )
   case MultiPolygon
       extends CHFuzzableType(
         "MultiPolygon",
         Seq(
           "[[[(0,0),(10,0),(10,10),(0,10)]],[[(20,20),(50,20),(50,50),(20,50)],[(30,30),(50,50),(50,30)]]]::MultiPolygon"
-        ),
-        aliasOpt = Some("Array(Array(Array(Tuple(Float64, Float64))))")
+        )
       )
 
   case Tuple1Point
       extends CHFuzzableType(
         "Tuple(Point)",
-        Seq("tuple((0, 0))::Tuple(Point)", "tuple((0, 0))::Tuple(a Point)"),
-        aliasOpt = Some("Tuple(Tuple(Float64, Float64))")
+        Seq("tuple((0, 0))::Tuple(Point)", "tuple((0, 0))::Tuple(a Point)")
       )
   case Tuple1Ring
       extends CHFuzzableType(
@@ -1739,8 +1749,7 @@ enum CHFuzzableType(
         Seq(
           "tuple([(0, 0), (10, 0), (10, 10), (0, 10)])::Tuple(Ring)",
           "tuple([(0, 0), (10, 0), (10, 10), (0, 10)])::Tuple(a Ring)"
-        ),
-        aliasOpt = Some("Tuple(Array(Tuple(Float64, Float64)))")
+        )
       )
   case Tuple1Polygon
       extends CHFuzzableType(
@@ -1748,8 +1757,7 @@ enum CHFuzzableType(
         Seq(
           "tuple([[(20, 20), (50, 20), (50, 50), (20, 50)], [(30, 30), (50, 50), (50, 30)]])::Tuple(Polygon)",
           "tuple([[(20, 20), (50, 20), (50, 50), (20, 50)], [(30, 30), (50, 50), (50, 30)]])::Tuple(a Polygon)"
-        ),
-        aliasOpt = Some("Tuple(Array(Array(Tuple(Float64, Float64))))")
+        )
       )
   case Tuple1MultiPolygon
       extends CHFuzzableType(
@@ -1757,8 +1765,7 @@ enum CHFuzzableType(
         Seq(
           "tuple([[[(0,0),(10,0),(10,10),(0,10)]],[[(20,20),(50,20),(50,50),(20,50)],[(30,30),(50,50),(50,30)]]])::Tuple(MultiPolygon)",
           "tuple([[[(0,0),(10,0),(10,10),(0,10)]],[[(20,20),(50,20),(50,50),(20,50)],[(30,30),(50,50),(50,30)]]])::Tuple(a MultiPolygon)"
-        ),
-        aliasOpt = Some("Tuple(Array(Array(Array(Tuple(Float64, Float64)))))")
+        )
       )
 
   // Special - Misc
@@ -1776,20 +1783,30 @@ enum CHFuzzableType(
           ) // Filter values that would be understood as valid month (December) by parseDateTime64BestEffort, and functions that rely on the same behavior (e.g. toWeek / toYearWeek / week / yearweek)
           .map(baseType => s"'${baseType.name}'")
       )
-  case DictionaryName
-      extends CHFuzzableType(
-        "DictionaryName",
-        Settings.Type.dictionaryNames.map(dictName => s"'$dictName'")
-      )
   case DateUnit
       extends CHFuzzableType(
         "DateUnit",
         CHDateUnit.values.toSeq.map(_.values.head).map(name => s"'$name'")
       )
+  case DictionaryName
+      extends CHFuzzableType(
+        "DictionaryName",
+        Settings.Type.dictionaryNames.map(dictName => s"'$dictName'")
+      )
   case EncryptionMode
       extends CHFuzzableType(
         "EncryptionMode",
         CHEncryptionMode.values.toSeq.map(mode => s"'${mode.name}'")
+      )
+  case InputFormat
+      extends CHFuzzableType(
+        "InputFormat",
+        CHFormat.values.toSeq.collect { case f if f.isInput && !f.isOutput => s"'${f.name}'" }
+      )
+  case OutputFormat
+      extends CHFuzzableType(
+        "OutputFormat",
+        CHFormat.values.toSeq.collect { case f if !f.isInput && f.isOutput => s"'${f.name}'" }
       )
   case TestAlternative
       extends CHFuzzableType(

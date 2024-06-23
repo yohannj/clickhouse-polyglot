@@ -673,13 +673,13 @@ object FuzzerParametricFunctions extends StrictLogging:
           fnConstructorRepeatedParamsFiniteArgs,
           fnConstructorFiniteParamsRepeatedArgs,
           fnConstructorRepeatedParamsRepeatedArgs
-        ).flatMap(
-          (
-              finiteParamsFiniteArgsFn,
-              repeatedParamsFiniteArgsFn,
-              finiteParamsRepeatedArgsFn,
-              repeatedParamsRepeatedArgsFn
-          ) =>
+        ).flatMap {
+          case (
+                finiteParamsFiniteArgsFn,
+                repeatedParamsFiniteArgsFn,
+                finiteParamsRepeatedArgsFn,
+                repeatedParamsRepeatedArgsFn
+              ) =>
             // Success without OVER window, let's try a sample function with OVER window
             val sampleFn = finiteParamsFiniteArgsFn.headOption
               .orElse(repeatedParamsFiniteArgsFn.headOption)
@@ -716,7 +716,7 @@ object FuzzerParametricFunctions extends StrictLogging:
                   repeatedParamsRepeatedArgsFn
                 )
               )
-        ).recoverWith(_ =>
+        }.recoverWith(_ =>
           // Failure without OVER window, fuzz with OVER window
           fuzzParametricSingleMode(
             fn.name,
@@ -781,61 +781,20 @@ object FuzzerParametricFunctions extends StrictLogging:
       using client: CHClient,
       ec: ExecutionContext
   ): Future[Seq[(ParametricFunctionInput, OutputType)]] =
-    // Build all combinations of parametric function input having paramCount parameters and argCount arguments
-    // Those combinations are described using AbstractTypes!
-    // They are all used to query ClickHouse and we are retrieving here only the ones that succeeded.
-    val validCHFuzzableAbstractTypeCombinationsF: Future[Seq[ParametricFunctionAbstractInput]] =
-      for
-        validCHFuzzableAbstractTypeCombinationsNoSpecialType: Seq[ParametricFunctionAbstractInput] <-
-          executeInParallelOnlySuccess(
-            crossJoin(
-              generateCHFuzzableAbstractTypeCombinations(paramCount, parametricAbstractType),
-              generateCHFuzzableAbstractTypeCombinations(argCount)
-            ).filterNot((paramTypes: Seq[CHFuzzableAbstractType], nonParamTypes: Seq[CHFuzzableAbstractType]) =>
-              paramTypes.exists(_.isInstanceOf[CustomAbstractType]) ||
-                nonParamTypes.exists(_.isInstanceOf[CustomAbstractType])
-            ),
-            (paramTypes: Seq[CHFuzzableAbstractType], nonParamTypes: Seq[CHFuzzableAbstractType]) =>
-              executeInParallelUntilSuccess(
-                crossJoin(
-                  buildFuzzingValuesArgs(paramTypes.map(_.fuzzingValues)),
-                  buildFuzzingValuesArgs(nonParamTypes.map(_.fuzzingValues))
-                ).map { (paramArgs, nonParamArgs) => query(fnName, paramArgs, nonParamArgs, fuzzOverWindow) },
-                client.executeNoResult,
-                maxConcurrency = Settings.ClickHouse.maxSupportedConcurrencyInnerLoop
-              ).map(_ => (paramTypes, nonParamTypes)),
-            maxConcurrency = Settings.ClickHouse.maxSupportedConcurrencyOuterLoop
-          )
+    for
+      // Build all combinations of parametric function input having paramCount parameters and argCount arguments
+      // Those combinations are described using AbstractTypes!
+      // They are all used to query ClickHouse and we are retrieving here only the ones that succeeded.
+      validCHFuzzableAbstractTypeCombinations: Seq[ParametricFunctionAbstractInput] <-
+        getValidAbstractTypeCombinations(fnName, paramCount, argCount, fuzzOverWindow)
 
-        validCHFuzzableAbstractTypeCombinations: Seq[ParametricFunctionAbstractInput] <-
-          if validCHFuzzableAbstractTypeCombinationsNoSpecialType.nonEmpty then
-            Future.successful(validCHFuzzableAbstractTypeCombinationsNoSpecialType)
-          else
-            executeInParallelOnlySuccess(
-              crossJoin(
-                generateCHFuzzableAbstractTypeCombinations(paramCount, parametricAbstractType),
-                generateCHFuzzableAbstractTypeCombinations(argCount)
-              ).filter((paramTypes: Seq[CHFuzzableAbstractType], nonParamTypes: Seq[CHFuzzableAbstractType]) =>
-                paramTypes.exists(_.isInstanceOf[CustomAbstractType]) ||
-                  nonParamTypes.exists(_.isInstanceOf[CustomAbstractType])
-              ),
-              (paramTypes: Seq[CHFuzzableAbstractType], nonParamTypes: Seq[CHFuzzableAbstractType]) =>
-                executeInParallelUntilSuccess(
-                  crossJoin(
-                    buildFuzzingValuesArgs(paramTypes.map(_.fuzzingValues)),
-                    buildFuzzingValuesArgs(nonParamTypes.map(_.fuzzingValues))
-                  ).map { (paramArgs, nonParamArgs) => query(fnName, paramArgs, nonParamArgs, fuzzOverWindow) },
-                  client.executeNoResult,
-                  maxConcurrency = Settings.ClickHouse.maxSupportedConcurrencyInnerLoop
-                ).map(_ => (paramTypes, nonParamTypes)),
-              maxConcurrency = Settings.ClickHouse.maxSupportedConcurrencyOuterLoop
-            )
-      yield validCHFuzzableAbstractTypeCombinations
-
-    // Expand abstract types to retrieve all types combinations and their output
-    validCHFuzzableAbstractTypeCombinationsF.flatMap:
-      (validCHFuzzableAbstractTypeCombinations: Seq[ParametricFunctionAbstractInput]) =>
-        fuzzAbstractInputCombinations(fnName, validCHFuzzableAbstractTypeCombinations, fuzzOverWindow)
+      // Expand abstract types to retrieve all types combinations and their output
+      abstractInputCombinations <- fuzzAbstractInputCombinations(
+        fnName,
+        validCHFuzzableAbstractTypeCombinations,
+        fuzzOverWindow
+      )
+    yield abstractInputCombinations
 
   private[fuzz] def fuzzAbstractInputCombinations(
       fnName: String,
@@ -971,7 +930,7 @@ object FuzzerParametricFunctions extends StrictLogging:
         )
 
       _ = logger.trace(
-        s"bruteforceAbstractTypeCombinations - detected ${abstractInputCombinationsNoSpecialType.size} abstract input combinations (excluding special types)"
+        s"getValidAbstractTypeCombinations - detected ${abstractInputCombinationsNoSpecialType.size} abstract input combinations (excluding special types)"
       )
 
       // If nothing was found previously, then it might be because we need a custom types.
@@ -992,7 +951,7 @@ object FuzzerParametricFunctions extends StrictLogging:
           )
 
       _ = logger.trace(
-        s"bruteforceAbstractTypeCombinations - detected ${abstractInputCombinations.size} abstract input combinations"
+        s"getValidAbstractTypeCombinations - detected ${abstractInputCombinations.size} abstract input combinations"
       )
     yield abstractInputCombinations
 
@@ -1041,36 +1000,28 @@ object FuzzerParametricFunctions extends StrictLogging:
 
     val params = sampleFunction.parameters.map(_.asInstanceOf[CHFuzzableType])
     val args = sampleFunction.arguments.map(_.asInstanceOf[CHFuzzableType])
-    testAddOneParameter(
-      fnName,
-      params,
-      args,
-      fuzzOverWindow
-    ).recoverWith(err =>
-      if sampleFunction.repeatedArgumentIdxOpt.nonEmpty then
-        testAddOneParameter(
-          fnName,
-          params,
-          args :+ args.last,
-          fuzzOverWindow
-        )
-      else Future.failed(err)
-    ).map { (validParameters, isRepeatedParam) =>
-      if isRepeatedParam then
-        resultUpdatorRepeatedParameter(
-          for
-            param <- validParameters
-            f <- fnBaseFunctions
-          yield fnConstructorRepeatedParams(f, param)
-        )
-      else
-        resultUpdatorSingleParameter(
-          for
-            param <- validParameters
-            f <- fnBaseFunctions
-          yield fnConstructorFiniteParams(f, param)
-        )
-    }
+    testAddOneParameter(fnName, params, args, fuzzOverWindow)
+      .recoverWith(err =>
+        if sampleFunction.repeatedArgumentIdxOpt.nonEmpty then
+          testAddOneParameter(fnName, params, args :+ args.last, fuzzOverWindow)
+        else Future.failed(err)
+      )
+      .map { (validParameters, isRepeatedParam) =>
+        if isRepeatedParam then
+          resultUpdatorRepeatedParameter(
+            for
+              param <- validParameters
+              f <- fnBaseFunctions
+            yield fnConstructorRepeatedParams(f, param)
+          )
+        else
+          resultUpdatorSingleParameter(
+            for
+              param <- validParameters
+              f <- fnBaseFunctions
+            yield fnConstructorFiniteParams(f, param)
+          )
+      }
 
   /**
     * The future generated by this function never fails.
@@ -1174,12 +1125,7 @@ object FuzzerParametricFunctions extends StrictLogging:
     else
       client
         .executeNoResult(
-          query(
-            fnName,
-            Range(0, paramCount).mkString(", "),
-            Range(0, argCount).mkString(", "),
-            false
-          )
+          query(fnName, Range(0, paramCount).mkString(", "), Range(0, argCount).mkString(", "), false)
         )
         .map(_ => false)
         .recover { err =>

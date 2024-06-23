@@ -32,6 +32,7 @@ enum CHFuzzableAbstractType(_fuzzingValues: Seq[String], _chFuzzableTypes: Seq[C
       extends CHFuzzableAbstractType(
         Seq(
           "1",
+          "-1",
           "0.5",
           "true",
           "-99999999::Decimal32(1)",
@@ -252,6 +253,11 @@ enum CHFuzzableAbstractType(_fuzzingValues: Seq[String], _chFuzzableTypes: Seq[C
       )
 
   // Misc
+  case Dynamic
+      extends CHFuzzableAbstractType(
+        CHFuzzableType.Dynamic.fuzzingValues,
+        Seq(CHFuzzableType.Dynamic)
+      )
   case Enum
       extends CHFuzzableAbstractType(
         Seq(CHFuzzableType.Enum8.fuzzingValues.head, CHFuzzableType.Enum16.fuzzingValues.head),
@@ -379,7 +385,7 @@ enum CHFuzzableAbstractType(_fuzzingValues: Seq[String], _chFuzzableTypes: Seq[C
   // Map
   case MapNumberInt
       extends CHFuzzableAbstractType(
-        Seq(s"map(${Number.fuzzingValues.head}, 1)"),
+        Seq(s"map(1, 1)", s"map(-1, 1)"),
         Seq(
           CHFuzzableType.MapBooleanInt,
           CHFuzzableType.MapInt8Int,
@@ -459,7 +465,7 @@ enum CHFuzzableAbstractType(_fuzzingValues: Seq[String], _chFuzzableTypes: Seq[C
   // Tuple1
   case Tuple1Number
       extends CHFuzzableAbstractType(
-        CHFuzzableType.Tuple1UInt8.fuzzingValues,
+        CHFuzzableType.Tuple1Int8.fuzzingValues,
         Seq(
           CHFuzzableType.Tuple1Boolean,
           CHFuzzableType.Tuple1Int8,
@@ -655,6 +661,18 @@ enum CHFuzzableAbstractType(_fuzzingValues: Seq[String], _chFuzzableTypes: Seq[C
       extends CHFuzzableAbstractType(
         CHFuzzableType.DictionaryName.fuzzingValues,
         Seq(CHFuzzableType.DictionaryName)
+      )
+      with CustomStringBasedAbstractType
+  case InputFormat
+      extends CHFuzzableAbstractType(
+        CHFuzzableType.InputFormat.fuzzingValues,
+        Seq(CHFuzzableType.InputFormat)
+      )
+      with CustomStringBasedAbstractType
+  case OutputFormat
+      extends CHFuzzableAbstractType(
+        CHFuzzableType.OutputFormat.fuzzingValues,
+        Seq(CHFuzzableType.OutputFormat)
       )
       with CustomStringBasedAbstractType
   case SequencePattern

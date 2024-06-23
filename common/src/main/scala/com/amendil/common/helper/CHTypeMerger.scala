@@ -341,6 +341,15 @@ object CHTypeMerger {
     ), CHAggregatedType.Integer64Like),
 
     (Set(
+      CHAggregatedType.Number, CHAggregatedType.DateLikeOrDateTime, CHAggregatedType.Interval
+    ), CHAggregatedType.NumberOrDateLikeOrDateTimeOrInterval),
+
+    (Set(
+      CHAggregatedType.Integer64Like, CHAggregatedType.DecimalLike, CHAggregatedType.Float, CHFuzzableType.Int128,
+      CHFuzzableType.Int256, CHFuzzableType.UInt128, CHFuzzableType.UInt256
+    ), CHAggregatedType.NumberOrDateLikeOrDateTimeOrInterval),
+
+    (Set(
       CHAggregatedType.Integer64Like, CHFuzzableType.Int128, CHFuzzableType.UInt128,
       CHFuzzableType.Int256, CHFuzzableType.UInt256, CHAggregatedType.StringLike, CHFuzzableType.UUID
     ), CHAggregatedType.MapKey),
@@ -357,6 +366,11 @@ object CHTypeMerger {
 
     (Set(
       CHAggregatedType.MapKey, CHAggregatedType.DecimalLike, CHAggregatedType.Float, CHFuzzableType.DateTime64
+    ), CHAggregatedType.AnyNullableInnerType),
+
+    (Set(
+      CHAggregatedType.NumberOrDateLikeOrDateTimeOrInterval, CHFuzzableType.DateTime64, CHAggregatedType.StringLike,
+      CHFuzzableType.UUID
     ), CHAggregatedType.AnyNullableInnerType),
 
     (Set(
@@ -464,7 +478,7 @@ object CHTypeMerger {
     (Set(CHAggregatedType.DateLike, CHAggregatedType.DateTimeLike), CHAggregatedType.DateLikeOrDateTimeLike),
     (Set(CHAggregatedType.Date32OrDateTime64, CHAggregatedType.DateOrDateTime), CHAggregatedType.DateLikeOrDateTimeLike),
 
-    (Set(CHFuzzableType.Enum8, CHFuzzableType.Enum16), CHFuzzableType.Enum),
+    (Set(CHFuzzableType.InputFormat, CHFuzzableType.OutputFormat), CHAggregatedType.Format),
 
     (Set(CHFuzzableType.Point, CHFuzzableType.Ring, CHFuzzableType.Polygon, CHFuzzableType.MultiPolygon), CHAggregatedType.Geo),
 
@@ -768,6 +782,8 @@ object CHTypeMerger {
     (Set(CHFuzzableType.StringType, CHFuzzableType.DateUnit), Seq(CHFuzzableType.StringType)),
     (Set(CHFuzzableType.StringType, CHFuzzableType.DictionaryName), Seq(CHFuzzableType.StringType)),
     (Set(CHFuzzableType.StringType, CHFuzzableType.EncryptionMode), Seq(CHFuzzableType.StringType)),
+    (Set(CHFuzzableType.StringType, CHFuzzableType.InputFormat), Seq(CHFuzzableType.StringType)),
+    (Set(CHFuzzableType.StringType, CHFuzzableType.OutputFormat), Seq(CHFuzzableType.StringType)),
     (Set(CHFuzzableType.StringType, CHFuzzableType.PValueComputationMethod), Seq(CHFuzzableType.StringType)),
     (Set(CHFuzzableType.StringType, CHFuzzableType.SequencePattern), Seq(CHFuzzableType.StringType)),
     (Set(CHFuzzableType.StringType, CHFuzzableType.ServerPortName), Seq(CHFuzzableType.StringType)),

@@ -86,6 +86,29 @@ class CHTypeMergerSpec extends AnyFreeSpec with Matchers:
 
           actual shouldBe expected
         }
+        "to NumberOrDateLikeOrDateTimeOrInterval" in {
+          val actual1 = CHTypeMerger.mergeInputTypes(
+            Set(CHAggregatedType.Number, CHAggregatedType.DateLikeOrDateTime, CHAggregatedType.Interval)
+          )
+          val expected1 = Set(CHAggregatedType.NumberOrDateLikeOrDateTimeOrInterval)
+
+          actual1 shouldBe expected1
+
+          val actual2 = CHTypeMerger.mergeInputTypes(
+            Set(
+              CHAggregatedType.Integer64Like,
+              CHAggregatedType.DecimalLike,
+              CHAggregatedType.Float,
+              CHFuzzableType.Int128,
+              CHFuzzableType.Int256,
+              CHFuzzableType.UInt128,
+              CHFuzzableType.UInt256
+            )
+          )
+          val expected2 = Set(CHAggregatedType.NumberOrDateLikeOrDateTimeOrInterval)
+
+          actual2 shouldBe expected2
+        }
         "of type array" - {
           "to Array(Any)" in {
             val actual = CHTypeMerger.mergeInputTypes(CHFuzzableType.values.filter(_.name.startsWith("Array(")).toSet)

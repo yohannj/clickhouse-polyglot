@@ -1,5 +1,12 @@
 package com.amendil.common.entities.`type`
 
+/**
+  * CHAggregatedType contains types that do not exist in ClickHouse
+  * those types are used to regroup together different types.
+  *
+  * For example IP means both IPv4 and IPv6.
+  * Rules to aggregate types together can be found in CHTypeMerger.
+  */
 enum CHAggregatedType(val name: String) extends CHType:
   case Any extends CHAggregatedType("Any")
   case AnyLowCardinalityInnerType extends CHAggregatedType("AnyLowCardinalityInnerType")
@@ -15,6 +22,7 @@ enum CHAggregatedType(val name: String) extends CHType:
   case DateTimeLike extends CHAggregatedType("DateTimeLike")
   case DateTimeUnit extends CHAggregatedType("DateTimeUnit")
   case DateTime64Unit extends CHAggregatedType("DateTime64Unit")
+  case Format extends CHAggregatedType("Format")
   case Geo extends CHAggregatedType("Geo")
   case Integer64Like extends CHAggregatedType("Integer64Like")
   case Interval extends CHAggregatedType("Interval")
@@ -24,6 +32,7 @@ enum CHAggregatedType(val name: String) extends CHType:
   case IntervalTimeOrTime64 extends CHAggregatedType("IntervalTimeOrTime64")
   case IP extends CHAggregatedType("IP")
   case MapKey extends CHAggregatedType("MapKey")
+  case NumberOrDateLikeOrDateTimeOrInterval extends CHAggregatedType("NumberOrDateLikeOrDateTimeOrInterval")
   case StringLike extends CHAggregatedType("StringLike")
   case TimeOrTime64Unit extends CHAggregatedType("TimeOrTime64Unit")
 

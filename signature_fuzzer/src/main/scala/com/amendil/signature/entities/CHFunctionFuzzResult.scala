@@ -236,5 +236,5 @@ object CHFunctionFuzzResult:
       name = fuzzResult.name,
       signatures = signatures,
       modes = fuzzResult.modes.toSeq.sortWith(_.ordinal < _.ordinal),
-      isExperimental = false // FIXME
+      settings = Nil // FIXME
     )

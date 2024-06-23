@@ -27,13 +27,13 @@ import scala.util.{Failure, Success, Try}
       _ <- createDictionaries()
 
       chVersion <- getCHVersion()
-      functions <- getCHFunctions()
-      // functions =
-      //   unknownFunctions.map(
-      //     CHFunctionFuzzResult(_, isAggregate = false, aliasTo = "")
-      //   ) ++ unknownFunctionsWithAlias.map((name, alias) =>
-      //     CHFunctionFuzzResult(name, isAggregate = false, aliasTo = alias)
-      //   )
+      // functions <- getCHFunctions()
+      functions =
+        unknownFunctions.map(
+          CHFunctionFuzzResult(_, isAggregate = false, aliasTo = "")
+        ) ++ unknownFunctionsWithAlias.map((name, alias) =>
+          CHFunctionFuzzResult(name, isAggregate = false, aliasTo = alias)
+        )
       functionsToFuzz = functions.filter { fn =>
         Settings.Fuzzer.supportJson || !fn.name.toLowerCase().contains("json")
       }

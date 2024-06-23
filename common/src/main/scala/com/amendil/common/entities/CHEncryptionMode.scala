@@ -1,5 +1,13 @@
 package com.amendil.common.entities
 
+/**
+  * Encryption/decryption modes supported by ClickHouse
+  * Retrieved in the documentation: https://clickhouse.com/docs/en/sql-reference/functions/encryption-functions
+  * Can also be found in tests:
+  * https://github.com/ClickHouse/ClickHouse/blob/a9ce6845ba82d560aa61f48cfb9a4cd188439316/tests/queries/0_stateless/01318_decrypt.reference
+  *
+  * ClickHouse delegates the usage of those modes to a library, so no reference of the supported list exists in ClickHouse codebase.
+  */
 enum CHEncryptionMode(val name: String):
   case aes_128_cbc extends CHEncryptionMode("aes-128-cbc")
   case aes_128_ctr extends CHEncryptionMode("aes-128-ctr")

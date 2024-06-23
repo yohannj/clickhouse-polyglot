@@ -5,6 +5,7 @@ package com.amendil.common.entities
 // XXX How to handle parameterized types?
 /**
   * Base type retrieved using `SELECT name FROM system.data_type_families WHERE empty(alias_to) ORDER BY name FORMAT TSV`
+  * The code can be generated with `SELECT concat('  case ', name, ' extends CHBaseType("', name, '")') FROM system.data_type_families WHERE empty(alias_to) ORDER BY name FORMAT TSV`
   */
 enum CHBaseType(val name: String):
   case AggregateFunction extends CHBaseType("AggregateFunction")
@@ -20,6 +21,7 @@ enum CHBaseType(val name: String):
   case Decimal256 extends CHBaseType("Decimal256")
   case Decimal32 extends CHBaseType("Decimal32")
   case Decimal64 extends CHBaseType("Decimal64")
+  case Dynamic extends CHBaseType("Dynamic")
   case Enum extends CHBaseType("Enum")
   case Enum16 extends CHBaseType("Enum16")
   case Enum8 extends CHBaseType("Enum8")

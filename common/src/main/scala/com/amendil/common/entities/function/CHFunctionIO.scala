@@ -3,8 +3,19 @@ package com.amendil.common.entities.function
 import com.amendil.common.entities.*
 import com.amendil.common.entities.`type`.*
 
+/**
+  * CHFunctionIO represents one signature of a function
+  *
+  * Some functions can have an unlimited number of parameters (e.g. array),
+  * which is sometimes the last argument of the function, but sometimes it is in the middle of the arguments.
+  * repeatedParameterIdxOpt and repeatedArgumentIdxOpt are there to indicated which part(s) of the input can be repeated
+  * many times.
+  *
+  * The flag isParametric is necessary for functions that requires parameters but also
+  * uses default values for all parameters, allowing the function to be called with 0 parameters.
+  * In such cases, we must still still call the function with an empty set of parenthesis for the parameters.
+  */
 trait CHFunctionIO:
-  def kind: String
   def parameters: Seq[CHType] = Nil
   def arguments: Seq[CHType] = Nil
   def repeatedParameterIdxOpt: Option[Int] = None
@@ -56,6 +67,30 @@ sealed trait CHParametricNFunctionIO extends CHParametricFunction:
 
 sealed trait CHParametricFunctionNIO extends CHParametricFunction with CHFunctionNIO
 
+/*
+ * Naming system:
+ * Numbers (and N) are used to describe the number of parameters and arguments.
+ * N meaning the parameter can be repeated many times.
+ *
+ * Few examples:
+ * - Function0N
+ * Function that only takes arguments, 0 non-repeated arguments followed by 1 repeated argument.
+ *
+ * - Function7
+ * Function that only takes arguments, 7 non-repeated arguments followed by 0 repeated argument.
+ *
+ * - LambdaArrayFunction1N1
+ * Function that only takes arguments, the prefix Lambda indicated the first one is a lambda function.
+ * Function1N means there is 1 non-repeated argument followed by 1 repeated argument.
+ * Then the 1 at the end means the function takes an additional argument after the repeated argument.
+ *
+ * Currently there is only one function like that `arrayFold`, and the last argument is an accumulator.
+ * LambdaArray is here to suggested that the Function1N arguments must be of type Array.
+ *
+ * - Parametric3NFunction1
+ * Parametric3N prefix indicates the function takes parameters, in this case 3 non-repeated parameters followed by 1 repeated parameter
+ * Function1 indicates the function takes 1 non-repeated argument followed by 0 repeated argument
+ */
 object CHFunctionIO:
 
   case class Function0N(argN: CHType, output: CHType) extends CHFunctionNIO:
@@ -756,4 +791,3 @@ object CHFunctionIO:
     val kind = "parametric4Function3"
     override val parameters = Seq(paramArg1, paramArg2, paramArg3, paramArg4)
     override val arguments = Seq(arg1, arg2, arg3)
-

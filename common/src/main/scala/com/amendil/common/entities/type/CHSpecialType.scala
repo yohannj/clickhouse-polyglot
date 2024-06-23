@@ -3,6 +3,12 @@ package com.amendil.common.entities.`type`
 trait InnerType:
   def innerType: CHType
 
+/**
+  * CHSpecialType regroups three kind of types:
+  * 1/ Types that exists in ClickHouse and that takes other types in their arguments
+  * 2/ Weird types like AggregateFunction and Lambda.
+  * 3/ Function parameters/arguments that only few specific Strings as input
+  */
 enum CHSpecialType(val name: String) extends CHType:
   case AggregateFunction(fnName: String, innerType: CHType)
       extends CHSpecialType(s"AggregateFunction($fnName, ${innerType.name})")
@@ -16,8 +22,8 @@ enum CHSpecialType(val name: String) extends CHType:
   case Tuple(innerTypes: Seq[CHType]) extends CHSpecialType(s"Tuple(${innerTypes.map(_.name).mkString(", ")})")
   case TupleN(innerType: CHType) extends CHSpecialType(s"TupleN(${innerType.name})") with InnerType
 
-  case CatboostParameter
-      extends CHSpecialType("CatboostParameter") // UIntX, IntX, Float32, Float64, Date, Date32, DateTime
+  // This could be seen as a CHAggregatedType, but we want to allow it only for Catboost functions
+  case CatboostParameter extends CHSpecialType("CatboostParameter") // UIntX, IntX, FloatX, Date, Date32, DateTime
 
   case Nothing extends CHSpecialType("Nothing")
 

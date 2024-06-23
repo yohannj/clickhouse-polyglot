@@ -4,11 +4,17 @@ import com.amendil.common.entities.`type`.*
 import com.amendil.common.entities.function.CHFunctionIO
 import com.typesafe.scalalogging.StrictLogging
 
+/**
+  * CHFunctionIOAggregator proposes a single method to aggregate different function signatures.
+  *
+  * `aggregateSimilarIOs` works for parameters, arguments and output that share a single common type
+  * Other methods aim to handle when the Output
+  */
 object CHFunctionIOAggregator extends StrictLogging:
   def aggregate[T <: CHFunctionIO](functions: Seq[T], supportJson: Boolean = true): Seq[CHFunctionIO] =
     require(
-      functions.map(_.kind).distinct.size <= 1,
-      s"Cannot aggregate different kind of functions, but asked to aggregate '${functions.map(_.kind).distinct.sorted.mkString("', '")}' together."
+      functions.map(_.getClass.getName()).distinct.size <= 1,
+      s"Cannot aggregate different kind of functions, but asked to aggregate '${functions.map(_.getClass.getName()).distinct.sorted.mkString("', '")}' together."
     )
 
     given SupportJson = supportJson
@@ -314,7 +320,6 @@ object CHFunctionIOAggregator extends StrictLogging:
         }.head
 
         new CHFunctionIO:
-          override def kind: String = signatures.head.kind
           override def parameters: Seq[CHType] = aggregatedParameters
           override def arguments: Seq[CHType] = aggregatedArguments
           override def repeatedParameterIdxOpt: Option[Int] = signatures.head.repeatedParameterIdxOpt
@@ -323,11 +328,17 @@ object CHFunctionIOAggregator extends StrictLogging:
           override def output: CHType = aggregatedOutput
       }
 
+  /**
+    * For each arguments, see if multiple types have the exact same IO (except current argument).
+    * In such case, try to deduplicate them.
+    *
+    * This will happen when a String works and we also propose things like DateUnit and other String based types.
+    */
   private def deduplicateArguments(signature: Seq[CHFunctionIO]): Seq[CHFunctionIO] =
     var aggregatedSignatures = signature
     Range.apply(0, signature.head.arguments.size).foreach { argumentIdx =>
       val newAggregatedSignatures = aggregatedSignatures
-        .groupBy(sig =>
+        .groupBy(sig => // Group based on other fields in the signature
           (
             sig.parameters,
             sig.arguments.zipWithIndex.collect { case (arg, idx) if idx < argumentIdx => arg },
@@ -343,7 +354,6 @@ object CHFunctionIOAggregator extends StrictLogging:
           else
             deduplicatedTypes.map(aggregatedType =>
               new CHFunctionIO:
-                override def kind: String = groupedSignatures.head.kind
                 override def parameters: Seq[CHType] = groupedSignatures.head.parameters
                 override def arguments: Seq[CHType] = (groupingKey._2 :+ aggregatedType) ++ groupingKey._3
                 override def repeatedParameterIdxOpt: Option[Int] = groupedSignatures.head.repeatedParameterIdxOpt
@@ -368,6 +378,12 @@ object CHFunctionIOAggregator extends StrictLogging:
     }
     aggregatedSignatures
 
+  /**
+    * For each parameters, see if multiple types have the exact same IO (except current parameter).
+    * In such case, try to deduplicate them.
+    *
+    * This will happen when a String works and we also propose things like DateUnit and other String based types.
+    */
   private def deduplicateParameters(signature: Seq[CHFunctionIO]): Seq[CHFunctionIO] =
     var aggregatedSignatures = signature
     Range.apply(0, signature.head.parameters.size).foreach { parameterIdx =>
@@ -388,7 +404,6 @@ object CHFunctionIOAggregator extends StrictLogging:
           else
             deduplicatedTypes.map(aggregatedType =>
               new CHFunctionIO:
-                override def kind: String = groupedSignatures.head.kind
                 override def parameters: Seq[CHType] = (groupingKey._1 :+ aggregatedType) ++ groupingKey._2
                 override def arguments: Seq[CHType] = groupedSignatures.head.arguments
                 override def repeatedParameterIdxOpt: Option[Int] = groupedSignatures.head.repeatedParameterIdxOpt
@@ -932,7 +947,6 @@ object CHFunctionIOAggregator extends StrictLogging:
                   case t => t
 
               new CHFunctionIO:
-                override def kind: String = groupedSignatures.head.kind
                 override def parameters: Seq[CHType] = groupedSignatures.head.parameters
                 override def arguments: Seq[CHType] =
                   (groupingKey._2 :+ inputTypeGenerator(genericType)) ++ groupingKey._3
@@ -1002,7 +1016,6 @@ object CHFunctionIOAggregator extends StrictLogging:
                     case t => t
 
                 new CHFunctionIO:
-                  override def kind: String = groupedSignatures.head.kind
                   override def parameters: Seq[CHType] = groupedSignatures.head.parameters
                   override def arguments: Seq[CHType] =
                     (groupingKey._2 :+ inputTypeGeneratorT1(genericType)) ++
@@ -1049,7 +1062,6 @@ object CHFunctionIOAggregator extends StrictLogging:
                     case Tuple2(t1, t2) => (t1, t2)
 
                 new CHFunctionIO:
-                  override def kind: String = groupedSignatures.head.kind
                   override def parameters: Seq[CHType] = groupedSignatures.head.parameters
                   override def arguments: Seq[CHType] =
                     (groupingKey._2 :+ inputTypeGeneratorT1(genericType1)) ++
@@ -1133,7 +1145,6 @@ object CHFunctionIOAggregator extends StrictLogging:
                     case t => t
 
                 new CHFunctionIO:
-                  override def kind: String = groupedSignatures.head.kind
                   override def parameters: Seq[CHType] = groupedSignatures.head.parameters
                   override def arguments: Seq[CHType] =
                     (groupingKey._2 :+ inputTypeGeneratorT1(genericType)) ++
@@ -1190,7 +1201,6 @@ object CHFunctionIOAggregator extends StrictLogging:
                       genericType
 
                 new CHFunctionIO:
-                  override def kind: String = groupedSignatures.head.kind
                   override def parameters: Seq[CHType] = groupedSignatures.head.parameters
                   override def arguments: Seq[CHType] =
                     (groupingKey._2 :+ inputTypeGeneratorT1(genericType1)) ++

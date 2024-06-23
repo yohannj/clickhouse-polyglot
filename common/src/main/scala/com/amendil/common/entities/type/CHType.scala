@@ -3,6 +3,9 @@ package com.amendil.common.entities.`type`
 import com.amendil.common.helper.CHTypeParser
 import com.typesafe.scalalogging.StrictLogging
 
+/**
+  * CHType represents a ClickHouse type.
+  */
 trait CHType:
   def name: String
 
