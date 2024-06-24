@@ -1,0 +1,51 @@
+<clickhouse>
+    <!-- Port for HTTP API. See also 'https_port' for secure connections.
+         This interface is also used by ODBC and JDBC drivers (DataGrip, Dbeaver, ...)
+         and by most of web interfaces (embedded UI, Grafana, Redash, ...).
+      -->
+    <http_port>18123</http_port>
+
+    <!-- Port for interaction by native protocol with:
+         - clickhouse-client and other native ClickHouse tools (clickhouse-benchmark, clickhouse-copier);
+         - clickhouse-server with other clickhouse-servers for distributed query processing;
+         - ClickHouse drivers and applications supporting native protocol
+         (this protocol is also informally called as "the TCP protocol");
+         See also 'tcp_port_secure' for secure connections.
+    -->
+    <tcp_port>19000</tcp_port>
+
+    <!-- Compatibility with MySQL protocol.
+         ClickHouse will pretend to be MySQL for applications connecting to this port.
+    -->
+    <mysql_port>19004</mysql_port>
+
+    <!-- Compatibility with PostgreSQL protocol.
+         ClickHouse will pretend to be PostgreSQL for applications connecting to this port.
+    -->
+    <postgresql_port>19005</postgresql_port>
+
+    <!-- Port for communication between replicas. Used for data exchange.
+         It provides low-level data access between servers.
+         This port should not be accessible from untrusted networks.
+         See also 'interserver_http_credentials'.
+         Data transferred over connections to this port should not go through untrusted networks.
+         See also 'interserver_https_port'.
+      -->
+    <interserver_http_port>19009</interserver_http_port>
+
+
+    <!-- Configuration of clusters that could be used in Distributed tables.
+         https://clickhouse.com/docs/en/operations/table_engines/distributed/
+      -->
+    <remote_servers>
+        <!-- Test only shard config for testing distributed storage -->
+        <default>
+            <shard>
+                <replica>
+                    <host>localhost</host>
+                    <port>19000</port>
+                </replica>
+            </shard>
+        </default>
+    </remote_servers>
+</clickhouse>
