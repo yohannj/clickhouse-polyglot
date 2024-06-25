@@ -161,5 +161,5 @@ Using `sbt`, execute:
 sbt signature_fuzzer/run
 ```
 
-It will create a file `res/functions_<ch_version_to_fuzz>.txt.part`.
+It will create two files `res/functions_<ch_version_to_fuzz>.txt.part` and `res/types_<ch_version_to_fuzz>.txt.part`.
 As of writing, running it takes about 60 hours on my laptop (10 cores handling ClickHouse + the fuzzer), with about 2-3 times where ClickHouse stays alive but stops responding, so manual intervention required.

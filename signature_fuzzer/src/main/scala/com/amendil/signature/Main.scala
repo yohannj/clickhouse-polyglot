@@ -1,8 +1,8 @@
 package com.amendil.signature
 
 import com.amendil.common.Settings as CommonSettings
-import com.amendil.common.entities.`type`.CHFuzzableType
-import com.amendil.common.helper.ConcurrencyUtils
+import com.amendil.common.entities.`type`.*
+import com.amendil.common.helper.{CHTypeMerger, ConcurrencyUtils}
 import com.amendil.common.http.{CHClient, CHClientImpl}
 import com.amendil.signature.entities.{CHFunctionFuzzResult, CHFuzzableAbstractType}
 import com.amendil.signature.fuzz.*
@@ -16,80 +16,22 @@ import scala.concurrent.duration.Duration
 import scala.util.{Failure, Success, Try}
 
 @main def app: Unit =
-  val logger = Logger("Main")
+  given logger: Logger = Logger("Main")
 
   given ExecutionContext = ExecutionContext.fromExecutorService(Executors.newFixedThreadPool(1))
   given client: CHClient = CHClientImpl(Settings.ClickHouse.httpUrl)
 
   val runF =
-    (for
+    for
       _ <- ensuringFuzzingValuesAreValid()
-      _ <- createDictionaries()
 
       chVersion <- getCHVersion()
-      // functions <- getCHFunctions()
-      functions =
-        unknownFunctions.map(
-          CHFunctionFuzzResult(_, isAggregate = false, aliasTo = "")
-        ) ++ unknownFunctionsWithAlias.map((name, alias) =>
-          CHFunctionFuzzResult(name, isAggregate = false, aliasTo = alias)
-        )
-      functionsToFuzz = functions.filter { fn =>
-        Settings.Fuzzer.supportJson || !fn.name.toLowerCase().contains("json")
-      }
-    yield
-      assume(Try { chVersion.toDouble }.isSuccess)
+      _ = assume(Try { chVersion.toDouble }.isSuccess)
 
-      val pw = PrintWriter(File(s"res/functions_v${chVersion}.txt.part"))
-      val functionCount = functionsToFuzz.size
-
-      val functionsFuzzResultsF: Future[Seq[CHFunctionFuzzResult]] =
-        ConcurrencyUtils
-          .executeInSequence(
-            functionsToFuzz.zipWithIndex, // .filter(_._1.name >= "caseWithoutExpression"),
-            (function: CHFunctionFuzzResult, idx: Int) =>
-              if idx % Math.max(functionCount / 20, 1) == 0 then
-                logger.info(s"===============================================================")
-                logger.info(s"${100 * idx / functionCount}%")
-                logger.info(s"===============================================================")
-              logger.info(function.name)
-
-              Fuzzer
-                .fuzz(function)
-                .recover { err =>
-                  if err.getCause() == null then
-                    logger.error(s"Failed to fuzz function ${function.name}: ${err.getMessage()}")
-                  else logger.error(s"Failed to fuzz function ${function.name}: ${err.getCause().getMessage()}")
-                  function
-                }
-                .map { (fuzzResult: CHFunctionFuzzResult) =>
-                  if !fuzzResult.atLeastOneSignatureFound then
-                    logger.error(s"No signatures found for method ${function.name}")
-                  pw.write(s"${CHFunctionFuzzResult.toCHFunction(fuzzResult).asString()}\n")
-                  pw.flush()
-                  fuzzResult
-                }
-          )
-          .recover(err =>
-            pw.close()
-            throw err
-          )
-          .map(res =>
-            pw.close()
-            res
-          )
-
-      functionsFuzzResultsF.map { (functionsFuzzResults: Seq[CHFunctionFuzzResult]) =>
-        val functionsWithoutASignature: Seq[String] =
-          functionsFuzzResults.filterNot(_.atLeastOneSignatureFound).map(_.name)
-
-        logger.info(
-          s"Rate of functions with a signature found: ${functionCount - functionsWithoutASignature.size}/$functionCount"
-        )
-        logger.info("Functions we were unable to determine any signature:")
-        logger.info(functionsWithoutASignature.sorted.mkString("\"", "\", \"", "\""))
-      }
-    ).flatten
+      _ <- createDictionaries(regexpTreeLocalPath = Settings.Fuzzer.regexpTreeYamlPath(chVersion))
+      _ = describeCHTypesAndSave(chVersion)
+      _ <- fuzzFunctionsAndSave(chVersion)
+    yield ()
 
   Try(Await.result(runF, Duration.Inf)) match
     case Failure(exception) =>
@@ -99,14 +41,97 @@ import scala.util.{Failure, Success, Try}
     case Success(_) =>
       sys.exit(0)
 
-def createDictionaries()(using CHClient, ExecutionContext): Future[Unit] =
+private def fuzzFunctionsAndSave(
+    chVersion: String
+)(using logger: Logger, client: CHClient, ec: ExecutionContext): Future[Unit] =
+  // val functions <- getCHFunctions()
+  val functions =
+    unknownFunctions.map(
+      CHFunctionFuzzResult(_, isAggregate = false, aliasTo = "")
+    ) ++ unknownFunctionsWithAlias.map((name, alias) =>
+      CHFunctionFuzzResult(name, isAggregate = false, aliasTo = alias)
+    )
+
+  val functionsToFuzz = functions.filter { fn =>
+    Settings.Fuzzer.supportJson || !fn.name.toLowerCase().contains("json")
+  }
+
+  val pw = PrintWriter(File(s"res/functions_v${chVersion}.txt.part"))
+  val functionCount = functionsToFuzz.size
+
+  val functionsFuzzResultsF =
+    ConcurrencyUtils
+      .executeInSequence(
+        functionsToFuzz.zipWithIndex, // .filter(_._1.name >= "caseWithoutExpression"),
+        (function: CHFunctionFuzzResult, idx: Int) =>
+          if idx % Math.max(functionCount / 20, 1) == 0 then
+            logger.info(s"===============================================================")
+            logger.info(s"${100 * idx / functionCount}%")
+            logger.info(s"===============================================================")
+          logger.info(function.name)
+
+          Fuzzer
+            .fuzz(function)
+            .recover { err =>
+              if err.getCause() == null then
+                logger.error(s"Failed to fuzz function ${function.name}: ${err.getMessage()}")
+              else logger.error(s"Failed to fuzz function ${function.name}: ${err.getCause().getMessage()}")
+              function
+            }
+            .map { (fuzzResult: CHFunctionFuzzResult) =>
+              if !fuzzResult.atLeastOneSignatureFound then
+                logger.error(s"No signatures found for method ${function.name}")
+              pw.write(s"${CHFunctionFuzzResult.toCHFunction(fuzzResult).asString()}\n")
+              pw.flush()
+              fuzzResult
+            }
+      )
+      .recover(err =>
+        pw.close()
+        throw err
+      )
+      .map(res =>
+        pw.close()
+        res
+      )
+
+  functionsFuzzResultsF.map { (functionsFuzzResults: Seq[CHFunctionFuzzResult]) =>
+    val functionsWithoutASignature: Seq[String] =
+      functionsFuzzResults.filterNot(_.atLeastOneSignatureFound).map(_.name)
+
+    logger.info(
+      s"Rate of functions with a signature found: ${functionCount - functionsWithoutASignature.size}/$functionCount"
+    )
+    logger.info("Functions we were unable to determine any signature:")
+    logger.info(functionsWithoutASignature.sorted.mkString("\"", "\", \"", "\""))
+  }
+
+private def describeCHTypesAndSave(chVersion: String): Unit =
+  val pw = PrintWriter(File(s"res/types_v${chVersion}.txt.part"))
+
+  CHAggregatedType.values.toSeq
+    .sortBy(_.name)
+    .map { t =>
+      (
+        t,
+        CHTypeMerger.getSubtypes(t).collect { case t if t.isInstanceOf[CHFuzzableType] => t.name }.toSeq.sorted
+      )
+    }
+    .foreach { case (aggregatedType, baseTypeNames: Seq[String]) =>
+      pw.write(s"${aggregatedType.name}\n")
+      baseTypeNames.foreach(t => pw.write(s"    $t\n"))
+    }
+
+  pw.close()
+
+private def createDictionaries(regexpTreeLocalPath: String)(using CHClient, ExecutionContext): Future[Unit] =
   for
     _ <- createHierarchicalDictionary()
     _ <- createManyTypesDictionary()
-    _ <- createRegexpTreeDictionary()
+    _ <- createRegexpTreeDictionary(regexpTreeLocalPath)
   yield (): Unit
 
-def createHierarchicalDictionary()(using client: CHClient, ec: ExecutionContext): Future[Unit] =
+private def createHierarchicalDictionary()(using client: CHClient, ec: ExecutionContext): Future[Unit] =
   for
     _ <- client.executeNoResultNoSettings(
       s"""|CREATE TABLE IF NOT EXISTS ${CommonSettings.Type.FuzzerDictionaryNames.hierarchyDictionaryName}_source_table
@@ -132,7 +157,7 @@ def createHierarchicalDictionary()(using client: CHClient, ec: ExecutionContext)
     )
   yield (): Unit
 
-def createManyTypesDictionary()(using client: CHClient, ec: ExecutionContext): Future[Unit] =
+private def createManyTypesDictionary()(using client: CHClient, ec: ExecutionContext): Future[Unit] =
   val columns =
     """|(
        |    id UInt64,
@@ -172,7 +197,9 @@ def createManyTypesDictionary()(using client: CHClient, ec: ExecutionContext): F
     )
   yield (): Unit
 
-def createRegexpTreeDictionary()(using client: CHClient, ec: ExecutionContext): Future[Unit] =
+private def createRegexpTreeDictionary(
+    regexpTreeLocalPath: String
+)(using client: CHClient, ec: ExecutionContext): Future[Unit] =
   client.executeNoResultNoSettings(
     s"""|CREATE DICTIONARY IF NOT EXISTS ${CommonSettings.Type.FuzzerDictionaryNames.regexpDictionaryName}
         |(
@@ -181,13 +208,13 @@ def createRegexpTreeDictionary()(using client: CHClient, ec: ExecutionContext): 
         |    version String
         |)
         |PRIMARY KEY regexp
-        |SOURCE(YAMLRegExpTree(PATH '/Users/yohann/workspace/ClickHouse-fuzzer/running_clickhouse/host/ch24_2/var/lib/clickhouse/user_files/regexp_tree.yaml'))
+        |SOURCE(YAMLRegExpTree(PATH '$regexpTreeLocalPath'))
         |LAYOUT(regexp_tree)
         |LIFETIME(MIN 0 MAX 1000)
         |""".stripMargin.replace("\n", " ")
   )
 
-def ensuringFuzzingValuesAreValid()(using client: CHClient, ec: ExecutionContext): Future[Unit] =
+private def ensuringFuzzingValuesAreValid()(using client: CHClient, ec: ExecutionContext): Future[Unit] =
   Future
     .sequence(
       (CHFuzzableType.values.flatMap(_.fuzzingValues) ++ CHFuzzableAbstractType.values.flatMap(_.fuzzingValues))
@@ -203,7 +230,7 @@ def ensuringFuzzingValuesAreValid()(using client: CHClient, ec: ExecutionContext
       if errors.nonEmpty then throw Exception(s"Invalid fuzzing value founds.\n${errors.mkString("\n")}")
     }
 
-def getCHFunctions()(using client: CHClient, ec: ExecutionContext): Future[Seq[CHFunctionFuzzResult]] =
+private def getCHFunctions()(using client: CHClient, ec: ExecutionContext): Future[Seq[CHFunctionFuzzResult]] =
   client
     .execute("SELECT name, is_aggregate, alias_to FROM system.functions")
     .map(
@@ -218,7 +245,7 @@ def getCHFunctions()(using client: CHClient, ec: ExecutionContext): Future[Seq[C
         .sortBy(_.name)
     )
 
-def getCHVersion()(using client: CHClient, ec: ExecutionContext): Future[String] =
+private def getCHVersion()(using client: CHClient, ec: ExecutionContext): Future[String] =
   client
     .execute("SELECT extract(version(), '^\\d+\\.\\d+') as version")
     .map(_.data.head.head.asInstanceOf[String])

@@ -66,6 +66,11 @@ object Settings:
 
     val aggregateSignature = fuzzerSettings.getBoolean("signature.aggregate.enabled")
 
+    def regexpTreeYamlPath(chVersion: String) =
+      fuzzerSettings
+        .getString("regexp-tree-yaml-path")
+        .replaceAll("CH_VERSION", chVersion.replace(".", "_"))
+
     val supportJson: Boolean = fuzzerSettings.getBoolean("support.json")
     val supportLowCardinality: Boolean = fuzzerSettings.getBoolean("support.lowcardinality")
     val supportNullable: Boolean = fuzzerSettings.getBoolean("support.nullable")

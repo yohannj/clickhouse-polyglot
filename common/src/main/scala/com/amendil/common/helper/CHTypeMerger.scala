@@ -320,7 +320,7 @@ object CHTypeMerger {
 
     mergedTypes
 
-  private def getSubtypes(t: CHType): Set[CHType] =
+  def getSubtypes(t: CHType): Set[CHType] =
     var types: Set[CHType] = Set(t)
     val m: Map[CHType, Set[CHType]] =
       typeSubstitutionRules.groupMap(_._2)(_._1).view.mapValues(_.toSet.flatten).toMap
