@@ -217,20 +217,23 @@ object CHFunctionFuzzResult:
 
   // TODO: Write tests
   def toCHFunction(fuzzResult: CHFunctionFuzzResult): CHFunction =
-    val signatures: Seq[CHFunctionIO] =
+    val fuzzedFunctionsByKind: Seq[Seq[CHFunctionIO]] =
       // productIterator is an internal method in all "case class" to iterate over its constructor arguments
       fuzzResult.productIterator.toSeq.flatMap {
         case s: Seq[?] if s.nonEmpty => // Look for functions that we discovered
           s.head match
             case _: CHFunctionIO =>
               val functions = s.asInstanceOf[Seq[CHFunctionIO]]
-              if Settings.Fuzzer.aggregateSignature
-              then Some(CHFunctionIOAggregator.aggregate(functions, Settings.Fuzzer.supportJson))
-              else Some(functions)
+              Some(functions)
             case _ => None // This argument is a Sequence but not of functions
         case Some(fn) if fn.isInstanceOf[CHFunctionIO] => Some(Seq(fn.asInstanceOf[CHFunctionIO]))
         case _                                         => None // This argument is not a Sequence of functions
-      }.flatten
+      }
+
+    val signatures =
+      fuzzedFunctionsByKind
+        .map(aggregateFuzzedResults)
+        .flatten
 
     CHFunction(
       name = fuzzResult.name,
@@ -238,3 +241,8 @@ object CHFunctionFuzzResult:
       modes = fuzzResult.modes.toSeq.sortWith(_.ordinal < _.ordinal),
       settings = Nil // FIXME
     )
+
+  private def aggregateFuzzedResults(functions: Seq[CHFunctionIO]): Seq[CHFunctionIO] =
+    if Settings.Fuzzer.aggregateSignature
+    then CHFunctionIOAggregator.aggregate(functions, Settings.Fuzzer.supportJson)
+    else functions

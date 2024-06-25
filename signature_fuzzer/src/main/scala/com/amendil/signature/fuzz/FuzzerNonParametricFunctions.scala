@@ -452,8 +452,11 @@ object FuzzerNonParametricFunctions extends StrictLogging:
     ).map(_ => true).recover(_ => false)
 
   private def query(fnName: String, args: String, fuzzOverWindow: Boolean): String =
-    if fuzzOverWindow then s"SELECT toTypeName($fnName($args) OVER w1) WINDOW w1 AS ()"
-    else s"SELECT toTypeName($fnName($args))"
+    val innerQuery =
+      if fuzzOverWindow then s"SELECT $fnName($args) OVER w1 as r, toTypeName(r) as type WINDOW w1 AS ()"
+      else s"SELECT $fnName($args) as r, toTypeName(r) as type"
+
+    s"SELECT if(type = 'UInt8' AND (r = 0 OR r = 1), 'Bool', type) as type FROM ($innerQuery)"
 
   /**
     * @return true if it might be possible to call the function with the provided number of arguments, false otherwise

@@ -65,8 +65,10 @@ object FuzzerLambdaFunctions extends StrictLogging:
     logger.debug("fuzzBooleanLambdaFunctionWithArray")
     if fn.isSpecialRepeatedFunction then Future.successful(fn)
     else
+      val innerQuery = s"SELECT ${fn.name}(x, y -> 3, ['s'], [2]) as r, toTypeName(r) as type"
+      val query = s"SELECT if(type = 'UInt8' AND (r = 0 OR r = 1), 'Bool', type) as type FROM ($innerQuery)"
       client
-        .execute(s"SELECT toTypeName(${fn.name}(x, y -> 1, ['s'], [1]))")
+        .execute(query)
         .map { (resp: CHResponse) =>
           val outputType = CHTypeParser.getByName(resp.data.head.head.asInstanceOf[String])
 
@@ -111,25 +113,30 @@ object FuzzerLambdaFunctions extends StrictLogging:
     logger.debug("fuzzLambdaFunction1Or0NWithMap")
     if fn.isSpecialRepeatedFunction then Future.successful(fn)
     else
+      val innerQuery1 = s"SELECT ${fn.name}(x, y -> 1, map(now(), today())) as r, toTypeName(r) as type"
+      val query1 = s"SELECT if(type = 'UInt8' AND (r = 0 OR r = 1), 'Bool', type) as type FROM ($innerQuery1)"
+
+      val innerQuery2 =
+        s"SELECT ${fn.name}(x, y -> ${CHFuzzableType.ArrayUUID.fuzzingValues.head}, map(now(), today())) as r, toTypeName(r) as type"
+      val query2 = s"SELECT if(type = 'UInt8' AND (r = 0 OR r = 1), 'Bool', type) as type FROM ($innerQuery2)"
+
       val resF =
         for
-          resp1 <- client.execute(s"SELECT toTypeName(${fn.name}(x, y -> 1, map(now(), today())))")
+          resp1 <- client.execute(query1)
           isInfinite <- client
             .execute(s"SELECT toTypeName(${fn.name}(x, y -> 1, map(now(), today()), map(now(), today())))")
             .map(_ => true)
             .recover(_ => false)
           resp2Opt <- client
-            .execute(
-              s"SELECT toTypeName(${fn.name}(x, y -> ${CHFuzzableType.ArrayUUID.fuzzingValues.head}, map(now(), today())))"
-            )
+            .execute(query2)
             .map(Some(_))
             .recover(_ => None)
         yield
           // Set default value that can be overriden with generic types
           var lambdaOutputType: CHType =
             resp2Opt match
-              case None        => CHFuzzableType.BooleanType
-              case Some(value) => CHAggregatedType.Any
+              case None    => CHFuzzableType.BooleanType
+              case Some(_) => CHAggregatedType.Any
           var mapKeyType: CHType = CHAggregatedType.MapKey
           var mapValueType: CHType = CHAggregatedType.Any
 
@@ -194,9 +201,12 @@ object FuzzerLambdaFunctions extends StrictLogging:
           resps1 <- executeInParallelOnlySuccess(
             CHFuzzableAbstractType.nonCustomFuzzableTypes,
             t =>
-              client
-                .execute(s"SELECT toTypeName(${fn.name}(x, y -> 1, ${t.fuzzingValues.head}, map(now(), today())))")
-                .map((_, t)),
+              val innerQuery1 =
+                s"SELECT ${fn.name}(x, y -> 1, ${t.fuzzingValues.head}, map(now(), today())) as r, toTypeName(r) as type"
+              val query1 = s"SELECT if(type = 'UInt8' AND (r = 0 OR r = 1), 'Bool', type) as type FROM ($innerQuery1)"
+
+              client.execute(innerQuery1).map((_, t))
+            ,
             maxConcurrency = Settings.ClickHouse.maxSupportedConcurrency
           )
 
@@ -206,18 +216,20 @@ object FuzzerLambdaFunctions extends StrictLogging:
             )
             .map(_ => true)
             .recover(_ => false)
+
+          innerQuery2 =
+            s"SELECT ${fn.name}(x, y -> ${CHFuzzableType.ArrayUUID.fuzzingValues.head}, ${resps1.head._2.fuzzingValues.head}, map(now(), today())) as r, toTypeName(r) as type"
+          query2 = s"SELECT if(type = 'UInt8' AND (r = 0 OR r = 1), 'Bool', type) as type FROM ($innerQuery2)"
           resp2Opt <- client
-            .execute(
-              s"SELECT toTypeName(${fn.name}(x, y -> ${CHFuzzableType.ArrayUUID.fuzzingValues.head}, ${resps1.head._2.fuzzingValues.head}, map(now(), today())))"
-            )
+            .execute(query2)
             .map(Some(_))
             .recover(_ => None)
         yield
           // Set default value that can be overriden with generic types
           var lambdaOutputType: CHType =
             resp2Opt match
-              case None        => CHFuzzableType.BooleanType
-              case Some(value) => CHAggregatedType.Any
+              case None    => CHFuzzableType.BooleanType
+              case Some(_) => CHAggregatedType.Any
           var arg1Types = CHTypeMerger.mergeInputTypes(resps1.map(_._2).toSet)
           var mapKeyType: CHType = CHAggregatedType.MapKey
           var mapValueType: CHType = CHAggregatedType.Any

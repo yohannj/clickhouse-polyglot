@@ -1111,8 +1111,11 @@ object FuzzerParametricFunctions extends StrictLogging:
     }
 
   private def query(fnName: String, params: String, args: String, fuzzOverWindow: Boolean): String =
-    if fuzzOverWindow then s"SELECT toTypeName($fnName($params)($args) OVER w1) WINDOW w1 AS ()"
-    else s"SELECT toTypeName($fnName($params)($args))"
+    val innerQuery =
+      if fuzzOverWindow then s"SELECT $fnName($params)($args) OVER w1 as r, toTypeName(r) as type WINDOW w1 AS ()"
+      else s"SELECT $fnName($params)($args) as r, toTypeName(r) as type"
+
+    s"SELECT if(type = 'UInt8' AND (r = 0 OR r = 1), 'Bool', type) as type FROM ($innerQuery)"
 
   /**
     * @return true if a NUMBER_OF_ARGUMENTS_DOESNT_MATCH error was returned by ClickHouse, false otherwise
