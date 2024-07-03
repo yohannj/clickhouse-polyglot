@@ -2,6 +2,8 @@ package com.amendil.common.helper
 
 import com.amendil.common.entities.`type`.*
 
+import scala.collection.immutable.SortedMap
+
 object CHTypeMerger {
 
   lazy val allNumberTypes: Set[CHType] =
@@ -335,7 +337,12 @@ object CHTypeMerger {
     types - t
 
   // format: off
-  private val typeSubstitutionRules = Map(
+  given Ordering[Set[CHType]] = ((k1: Set[CHType], k2: Set[CHType]) =>
+    k1.toSeq.sortBy(_.name).map(_.name).mkString(", ").compareTo(
+      k2.toSeq.sortBy(_.name).map(_.name).mkString(", ")
+  ))
+
+  private val typeSubstitutionRules = SortedMap(
     (Set(
       CHAggregatedType.DateLikeOrDateTime, CHAggregatedType.Interval, CHAggregatedType.NonDecimalNorFloatMax64Bits
     ), CHAggregatedType.Integer64Like),
