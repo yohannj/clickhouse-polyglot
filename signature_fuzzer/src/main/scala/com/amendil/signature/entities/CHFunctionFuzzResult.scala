@@ -1,5 +1,6 @@
 package com.amendil.signature.entities
 
+import com.amendil.common.entities.CHSettingWithValue
 import com.amendil.common.entities.function.{CHFunction, CHFunctionIO}
 import com.amendil.common.entities.function.CHFunctionIO.*
 import com.amendil.common.helper.CHFunctionIOAggregator
@@ -17,6 +18,7 @@ final case class CHFunctionFuzzResult(
     isAggregate: Boolean,
     aliasTo: String,
     modes: Set[CHFunction.Mode],
+    settings: Set[CHSettingWithValue[Boolean]],
     function0Ns: Seq[Function0N],
     function0N1s: Seq[Function0N1],
     function1N1s: Seq[Function1N1],
@@ -99,6 +101,7 @@ final case class CHFunctionFuzzResult(
     specialParametric2Function3Ns: Seq[Parametric2Function3N]
 ) extends StrictLogging:
   logger.trace(s"CHFunctionFuzzResult - init constructor")
+  logger.trace(s"${settings.map(_.asString).mkString}")
 
   val functions =
     // productIterator is an internal method in all "case class" to iterate over its constructor arguments
@@ -133,6 +136,7 @@ object CHFunctionFuzzResult:
       isAggregate = isAggregate,
       aliasTo = aliasTo,
       modes = Set.empty,
+      settings = Set.empty,
       function0Ns = Nil,
       function0N1s = Nil,
       function1N1s = Nil,
@@ -217,6 +221,11 @@ object CHFunctionFuzzResult:
 
   // TODO: Write tests
   def toCHFunction(fuzzResult: CHFunctionFuzzResult): CHFunction =
+    require(
+      fuzzResult.functions.isEmpty || fuzzResult.modes.nonEmpty,
+      s"Found valid signatures for function ${fuzzResult.name}, but no modes were specified."
+    )
+
     val fuzzedFunctionsByKind: Seq[Seq[CHFunctionIO]] =
       // productIterator is an internal method in all "case class" to iterate over its constructor arguments
       fuzzResult.productIterator.toSeq.flatMap {
@@ -239,7 +248,7 @@ object CHFunctionFuzzResult:
       name = fuzzResult.name,
       signatures = signatures,
       modes = fuzzResult.modes.toSeq.sortWith(_.ordinal < _.ordinal),
-      settings = Nil // FIXME
+      settings = fuzzResult.settings.toSeq
     )
 
   private def aggregateFuzzedResults(functions: Seq[CHFunctionIO]): Seq[CHFunctionIO] =

@@ -5,7 +5,6 @@ import com.amendil.common.entities.`type`.*
 import org.scalatest.freespec.AnyFreeSpec
 import org.scalatest.matchers.should.Matchers
 
-import scala.annotation.nowarn
 import scala.util.Try
 
 class CHTypeMergerSpec extends AnyFreeSpec with Matchers:
@@ -657,7 +656,6 @@ class CHTypeMergerSpec extends AnyFreeSpec with Matchers:
           "to Tuple2(Any, Any)" in {
             val actual = CHTypeMerger.mergeInputTypes(tuplesTypes.filter(_._2.innerTypes.size == 2).map(_._1).toSet)
 
-            @nowarn // No Tuple2 implemented yet
             val expected = Set(CHSpecialType.Tuple(Seq(CHAggregatedType.Any, CHAggregatedType.Any)))
 
             actual shouldBe Set.empty // expected
@@ -666,7 +664,6 @@ class CHTypeMergerSpec extends AnyFreeSpec with Matchers:
           "to Tuple3(Any, Any, Any)" in {
             val actual = CHTypeMerger.mergeInputTypes(tuplesTypes.filter(_._2.innerTypes.size == 3).map(_._1).toSet)
 
-            @nowarn // No Tuple3 implemented yet
             val expected =
               Set(CHSpecialType.Tuple(Seq(CHAggregatedType.Any, CHAggregatedType.Any, CHAggregatedType.Any)))
 

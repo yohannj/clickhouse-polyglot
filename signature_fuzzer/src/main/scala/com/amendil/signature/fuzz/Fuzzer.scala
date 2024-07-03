@@ -1,9 +1,11 @@
 package com.amendil.signature.fuzz
 
+import com.amendil.common.entities.CHSettingWithValue
 import com.amendil.common.entities.`type`.CHFuzzableType
-import com.amendil.common.helper.ConcurrencyUtils
-import com.amendil.common.helper.ConcurrencyUtils.executeChain
+import com.amendil.common.entities.function.CHFunctionIO
+import com.amendil.common.helper.ConcurrencyUtils.*
 import com.amendil.common.http.CHClient
+import com.amendil.signature.Settings
 import com.amendil.signature.entities.*
 import com.typesafe.scalalogging.StrictLogging
 
@@ -13,7 +15,7 @@ object Fuzzer extends StrictLogging:
 
   def fuzz(fn: CHFunctionFuzzResult)(using CHClient, ExecutionContext): Future[CHFunctionFuzzResult] =
     fn.name match
-      case "makeDateTime" | "makeDateTime64" | "range" =>
+      case "range" =>
         // Ends up in OOM, to be handled at another time
         Future.successful(fn)
       case "randBinomial" | "hop" | "hopStart" | "hopEnd" | "windowID" =>
@@ -167,6 +169,106 @@ object Fuzzer extends StrictLogging:
           !nonParametricErrorMessages.exists(err.getMessage().contains)
         }
 
+  private[fuzz] def detectMandatorySettingsFromSampleInput(
+      fnName: String,
+      paramsOpt: Option[String] = None,
+      args: String,
+      fuzzOverWindow: Boolean,
+      sourceTable: Option[String] = None
+  )(using client: CHClient, ec: ExecutionContext): Future[Set[CHSettingWithValue[Boolean]]] =
+    // Idea: test remove one setting and test if the query still works. If not => the removed settings was mandatory
+    val query = Fuzzer.query(fnName, paramsOpt, args, fuzzOverWindow, sourceTable)
+    executeInSequence(
+      CHClient.unlockFunctionsSettingNames,
+      setting =>
+        val otherSettings = CHClient.unlockFunctionsSettingNames.filter(_ != setting).map(_.apply(true))
+
+        client.executeNoResult(query, otherSettings).map(_ => None).recover(_ => Some(setting.apply(true)))
+    ).map(_.flatten.toSet)
+
+  private[fuzz] def detectMandatorySettingsFromSampleFunction(
+      fnName: String,
+      sampleFn: CHFunctionIO,
+      fuzzOverWindow: Boolean,
+      sourceTable: Option[String] = None
+  )(using client: CHClient, ec: ExecutionContext): Future[Set[CHSettingWithValue[Boolean]]] =
+    for
+      (paramsOpt, args) <- findAnyValidInput(fnName, sampleFn, fuzzOverWindow)
+      res <- detectMandatorySettingsFromSampleInput(fnName, paramsOpt, args, fuzzOverWindow, sourceTable)
+    yield res
+
+  private[fuzz] def parametricQuery(
+      fnName: String,
+      params: String,
+      args: String,
+      fuzzOverWindow: Boolean,
+      sourceTable: Option[String] = None
+  ): String =
+    val innerQuery =
+      if fuzzOverWindow then
+        s"SELECT $fnName($params)($args) OVER w1 as r, toTypeName(r) as type${sourceTable.map(" FROM " + _).getOrElse("")} WINDOW w1 AS ()"
+      else s"SELECT $fnName($params)($args) as r, toTypeName(r) as type${sourceTable.map(" FROM " + _).getOrElse("")}"
+
+    s"SELECT if(type = 'UInt8' AND (r::Dynamic = 0 OR r::Dynamic = 1), 'Bool', type) as type FROM ($innerQuery)"
+
+  private[fuzz] def query(
+      fnName: String,
+      args: String,
+      fuzzOverWindow: Boolean,
+      sourceTable: Option[String] = None
+  ): String =
+    val innerQuery =
+      if fuzzOverWindow then
+        s"SELECT $fnName($args) OVER w1 as r, toTypeName(r) as type${sourceTable.map(" FROM " + _).getOrElse("")} WINDOW w1 AS ()"
+      else s"SELECT $fnName($args) as r, toTypeName(r) as type${sourceTable.map(" FROM " + _).getOrElse("")}"
+
+    s"SELECT if(type = 'UInt8' AND (r::Dynamic = 0 OR r::Dynamic = 1), 'Bool', type) as type FROM ($innerQuery)"
+
+  private[fuzz] def testSampleInputWithOverWindow(
+      fnName: String,
+      paramsOpt: Option[String] = None,
+      args: String,
+      sourceTable: Option[String] = None
+  )(using client: CHClient, ec: ExecutionContext): Future[Boolean] =
+    val query = Fuzzer.query(fnName, paramsOpt, args, fuzzOverWindow = true, sourceTable = sourceTable)
+    client.executeNoResult(query).map(_ => true).recover(_ => false)
+
+  private[fuzz] def testSampleFunctionWithOverWindow(
+      fnName: String,
+      sampleFn: CHFunctionIO,
+      sourceTable: Option[String] = None
+  )(using client: CHClient, ec: ExecutionContext): Future[Boolean] =
+    for
+      (paramsOpt, args) <- findAnyValidInput(fnName, sampleFn, fuzzOverWindow = false)
+      res <- testSampleInputWithOverWindow(fnName, paramsOpt, args, sourceTable)
+    yield res
+
+  private def findAnyValidInput(fnName: String, fn: CHFunctionIO, fuzzOverWindow: Boolean)(
+      using client: CHClient,
+      ec: ExecutionContext
+  ): Future[(Option[String], String)] =
+    val inputAndQuery =
+      if fn.isParametric then
+        val fuzzingValuesParams = buildFuzzingValuesArgs(
+          fn.parameters.asInstanceOf[Seq[CHFuzzableType]].map(_.fuzzingValues)
+        )
+        val fuzzingValuesArgs = buildFuzzingValuesArgs(
+          fn.arguments.asInstanceOf[Seq[CHFuzzableType]].map(_.fuzzingValues)
+        )
+
+        crossJoin(fuzzingValuesParams, fuzzingValuesArgs).map { (params, args) =>
+          (Some(params), args, parametricQuery(fnName, params, args, fuzzOverWindow))
+        }
+      else
+        buildFuzzingValuesArgs(fn.arguments.asInstanceOf[Seq[CHFuzzableType]].map(_.fuzzingValues))
+          .map(args => (None, args, query(fnName, args, fuzzOverWindow)))
+
+    executeInParallelUntilSuccess(
+      inputAndQuery,
+      (paramsOpt, args, query) => client.executeNoResult(query).map(_ => (paramsOpt, args)),
+      maxConcurrency = Settings.ClickHouse.maxSupportedConcurrency
+    )
+
   private def generateCHFuzzableAbstractTypeCombinations(
       argCount: Int,
       currentArgs: Seq[CHFuzzableAbstractType],
@@ -181,3 +283,14 @@ object Fuzzer extends StrictLogging:
         )
       }.flatten
     else Seq(currentArgs)
+
+  private def query(
+      fnName: String,
+      paramsOpt: Option[String],
+      args: String,
+      fuzzOverWindow: Boolean,
+      sourceTable: Option[String]
+  ): String =
+    paramsOpt match
+      case None         => query(fnName, args, fuzzOverWindow, sourceTable)
+      case Some(params) => parametricQuery(fnName, params, args, fuzzOverWindow, sourceTable)

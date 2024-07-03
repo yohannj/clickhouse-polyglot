@@ -32,31 +32,15 @@ object FuzzerNonParametricFunctions extends StrictLogging:
     logger.debug("fuzzFunction0")
     if fn.isLambda then Future.successful(fn)
     else
-      for
-        fn0Opt <-
-          client
-            .execute(query(fn.name, args = "", fuzzOverWindow = false))
-            .map((resp: CHResponse) =>
-              val outputType = CHTypeParser.getByName(resp.data.head.head.asInstanceOf[String])
-              Some(CHFunctionIO.Function0(outputType))
-            )
-            .recover(_ => None)
-
-        windowedFn0Opt <-
-          client
-            .execute(query(fn.name, args = "", fuzzOverWindow = true))
-            .map((resp: CHResponse) =>
-              val outputType = CHTypeParser.getByName(resp.data.head.head.asInstanceOf[String])
-              Some(CHFunctionIO.Function0(outputType))
-            )
-            .recover(_ => None)
-      yield fn.copy(
-        modes = fn.modes ++
-          Seq(
-            fn0Opt.map(_ => CHFunction.Mode.NoOverWindow),
-            windowedFn0Opt.map(_ => CHFunction.Mode.OverWindow)
-          ).flatten,
-        function0Opt = fn0Opt.orElse(windowedFn0Opt)
+      fuzzNonParametric(
+        fn,
+        argCount = 0,
+        (io: (InputTypes, OutputType)) => toFn(io, CHFunctionIO.Function0.apply),
+        (io: (InputTypes, OutputType)) =>
+          throw Exception("Found a signature with a repeated argument while we are trying to fuzz 0 arguments")
+      ).map((modes, settings, fn0s, _) =>
+        logger.trace(s"fuzzFunction0 - fuzz done")
+        fn.copy(modes = fn.modes ++ modes, settings = fn.settings ++ settings, function0Opt = fn0s.headOption)
       )
 
   private def fuzzFunction1Or0N(
@@ -71,9 +55,9 @@ object FuzzerNonParametricFunctions extends StrictLogging:
         argCount = 1,
         (io: (InputTypes, OutputType)) => toFn(io, CHFunctionIO.Function1.apply),
         (io: (InputTypes, OutputType)) => toFn(io, CHFunctionIO.Function0N.apply)
-      ).map((modes, fn1s, fn0Ns) =>
+      ).map((modes, settings, fn1s, fn0Ns) =>
         logger.trace(s"fuzzFunction1Or0N - fuzz done")
-        fn.copy(modes = fn.modes ++ modes, function1s = fn1s, function0Ns = fn0Ns)
+        fn.copy(modes = fn.modes ++ modes, settings = fn.settings ++ settings, function1s = fn1s, function0Ns = fn0Ns)
       )
 
   private def fuzzFunction2Or1N(
@@ -91,9 +75,9 @@ object FuzzerNonParametricFunctions extends StrictLogging:
         argsOfPreviouslyFoundSignatureOpt = fn.functions
           .find(_.isInstanceOf[CHFunctionIO.Function1])
           .map(f => f.asInstanceOf[CHFunctionIO.Function1].arguments.map(_.asInstanceOf[CHFuzzableType]))
-      ).map((modes, fn2s, fn1Ns) =>
+      ).map((modes, settings, fn2s, fn1Ns) =>
         logger.trace(s"fuzzFunction2Or1N - fuzz done")
-        fn.copy(modes = fn.modes ++ modes, function2s = fn2s, function1Ns = fn1Ns)
+        fn.copy(modes = fn.modes ++ modes, settings = fn.settings ++ settings, function2s = fn2s, function1Ns = fn1Ns)
       )
 
   private def fuzzFunction3Or2N(
@@ -112,9 +96,9 @@ object FuzzerNonParametricFunctions extends StrictLogging:
         argsOfPreviouslyFoundSignatureOpt = fn.functions
           .find(_.isInstanceOf[CHFunctionIO.Function2])
           .map(f => f.asInstanceOf[CHFunctionIO.Function2].arguments.map(_.asInstanceOf[CHFuzzableType]))
-      ).map((modes, fn3s, fn2Ns) =>
+      ).map((modes, settings, fn3s, fn2Ns) =>
         logger.trace(s"fuzzFunction3Or2N - fuzz done")
-        fn.copy(modes = fn.modes ++ modes, function3s = fn3s, function2Ns = fn2Ns)
+        fn.copy(modes = fn.modes ++ modes, settings = fn.settings ++ settings, function3s = fn3s, function2Ns = fn2Ns)
       )
 
   private def fuzzNonParametric[U1 <: CHFunctionIO, U2 <: CHFunctionIO](
@@ -123,14 +107,17 @@ object FuzzerNonParametricFunctions extends StrictLogging:
       fnConstructorFiniteArgs: ((InputTypes, OutputType)) => U1,
       fnConstructorRepeatedArgs: ((InputTypes, OutputType)) => U2,
       argsOfPreviouslyFoundSignatureOpt: Option[Seq[CHFuzzableType]] = None
-  )(using client: CHClient, ec: ExecutionContext): Future[(Seq[CHFunction.Mode], Seq[U1], Seq[U2])] =
+  )(
+      using client: CHClient,
+      ec: ExecutionContext
+  ): Future[(Set[CHFunction.Mode], Set[CHSettingWithValue[Boolean]], Seq[U1], Seq[U2])] =
     val skipFuzzingF =
       if Settings.Fuzzer.skipFuzzingOnArgumentMismatch
       then checkArgMismatch(fn.name, argCount, argsOfPreviouslyFoundSignatureOpt)
       else Future.successful(false)
 
     skipFuzzingF.flatMap(skipFuzzing =>
-      if skipFuzzing then Future.successful((Nil, Nil, Nil))
+      if skipFuzzing then Future.successful((Set.empty, Set.empty, Nil, Nil))
       else if fn.atLeastOneSignatureFound then
         // We know whether the function requires/supports or not `OVER window` so we can bruteforce only one of the valid values
         fuzzNonParametricSingleMode(
@@ -139,38 +126,34 @@ object FuzzerNonParametricFunctions extends StrictLogging:
           fuzzOverWindow = !fn.modes.contains(CHFunction.Mode.NoOverWindow),
           fnConstructorFiniteArgs,
           fnConstructorRepeatedArgs
-        ).map((finiteFn, repeatedFn) => (Nil, finiteFn, repeatedFn))
+        ).map((finiteFn, repeatedFn) => (Set.empty, Set.empty, finiteFn, repeatedFn))
       else
-        // We don't yet know if the function requires/supports or not `OVER window` so we need to brute force them all
-        // First check without OVER window
-        fuzzNonParametricSingleMode(
-          fn.name,
-          argCount,
-          fuzzOverWindow = false,
-          fnConstructorFiniteArgs,
-          fnConstructorRepeatedArgs
-        ).flatMap((finiteFn, repeatedFn) =>
-          // Success without OVER window, let's try a sample function with OVER window
-          val sampleFn = finiteFn.headOption.orElse(repeatedFn.headOption).get
+        // format: off
+        for {
+          // We don't yet know if the function requires/supports or not `OVER window` so we need to brute force them all
+          // First check without OVER window
+          (modes, finiteFn, repeatedFn) <-
+            fuzzNonParametricSingleMode(fn.name, argCount, fuzzOverWindow = false, fnConstructorFiniteArgs, fnConstructorRepeatedArgs)
+              .flatMap((finiteFn, repeatedFn) =>
+                // Success without OVER window, let's try a sample function with OVER window
+                val sampleFn = finiteFn.headOption.orElse(repeatedFn.headOption).get
 
-          val queries =
-            buildFuzzingValuesArgs(sampleFn.arguments.asInstanceOf[Seq[CHFuzzableType]].map(_.fuzzingValues))
-              .map(args => query(fn.name, args, fuzzOverWindow = true))
+                testSampleFunctionWithOverWindow(fn.name, sampleFn).map( supportOverWindow =>
+                  if supportOverWindow
+                  then (Set(CHFunction.Mode.OverWindow, CHFunction.Mode.NoOverWindow), finiteFn, repeatedFn)
+                  else (Set(CHFunction.Mode.NoOverWindow), finiteFn, repeatedFn)
+                )
+              ).recoverWith(_ =>
+                // Failure without OVER window, fuzz with OVER window
+                fuzzNonParametricSingleMode(fn.name, argCount, fuzzOverWindow = true, fnConstructorFiniteArgs, fnConstructorRepeatedArgs)
+                  .map((finiteFn, repeatedFn) => (Set(CHFunction.Mode.OverWindow), finiteFn, repeatedFn))
+                  .recover(_ => (Set.empty, Nil, Nil)) // Nothing worked
+              )
 
-          executeInParallelUntilSuccess(queries, client.executeNoResult, Settings.ClickHouse.maxSupportedConcurrency)
-            .map(_ => (Seq(CHFunction.Mode.OverWindow, CHFunction.Mode.NoOverWindow), finiteFn, repeatedFn))
-            .recover(_ => (Seq(CHFunction.Mode.NoOverWindow), finiteFn, repeatedFn))
-        ).recoverWith(_ =>
-          // Failure without OVER window, fuzz with OVER window
-          fuzzNonParametricSingleMode(
-            fn.name,
-            argCount,
-            fuzzOverWindow = true,
-            fnConstructorFiniteArgs,
-            fnConstructorRepeatedArgs
-          ).map((finiteFn, repeatedFn) => (Seq(CHFunction.Mode.OverWindow), finiteFn, repeatedFn))
-            .recover(_ => (Nil, Nil, Nil)) // Nothing worked
-        )
+          sampleFn = finiteFn.headOption.orElse(repeatedFn.headOption).get
+          settings <- detectMandatorySettingsFromSampleFunction(fn.name, sampleFn, fuzzOverWindow = !(fn.modes ++ modes).contains(CHFunction.Mode.NoOverWindow))
+        } yield (modes, settings, finiteFn, repeatedFn)
+        // format: on
     )
 
   private def fuzzNonParametricSingleMode[U1 <: CHFunctionIO, U2 <: CHFunctionIO](
@@ -184,7 +167,7 @@ object FuzzerNonParametricFunctions extends StrictLogging:
       functions: Seq[(InputTypes, OutputType)] <- fuzzFiniteArgsFunctions(fnName, argCount, fuzzOverWindow)
 
       fnHasRepeatedArgs: Boolean <-
-        if functions.isEmpty then Future.successful(false)
+        if functions.isEmpty || argCount == 0 then Future.successful(false)
         else testRepeatedArgsFunctions(fnName, functions.head._1, fuzzOverWindow)
     yield
       if fnHasRepeatedArgs then (Nil, functions.map(fnConstructorRepeatedArgs))
@@ -320,7 +303,7 @@ object FuzzerNonParametricFunctions extends StrictLogging:
       (abstractTypes: Seq[CHFuzzableAbstractType]) =>
         executeInParallelUntilSuccess(
           buildFuzzingValuesArgs(abstractTypes.map(_.fuzzingValues)).map(args => query(fnName, args, fuzzOverWindow)),
-          client.executeNoResult,
+          client.executeNoResult(_),
           maxConcurrency = Settings.ClickHouse.maxSupportedConcurrencyInnerLoop
         ).map(_ => abstractTypes),
       maxConcurrency = Settings.ClickHouse.maxSupportedConcurrencyOuterLoop
@@ -335,7 +318,7 @@ object FuzzerNonParametricFunctions extends StrictLogging:
       fuzzOverWindow: Boolean
   )(using client: CHClient, ec: ExecutionContext): Future[Seq[Seq[(CHFuzzableAbstractType, Seq[CHFuzzableType])]]] =
     if abstractInputs.nonEmpty then
-      if abstractInputs.head.size == 1 then
+      if abstractInputs.head.size <= 1 then
         Future.successful(
           abstractInputs.map(_.map(abstractType => (abstractType, abstractType.chFuzzableTypes)))
         )
@@ -361,7 +344,7 @@ object FuzzerNonParametricFunctions extends StrictLogging:
 
                     executeInSequenceUntilSuccess( // Check if any value of the current possible type is valid
                       queries,
-                      client.executeNoResult
+                      client.executeNoResult(_)
                     ).map(_ => fuzzableType)
                 ).map { filteredFuzzableTypes =>
                   if filteredFuzzableTypes.isEmpty then
@@ -419,7 +402,7 @@ object FuzzerNonParametricFunctions extends StrictLogging:
 
           executeInSequenceUntilSuccess(
             queries,
-            client.executeNoResult
+            client.executeNoResult(_)
           ).map(_ => signature)
         ,
         maxConcurrency = Settings.ClickHouse.maxSupportedConcurrency
@@ -448,15 +431,8 @@ object FuzzerNonParametricFunctions extends StrictLogging:
 
     executeInSequenceUntilSuccess(
       (fuzzingValuesArgsV1 ++ fuzzingValuesArgsV2).map(args => query(fnName, args, fuzzOverWindow)),
-      client.executeNoResult
+      client.executeNoResult(_)
     ).map(_ => true).recover(_ => false)
-
-  private def query(fnName: String, args: String, fuzzOverWindow: Boolean): String =
-    val innerQuery =
-      if fuzzOverWindow then s"SELECT $fnName($args) OVER w1 as r, toTypeName(r) as type WINDOW w1 AS ()"
-      else s"SELECT $fnName($args) as r, toTypeName(r) as type"
-
-    s"SELECT if(type = 'UInt8' AND (r = 0 OR r = 1), 'Bool', type) as type FROM ($innerQuery)"
 
   /**
     * @return true if it might be possible to call the function with the provided number of arguments, false otherwise
@@ -488,6 +464,14 @@ object FuzzerNonParametricFunctions extends StrictLogging:
             "(TOO_MANY_ARGUMENTS_FOR_FUNCTION)"
           ).exists(err.getMessage().contains)
         }
+
+  private def toFn[T <: CHFunctionIO](
+      io: (InputTypes, OutputType),
+      functionConstructor: (CHType) => T
+  ): T =
+    io._1 match
+      case Seq() => functionConstructor(io._2)
+      case _     => throw Exception(s"Expected 0 arguments, but found ${io._1.size} arguments")
 
   private def toFn[T <: CHFunctionIO](
       io: (InputTypes, OutputType),

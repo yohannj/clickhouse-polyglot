@@ -1,5 +1,6 @@
 package com.amendil.signature.fuzz
 
+import com.amendil.common.entities.CHSettingWithValue
 import com.amendil.common.entities.`type`.{CHFuzzableType, CHType}
 import com.amendil.common.entities.function.{CHFunction, CHFunctionIO}
 import com.amendil.common.entities.function.CHFunctionIO.*
@@ -73,10 +74,11 @@ object FuzzerParametricFunctions extends StrictLogging:
       (io: (ParametricFunctionInput, OutputType)) => toFn(io, CHFunctionIO.Parametric0Function0N.apply),
       (io: (ParametricFunctionInput, OutputType)) =>
         throw new IllegalArgumentException("No parameters provided, cannot have an repeated number of parameters.")
-    ).map((modes, p0Fn1s, _, p0Fn0Ns, _) =>
+    ).map((modes, settings, p0Fn1s, _, p0Fn0Ns, _) =>
       logger.trace(s"fuzzFunction1Or0NWith0Parameter - fuzz done")
       fn.copy(
         modes = fn.modes ++ modes,
+        settings = fn.settings ++ settings,
         parametric0Function1s = p0Fn1s,
         parametric0Function0Ns = p0Fn0Ns
       )
@@ -101,10 +103,11 @@ object FuzzerParametricFunctions extends StrictLogging:
         (io: (ParametricFunctionInput, OutputType)) => toFn(io, CHFunctionIO.Parametric0Function1N.apply),
         (io: (ParametricFunctionInput, OutputType)) =>
           throw new IllegalArgumentException("No parameters provided, cannot have an repeated number of parameters.")
-      ).map((modes, p0Fn2s, _, p0Fn1Ns, _) =>
+      ).map((modes, settings, p0Fn2s, _, p0Fn1Ns, _) =>
         logger.trace(s"fuzzFunction2Or1NWith0Parameter - fuzz done")
         fn.copy(
           modes = fn.modes ++ modes,
+          settings = fn.settings ++ settings,
           parametric0Function2s = p0Fn2s,
           parametric0Function1Ns = p0Fn1Ns
         )
@@ -129,10 +132,11 @@ object FuzzerParametricFunctions extends StrictLogging:
         (io: (ParametricFunctionInput, OutputType)) => toFn(io, CHFunctionIO.Parametric0Function2N.apply),
         (io: (ParametricFunctionInput, OutputType)) =>
           throw new IllegalArgumentException("No parameters provided, cannot have an repeated number of parameters.")
-      ).map((modes, p0Fn3s, _, p0Fn2Ns, _) =>
+      ).map((modes, settings, p0Fn3s, _, p0Fn2Ns, _) =>
         logger.trace(s"fuzzFunction3Or2NWith0Parameter - fuzz done")
         fn.copy(
           modes = fn.modes ++ modes,
+          settings = fn.settings ++ settings,
           parametric0Function3s = p0Fn3s,
           parametric0Function2Ns = p0Fn2Ns
         )
@@ -150,10 +154,11 @@ object FuzzerParametricFunctions extends StrictLogging:
       (io: (ParametricFunctionInput, OutputType)) => toFn(io, CHFunctionIO.Parametric0NFunction1.apply),
       (io: (ParametricFunctionInput, OutputType)) => toFn(io, CHFunctionIO.Parametric1Function0N.apply),
       (io: (ParametricFunctionInput, OutputType)) => toFn(io, CHFunctionIO.Parametric0NFunction0N.apply)
-    ).map((modes, p1Fn1s, p0NFn1s, p1Fn0Ns, p0NFn0Ns) =>
+    ).map((modes, settings, p1Fn1s, p0NFn1s, p1Fn0Ns, p0NFn0Ns) =>
       logger.trace(s"fuzzFunction1Or0NWith1Or0NParameter - fuzz done")
       fn.copy(
         modes = fn.modes ++ modes,
+        settings = fn.settings ++ settings,
         parametric1Function1s = p1Fn1s,
         parametric0NFunction1s = p0NFn1s,
         parametric1Function0Ns = p1Fn0Ns,
@@ -174,7 +179,7 @@ object FuzzerParametricFunctions extends StrictLogging:
         (io: (ParametricFunctionInput, OutputType)) => toFn(io, CHFunctionIO.Parametric1NFunction1.apply),
         (io: (ParametricFunctionInput, OutputType)) => toFn(io, CHFunctionIO.Parametric2Function0N.apply),
         (io: (ParametricFunctionInput, OutputType)) => toFn(io, CHFunctionIO.Parametric1NFunction0N.apply)
-      ).map((modes, p2Fn1s, p1NFn1s, p2Fn0Ns, p1NFn0Ns) =>
+      ).map((modes, settings, p2Fn1s, p1NFn1s, p2Fn0Ns, p1NFn0Ns) =>
         logger.trace(s"${p2Fn1s.size}")
         logger.trace(s"${p1NFn1s.size}")
         logger.trace(s"${p2Fn0Ns.size}")
@@ -182,6 +187,7 @@ object FuzzerParametricFunctions extends StrictLogging:
         logger.trace(s"fuzzFunction1Or0NWith2Or1NParameterForHardcodedMethods - fuzz done")
         fn.copy(
           modes = fn.modes ++ modes,
+          settings = fn.settings ++ settings,
           parametric2Function1s = p2Fn1s,
           parametric1NFunction1s = p1NFn1s,
           parametric2Function0Ns = p2Fn0Ns,
@@ -207,10 +213,11 @@ object FuzzerParametricFunctions extends StrictLogging:
         (io: (ParametricFunctionInput, OutputType)) => toFn(io, CHFunctionIO.Parametric0NFunction2.apply),
         (io: (ParametricFunctionInput, OutputType)) => toFn(io, CHFunctionIO.Parametric1Function1N.apply),
         (io: (ParametricFunctionInput, OutputType)) => toFn(io, CHFunctionIO.Parametric0NFunction1N.apply)
-      ).map((modes, p1Fn2s, p0NFn2s, p1Fn1Ns, p0NFn1Ns) =>
+      ).map((modes, settings, p1Fn2s, p0NFn2s, p1Fn1Ns, p0NFn1Ns) =>
         logger.trace(s"fuzzFunction2Or1NWith1Or0NParameter - fuzz done")
         fn.copy(
           modes = fn.modes ++ modes,
+          settings = fn.settings ++ settings,
           parametric1Function2s = p1Fn2s,
           parametric0NFunction2s = p0NFn2s,
           parametric1Function1Ns = p1Fn1Ns,
@@ -239,10 +246,11 @@ object FuzzerParametricFunctions extends StrictLogging:
         (io: (ParametricFunctionInput, OutputType)) => toFn(io, CHFunctionIO.Parametric0NFunction3.apply),
         (io: (ParametricFunctionInput, OutputType)) => toFn(io, CHFunctionIO.Parametric1Function2N.apply),
         (io: (ParametricFunctionInput, OutputType)) => toFn(io, CHFunctionIO.Parametric0NFunction2N.apply)
-      ).map((modes, p1Fn3s, p0NFn3s, p1Fn2Ns, p0NFn2Ns) =>
+      ).map((modes, settings, p1Fn3s, p0NFn3s, p1Fn2Ns, p0NFn2Ns) =>
         logger.trace(s"fuzzFunction3Or2NWith1Or0NParameter - fuzz done")
         fn.copy(
           modes = fn.modes ++ modes,
+          settings = fn.settings ++ settings,
           parametric1Function3s = p1Fn3s,
           parametric0NFunction3s = p0NFn3s,
           parametric1Function2Ns = p1Fn2Ns,
@@ -636,14 +644,17 @@ object FuzzerParametricFunctions extends StrictLogging:
       fnConstructorRepeatedParamsFiniteArgs: ((ParametricFunctionInput, OutputType)) => U2,
       fnConstructorFiniteParamsRepeatedArgs: ((ParametricFunctionInput, OutputType)) => U3,
       fnConstructorRepeatedParamsRepeatedArgs: ((ParametricFunctionInput, OutputType)) => U4
-  )(using client: CHClient, ec: ExecutionContext): Future[(Seq[CHFunction.Mode], Seq[U1], Seq[U2], Seq[U3], Seq[U4])] =
+  )(
+      using client: CHClient,
+      ec: ExecutionContext
+  ): Future[(Set[CHFunction.Mode], Set[CHSettingWithValue[Boolean]], Seq[U1], Seq[U2], Seq[U3], Seq[U4])] =
     val skipFuzzingF =
       if Settings.Fuzzer.skipFuzzingOnArgumentMismatch
       then checkArgMismatch(fn.name, paramCount, argCount)
       else Future.successful(false)
 
     skipFuzzingF.flatMap(skipFuzzing =>
-      if skipFuzzing then Future.successful((Nil, Nil, Nil, Nil, Nil))
+      if skipFuzzing then Future.successful((Set.empty, Set.empty, Nil, Nil, Nil, Nil))
       else if fn.atLeastOneSignatureFound then
         // We know whether the function requires/supports or not `OVER window` so we can bruteforce only one of the valid values
         fuzzParametricSingleMode(
@@ -658,82 +669,48 @@ object FuzzerParametricFunctions extends StrictLogging:
         ).map(
             // format: off
             (finiteParamsFiniteArgsFn, repeatedParamsFiniteArgsFn, finiteParamsRepeatedArgsFn, repeatedParamsRepeatedArgsFn) =>
-              (Nil, finiteParamsFiniteArgsFn, repeatedParamsFiniteArgsFn, finiteParamsRepeatedArgsFn, repeatedParamsRepeatedArgsFn)
+              (Set.empty, Set.empty, finiteParamsFiniteArgsFn, repeatedParamsFiniteArgsFn, finiteParamsRepeatedArgsFn, repeatedParamsRepeatedArgsFn)
             // format: on
         )
       else
-        // We don't yet know if the function requires/supports or not `OVER window` so we need to brute force them all
-        // First check without OVER window
-        fuzzParametricSingleMode(
-          fn.name,
-          paramCount,
-          argCount,
-          fuzzOverWindow = false,
-          fnConstructorFiniteParamsFiniteArgs,
-          fnConstructorRepeatedParamsFiniteArgs,
-          fnConstructorFiniteParamsRepeatedArgs,
-          fnConstructorRepeatedParamsRepeatedArgs
-        ).flatMap {
-          case (
-                finiteParamsFiniteArgsFn,
-                repeatedParamsFiniteArgsFn,
-                finiteParamsRepeatedArgsFn,
-                repeatedParamsRepeatedArgsFn
-              ) =>
-            // Success without OVER window, let's try a sample function with OVER window
-            val sampleFn = finiteParamsFiniteArgsFn.headOption
+        // format: off
+        for {
+          // We don't yet know if the function requires/supports or not `OVER window` so we need to brute force them all
+          // First check without OVER window
+          (modes, finiteParamsFiniteArgsFn, repeatedParamsFiniteArgsFn, finiteParamsRepeatedArgsFn, repeatedParamsRepeatedArgsFn) <-
+            fuzzParametricSingleMode(fn.name, paramCount, argCount, fuzzOverWindow = false, fnConstructorFiniteParamsFiniteArgs, fnConstructorRepeatedParamsFiniteArgs, fnConstructorFiniteParamsRepeatedArgs, fnConstructorRepeatedParamsRepeatedArgs)
+              .flatMap((finiteParamsFiniteArgsFn, repeatedParamsFiniteArgsFn, finiteParamsRepeatedArgsFn, repeatedParamsRepeatedArgsFn) =>
+                // Success without OVER window, let's try a sample function with OVER window
+                val sampleFn =
+                  finiteParamsFiniteArgsFn.headOption
+                    .orElse(repeatedParamsFiniteArgsFn.headOption)
+                    .orElse(finiteParamsRepeatedArgsFn.headOption)
+                    .orElse(repeatedParamsRepeatedArgsFn.headOption)
+                    .get
+
+                testSampleFunctionWithOverWindow(fn.name, sampleFn).map( supportOverWindow =>
+                  if supportOverWindow
+                  then (Set(CHFunction.Mode.OverWindow, CHFunction.Mode.NoOverWindow), finiteParamsFiniteArgsFn, repeatedParamsFiniteArgsFn, finiteParamsRepeatedArgsFn, repeatedParamsRepeatedArgsFn)
+                  else (Set(CHFunction.Mode.NoOverWindow), finiteParamsFiniteArgsFn, repeatedParamsFiniteArgsFn, finiteParamsRepeatedArgsFn, repeatedParamsRepeatedArgsFn)
+                )
+              ).recoverWith(_ =>
+                // Failure without OVER window, fuzz with OVER window
+                fuzzParametricSingleMode(fn.name, paramCount, argCount, fuzzOverWindow = true, fnConstructorFiniteParamsFiniteArgs, fnConstructorRepeatedParamsFiniteArgs, fnConstructorFiniteParamsRepeatedArgs, fnConstructorRepeatedParamsRepeatedArgs).map(
+                  (finiteParamsFiniteArgsFn, repeatedParamsFiniteArgsFn, finiteParamsRepeatedArgsFn, repeatedParamsRepeatedArgsFn) =>
+                    (Set(CHFunction.Mode.OverWindow), finiteParamsFiniteArgsFn, repeatedParamsFiniteArgsFn, finiteParamsRepeatedArgsFn, repeatedParamsRepeatedArgsFn)
+                ).recover(_ => (Set.empty, Nil, Nil, Nil, Nil)) // Nothing worked
+              )
+
+          sampleFn =
+            finiteParamsFiniteArgsFn.headOption
               .orElse(repeatedParamsFiniteArgsFn.headOption)
               .orElse(finiteParamsRepeatedArgsFn.headOption)
               .orElse(repeatedParamsRepeatedArgsFn.headOption)
               .get
 
-            val fuzzingValuesParams =
-              buildFuzzingValuesArgs(sampleFn.parameters.asInstanceOf[Seq[CHFuzzableType]].map(_.fuzzingValues))
-            val fuzzingValuesArgs =
-              buildFuzzingValuesArgs(sampleFn.arguments.asInstanceOf[Seq[CHFuzzableType]].map(_.fuzzingValues))
-
-            val queries =
-              crossJoin(fuzzingValuesParams, fuzzingValuesArgs).map { (params, args) =>
-                query(fn.name, params, args, fuzzOverWindow = true)
-              }
-
-            executeInParallelUntilSuccess(queries, client.executeNoResult, Settings.ClickHouse.maxSupportedConcurrency)
-              .map(_ =>
-                (
-                  Seq(CHFunction.Mode.OverWindow, CHFunction.Mode.NoOverWindow),
-                  finiteParamsFiniteArgsFn,
-                  repeatedParamsFiniteArgsFn,
-                  finiteParamsRepeatedArgsFn,
-                  repeatedParamsRepeatedArgsFn
-                )
-              )
-              .recover(_ =>
-                (
-                  Seq(CHFunction.Mode.NoOverWindow),
-                  finiteParamsFiniteArgsFn,
-                  repeatedParamsFiniteArgsFn,
-                  finiteParamsRepeatedArgsFn,
-                  repeatedParamsRepeatedArgsFn
-                )
-              )
-        }.recoverWith(_ =>
-          // Failure without OVER window, fuzz with OVER window
-          fuzzParametricSingleMode(
-            fn.name,
-            paramCount,
-            argCount,
-            fuzzOverWindow = true,
-            fnConstructorFiniteParamsFiniteArgs,
-            fnConstructorRepeatedParamsFiniteArgs,
-            fnConstructorFiniteParamsRepeatedArgs,
-            fnConstructorRepeatedParamsRepeatedArgs
-          ).map(
-              // format: off
-              (finiteParamsFiniteArgsFn, repeatedParamsFiniteArgsFn, finiteParamsRepeatedArgsFn, repeatedParamsRepeatedArgsFn) =>
-                (Seq(CHFunction.Mode.OverWindow), finiteParamsFiniteArgsFn, repeatedParamsFiniteArgsFn, finiteParamsRepeatedArgsFn, repeatedParamsRepeatedArgsFn)
-              // format: on
-          ).recover(_ => (Nil, Nil, Nil, Nil, Nil)) // Nothing worked
-        )
+          settings <- detectMandatorySettingsFromSampleFunction(fn.name, sampleFn, fuzzOverWindow = !(fn.modes ++ modes).contains(CHFunction.Mode.NoOverWindow))
+        } yield (modes, settings, finiteParamsFiniteArgsFn, repeatedParamsFiniteArgsFn, finiteParamsRepeatedArgsFn, repeatedParamsRepeatedArgsFn)
+        // format: on
     )
 
   private def fuzzParametricSingleMode[U1 <: CHFunctionIO, U2 <: CHFunctionIO, U3 <: CHFunctionIO, U4 <: CHFunctionIO](
@@ -839,7 +816,7 @@ object FuzzerParametricFunctions extends StrictLogging:
             val queries = crossJoin(
               buildFuzzingValuesArgs(paramAbstractTypes.map(_.exhaustiveFuzzingValues)),
               buildFuzzingValuesArgs(nonParamTypes.map(_.fuzzingValues))
-            ).map { (paramArgs, nonParamArgs) => query(fnName, paramArgs, nonParamArgs, fuzzOverWindow) }
+            ).map { (paramArgs, nonParamArgs) => parametricQuery(fnName, paramArgs, nonParamArgs, fuzzOverWindow) }
 
             (nonParamTypes, queries)
           }
@@ -856,7 +833,7 @@ object FuzzerParametricFunctions extends StrictLogging:
             val queries = crossJoin(
               buildFuzzingValuesArgs(paramTypes.map(_.fuzzingValues)),
               buildFuzzingValuesArgs(nonParamAbstractTypes.map(_.exhaustiveFuzzingValues))
-            ).map { (paramArgs, nonParamArgs) => query(fnName, paramArgs, nonParamArgs, fuzzOverWindow) }
+            ).map { (paramArgs, nonParamArgs) => parametricQuery(fnName, paramArgs, nonParamArgs, fuzzOverWindow) }
 
             (paramTypes, queries)
           }
@@ -890,7 +867,7 @@ object FuzzerParametricFunctions extends StrictLogging:
             (
                 paramTypes,
                 queries
-            ) => executeInSequenceUntilSuccess(queries, client.executeNoResult).map(_ => paramTypes),
+            ) => executeInSequenceUntilSuccess(queries, client.executeNoResult(_)).map(_ => paramTypes),
             maxConcurrency = Settings.ClickHouse.maxSupportedConcurrency
           )
 
@@ -970,8 +947,8 @@ object FuzzerParametricFunctions extends StrictLogging:
           crossJoin(
             buildFuzzingValuesArgs(paramTypes.map(_.fuzzingValues)),
             buildFuzzingValuesArgs(nonParamTypes.map(_.fuzzingValues))
-          ).map { (paramArgs, nonParamArgs) => query(fnName, paramArgs, nonParamArgs, fuzzOverWindow) },
-          client.executeNoResult,
+          ).map { (paramArgs, nonParamArgs) => parametricQuery(fnName, paramArgs, nonParamArgs, fuzzOverWindow) },
+          client.executeNoResult(_),
           maxConcurrency = Settings.ClickHouse.maxSupportedConcurrencyInnerLoop
         ).map(_ => (paramTypes, nonParamTypes)),
       maxConcurrency = Settings.ClickHouse.maxSupportedConcurrencyOuterLoop
@@ -1047,9 +1024,9 @@ object FuzzerParametricFunctions extends StrictLogging:
 
     executeInSequenceUntilSuccess(
       crossJoin(fuzzingValuesParams, fuzzingValuesArgsV1 ++ fuzzingValuesArgsV2).map { (params, args) =>
-        query(fnName, params, args, fuzzOverWindow)
+        parametricQuery(fnName, params, args, fuzzOverWindow)
       },
-      client.executeNoResult
+      client.executeNoResult(_)
     ).map(_ => true).recover(_ => false)
 
   /**
@@ -1072,9 +1049,9 @@ object FuzzerParametricFunctions extends StrictLogging:
 
     executeInSequenceUntilSuccess(
       crossJoin(fuzzingValuesParams, fuzzingValuesArgs).map { (params, args) =>
-        query(fnName, params, args, fuzzOverWindow)
+        parametricQuery(fnName, params, args, fuzzOverWindow)
       },
-      client.executeNoResult
+      client.executeNoResult(_)
     ).map(_ => true).recover(_ => false)
 
   private def testAddOneParameter(
@@ -1093,9 +1070,9 @@ object FuzzerParametricFunctions extends StrictLogging:
 
         executeInSequenceUntilSuccess(
           crossJoin(fuzzingValuesParams, fuzzingValuesArgs).map { (params, args) =>
-            query(fnName, params, args, fuzzOverWindow)
+            parametricQuery(fnName, params, args, fuzzOverWindow)
           },
-          client.executeNoResult
+          client.executeNoResult(_)
         ).map(_ => additionalParamType)
       ,
       maxConcurrency = Settings.ClickHouse.maxSupportedConcurrency
@@ -1110,13 +1087,6 @@ object FuzzerParametricFunctions extends StrictLogging:
         ).map { isRepeatedParamsFunction => (validAdditionalParameters, isRepeatedParamsFunction) }
     }
 
-  private def query(fnName: String, params: String, args: String, fuzzOverWindow: Boolean): String =
-    val innerQuery =
-      if fuzzOverWindow then s"SELECT $fnName($params)($args) OVER w1 as r, toTypeName(r) as type WINDOW w1 AS ()"
-      else s"SELECT $fnName($params)($args) as r, toTypeName(r) as type"
-
-    s"SELECT if(type = 'UInt8' AND (r = 0 OR r = 1), 'Bool', type) as type FROM ($innerQuery)"
-
   /**
     * @return true if a NUMBER_OF_ARGUMENTS_DOESNT_MATCH error was returned by ClickHouse, false otherwise
     */
@@ -1128,7 +1098,7 @@ object FuzzerParametricFunctions extends StrictLogging:
     else
       client
         .executeNoResult(
-          query(fnName, Range(0, paramCount).mkString(", "), Range(0, argCount).mkString(", "), false)
+          parametricQuery(fnName, Range(0, paramCount).mkString(", "), Range(0, argCount).mkString(", "), false)
         )
         .map(_ => false)
         .recover { err =>

@@ -99,6 +99,9 @@ private def fuzzFunctionsAndSave(
     val functionsWithoutASignature: Seq[String] =
       functionsFuzzResults.filterNot(_.atLeastOneSignatureFound).map(_.name)
 
+    logger.info(s"===============================================================")
+    logger.info(s"100% - Fuzz finished")
+    logger.info(s"===============================================================")
     logger.info(
       s"Rate of functions with a signature found: ${functionCount - functionsWithoutASignature.size}/$functionCount"
     )

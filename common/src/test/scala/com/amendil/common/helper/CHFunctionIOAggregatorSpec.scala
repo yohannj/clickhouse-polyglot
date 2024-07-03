@@ -15,8 +15,14 @@ class CHFunctionIOAggregatorSpec extends AnyFreeSpec with Matchers:
   "CHFunctionIOAggregator" - {
     given ExecutionContext = ExecutionContext.fromExecutorService(Executors.newFixedThreadPool(1))
     given client: CHClient = new CHClient:
-      override def execute(query: String): Future[CHResponse] = ???
-      override def executeNoResult(query: String): Future[Unit] = ???
+      override def execute(
+          query: String,
+          unlockFunctionsSettings: Seq[CHSettingWithValue[Boolean]]
+      ): Future[CHResponse] = ???
+      override def executeNoResult(
+          query: String,
+          unlockFunctionsSettings: Seq[CHSettingWithValue[Boolean]]
+      ): Future[Unit] = ???
       override def executeNoResultNoSettings(query: String): Future[Unit] = ???
 
     "should not aggregate signatures" - {

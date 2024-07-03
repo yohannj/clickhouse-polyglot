@@ -803,7 +803,8 @@ object CHTypeMerger {
     allArrayNumberTypes.map(t => (Set(t, CHFuzzableType.ArrayBoolean), Seq(t))).toMap ++
     allBitmapNumberTypes.map(t => (Set(t, CHFuzzableType.BitmapBoolean), Seq(t))).toMap ++
     allMapNumberTypes.map(t => (Set(t, CHFuzzableType.MapBooleanInt), Seq(t))).toMap ++
-    allTuple1NumberTypes.map(t => (Set(t, CHFuzzableType.Tuple1Boolean), Seq(t))).toMap
+    allTuple1NumberTypes.map(t => (Set(t, CHFuzzableType.Tuple1Boolean), Seq(t))).toMap ++
+    CHFuzzableType.values.toSet.map(t => (Set(t, CHFuzzableType.Dynamic), Seq(t))).toMap
   // format: on
 
 }

@@ -68,4 +68,4 @@ enum CHBaseType(val name: String):
   case UInt64 extends CHBaseType("UInt64")
   case UInt8 extends CHBaseType("UInt8")
   case UUID extends CHBaseType("UUID")
-  case Variant extends CHBaseType("Variant")
+  // case Variant extends CHBaseType("Variant")

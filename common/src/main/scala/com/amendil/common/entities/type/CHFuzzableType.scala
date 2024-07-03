@@ -1898,7 +1898,8 @@ enum CHFuzzableType(
           "'uint64Value'::FixedString(53)",
           "'uint8Value'::FixedString(53)",
           "'uuidValue'::FixedString(53)",
-          "'Dec'::FixedString(53)"
+          "'Dec'::FixedString(53)",
+          "'.'::FixedString(1)"
         )
       )
   // Separate from String because those values are specific to some functions.
@@ -1923,7 +1924,8 @@ enum CHFuzzableType(
           "'POINT (1.2 3.4)'",
           "'LINESTRING (1 1, 2 2, 3 3, 1 1)'",
           "'column1 String, column2 UInt32, column3 Array(String)'",
-          "'Dec'::String"
+          "'Dec'::String",
+          "'.'::String"
         )
       )
   case SpecialArrayFixedString

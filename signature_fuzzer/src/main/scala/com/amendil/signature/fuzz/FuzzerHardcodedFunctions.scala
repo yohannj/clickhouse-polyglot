@@ -1,5 +1,6 @@
 package com.amendil.signature.fuzz
 
+import com.amendil.common.Settings as CommonSettings
 import com.amendil.common.entities.*
 import com.amendil.common.entities.`type`.*
 import com.amendil.common.entities.function.{CHFunction, CHFunctionIO}
@@ -156,17 +157,28 @@ object FuzzerHardcodedFunctions extends StrictLogging {
   )(using client: CHClient, ec: ExecutionContext): Future[CHFunctionFuzzResult] =
     // Cast methods can return any kind of type, depending on the value of a ClickHouseType.
     // This is an edge case not automatically handled by this fuzzer, and it is not worth it to handle it.
-    for isValidSignature <-
-        client.executeNoResult(s"SELECT toTypeName(${fn.name}(1, 'UInt32'))").map(_ => true).recover(_ => false)
+    for
+      isValidSignature <- client
+        .executeNoResult(s"SELECT toTypeName(${fn.name}(1, 'UInt32'))")
+        .map(_ => true)
+        .recover(_ => false)
+      sampleIO = Function2(CHFuzzableType.UInt8, CHFuzzableType.ClickHouseType, CHAggregatedType.Any)
+      supportOverWindow <- Fuzzer.testSampleFunctionWithOverWindow(fn.name, sampleIO)
+      settings <- Fuzzer.detectMandatorySettingsFromSampleFunction(fn.name, sampleIO, fuzzOverWindow = false)
     yield
       if !isValidSignature then
-        logger.error(
-          s"Unexpected result for hardcoded function ${fn.name}, it may not exists anymore. Skipping it."
-        )
+        logger.error(s"Unexpected result for hardcoded function ${fn.name}, it may not exists anymore. Skipping it.")
         fn
       else
-        fn.copy(function2s =
-          Seq(CHFunctionIO.Function2(CHAggregatedType.Any, CHFuzzableType.ClickHouseType, CHAggregatedType.Any))
+        val modes =
+          if supportOverWindow then Set(CHFunction.Mode.NoOverWindow, CHFunction.Mode.OverWindow)
+          else Set(CHFunction.Mode.NoOverWindow)
+
+        fn.copy(
+          modes = fn.modes ++ modes,
+          settings = settings,
+          function2s =
+            Seq(CHFunctionIO.Function2(CHAggregatedType.Any, CHFuzzableType.ClickHouseType, CHAggregatedType.Any))
         )
 
   private def fuzzAccurateCastOrDefault(
@@ -174,12 +186,17 @@ object FuzzerHardcodedFunctions extends StrictLogging {
   )(using client: CHClient, ec: ExecutionContext): Future[CHFunctionFuzzResult] =
     // Cast methods can return any kind of type, depending on the value of a ClickHouseType.
     // This is an edge case not automatically handled by this fuzzer, and it is not worth it to handle it.
-    for isValidSignature <-
+    for
+      isValidSignature <-
         client
           .executeNoResult(s"SELECT toTypeName(${fn.name}(1, 'UInt32'))")
           .flatMap(_ => client.executeNoResult(s"SELECT toTypeName(${fn.name}(1, 'UInt32', 2::UInt32))"))
           .map(_ => true)
           .recover(_ => false)
+
+      sampleIO = Function2(CHFuzzableType.UInt8, CHFuzzableType.ClickHouseType, CHAggregatedType.Any)
+      supportOverWindow <- Fuzzer.testSampleFunctionWithOverWindow(fn.name, sampleIO)
+      settings <- Fuzzer.detectMandatorySettingsFromSampleFunction(fn.name, sampleIO, fuzzOverWindow = false)
     yield
       if !isValidSignature then
         logger.error(
@@ -187,7 +204,13 @@ object FuzzerHardcodedFunctions extends StrictLogging {
         )
         fn
       else
+        val modes =
+          if supportOverWindow then Set(CHFunction.Mode.NoOverWindow, CHFunction.Mode.OverWindow)
+          else Set(CHFunction.Mode.NoOverWindow)
+
         fn.copy(
+          modes = fn.modes ++ modes,
+          settings = settings,
           function2s =
             Seq(CHFunctionIO.Function2(CHAggregatedType.Any, CHFuzzableType.ClickHouseType, CHAggregatedType.Any)),
           function3s = Seq(
@@ -243,6 +266,10 @@ object FuzzerHardcodedFunctions extends StrictLogging {
           .map(_ => true)
           .recover(_ => false)
 
+      sampleIO = Function0N(CHFuzzableType.ArrayString, CHAggregatedType.Any)
+      supportOverWindow <- Fuzzer.testSampleFunctionWithOverWindow(fn.name, sampleIO)
+      settings <- Fuzzer.detectMandatorySettingsFromSampleFunction(fn.name, sampleIO, fuzzOverWindow = false)
+
       clearDepthTypes <-
         fuzzSignatures(
           fn.name,
@@ -279,7 +306,13 @@ object FuzzerHardcodedFunctions extends StrictLogging {
         )
         fn
       else
+        val modes =
+          if supportOverWindow then Set(CHFunction.Mode.NoOverWindow, CHFunction.Mode.OverWindow)
+          else Set(CHFunction.Mode.NoOverWindow)
+
         fn.copy(
+          modes = fn.modes ++ modes,
+          settings = settings,
           function0Ns = Seq(
             CHFunctionIO
               .Function0N(CHSpecialType.Array(CHAggregatedType.Any), CHSpecialType.Array(CHFuzzableType.UInt32))
@@ -311,7 +344,8 @@ object FuzzerHardcodedFunctions extends StrictLogging {
   private def fuzzArrayFlatten(
       fn: CHFunctionFuzzResult
   )(using client: CHClient, ec: ExecutionContext): Future[CHFunctionFuzzResult] =
-    for isValidSignature <-
+    for
+      isValidSignature <-
         client
           .execute(
             s"SELECT toTypeName(arrayFlatten([[[[[1, 2, 3]]]], [[[[2, 3, 4]]]]]::Array(Array(Array(Array(Array(UInt8)))))))"
@@ -320,6 +354,10 @@ object FuzzerHardcodedFunctions extends StrictLogging {
             res.data.head.head == "Array(UInt8)"
           }
           .recover(_ => false)
+
+      sampleIO = Function1(CHFuzzableType.ArrayString, CHAggregatedType.Any)
+      supportOverWindow <- Fuzzer.testSampleFunctionWithOverWindow(fn.name, sampleIO)
+      settings <- Fuzzer.detectMandatorySettingsFromSampleFunction(fn.name, sampleIO, fuzzOverWindow = false)
     yield
       if !isValidSignature then
         logger.error(
@@ -327,7 +365,13 @@ object FuzzerHardcodedFunctions extends StrictLogging {
         )
         fn
       else
+        val modes =
+          if supportOverWindow then Set(CHFunction.Mode.NoOverWindow, CHFunction.Mode.OverWindow)
+          else Set(CHFunction.Mode.NoOverWindow)
+
         fn.copy(
+          modes = fn.modes ++ modes,
+          settings = settings,
           function1s = Seq(
             CHFunctionIO.Function1(
               CHSpecialType.Array(CHAggregatedType.Any),
@@ -370,13 +414,21 @@ object FuzzerHardcodedFunctions extends StrictLogging {
             arrType
           ).map(_.toList)
         ).map(_.nonEmpty)
+
+      supportOverWindow <- Fuzzer.testSampleInputWithOverWindow(fn.name, args = "'sum', [3, 5]")
+      settings <- Fuzzer.detectMandatorySettingsFromSampleInput(fn.name, args = "'sum', [3, 5]", fuzzOverWindow = false)
     yield
       if !isRepeatedConfirmation then
         logger.error(s"Unexpected result for hardcoded function ${fn.name}. Skipping it.")
         fn
       else
+        val modes =
+          if supportOverWindow then Set(CHFunction.Mode.NoOverWindow, CHFunction.Mode.OverWindow)
+          else Set(CHFunction.Mode.NoOverWindow)
+
         fn.copy(
-          modes = fn.modes + CHFunction.Mode.NoOverWindow,
+          modes = fn.modes ++ modes,
+          settings = settings,
           function1Ns = function1Ns
         )
 
@@ -427,26 +479,43 @@ object FuzzerHardcodedFunctions extends StrictLogging {
             arrType
           ).map(_.toList)
         ).map(_.nonEmpty)
+
+      supportOverWindow <- Fuzzer.testSampleInputWithOverWindow(fn.name, args = "'sum', [(3, 5), (1, 0)], [3, 5]")
+      settings <- Fuzzer.detectMandatorySettingsFromSampleInput(
+        fn.name,
+        args = "'sum', [(3, 5), (1, 0)], [3, 5]",
+        fuzzOverWindow = false
+      )
     yield
       if !isRepeatedConfirmation then
         logger.error(s"Unexpected result for hardcoded function ${fn.name}. Skipping it.")
         fn
       else
+        val modes =
+          if supportOverWindow then Set(CHFunction.Mode.NoOverWindow, CHFunction.Mode.OverWindow)
+          else Set(CHFunction.Mode.NoOverWindow)
+
         fn.copy(
-          modes = fn.modes + CHFunction.Mode.NoOverWindow,
+          modes = fn.modes ++ modes,
+          settings = settings,
           function2Ns = function2Ns
         )
 
   private def fuzzArrayZip(
       fn: CHFunctionFuzzResult
   )(using client: CHClient, ec: ExecutionContext): Future[CHFunctionFuzzResult] =
-    for isValidSignature <-
+    for
+      isValidSignature <-
         client
           .execute(s"SELECT toTypeName(${fn.name}([1::UInt8], [today()::Date], ['116.106.34.242'::IPv4]))")
           .map { res =>
             res.data.head.head == "Array(Tuple(UInt8, Date, IPv4))"
           }
           .recover(_ => false)
+
+      sampleIO = Function1(CHFuzzableType.ArrayString, CHAggregatedType.Any)
+      supportOverWindow <- Fuzzer.testSampleFunctionWithOverWindow(fn.name, sampleIO)
+      settings <- Fuzzer.detectMandatorySettingsFromSampleFunction(fn.name, sampleIO, fuzzOverWindow = false)
     yield
       if !isValidSignature then
         logger.error(
@@ -454,9 +523,14 @@ object FuzzerHardcodedFunctions extends StrictLogging {
         )
         fn
       else
+        val modes =
+          if supportOverWindow then Set(CHFunction.Mode.NoOverWindow, CHFunction.Mode.OverWindow)
+          else Set(CHFunction.Mode.NoOverWindow)
         val genericTypes = Range(1, 10).map(i => CHSpecialType.GenericType(s"T$i", CHAggregatedType.Any))
 
         fn.copy(
+          modes = fn.modes ++ modes,
+          settings = settings,
           function1s = Seq(
             CHFunctionIO.Function1(
               CHSpecialType.Array(genericTypes(0)),
@@ -555,6 +629,7 @@ object FuzzerHardcodedFunctions extends StrictLogging {
     // Number and type of arguments depend on the model, which we don't know at compile time.
     Future.successful(
       fn.copy(
+        modes = fn.modes ++ Set(CHFunction.Mode.NoOverWindow),
         function1Ns = Seq(
           CHFunctionIO.Function1N(
             arg1 = CHFuzzableType.SpecialString, // Path to model
@@ -621,11 +696,21 @@ object FuzzerHardcodedFunctions extends StrictLogging {
             }
             .filterNot(f => typesThatDiscardTimezoneArgument.contains(f.arg1))
         }
-    yield fn.copy(
-      modes = fn.modes + CHFunction.Mode.NoOverWindow,
-      function1s = function1s,
-      function2s = function2s
-    )
+
+      sampleIO = function1s.head
+      supportOverWindow <- Fuzzer.testSampleFunctionWithOverWindow(fn.name, sampleIO)
+      settings <- Fuzzer.detectMandatorySettingsFromSampleFunction(fn.name, sampleIO, fuzzOverWindow = false)
+    yield
+      val modes =
+        if supportOverWindow then Set(CHFunction.Mode.NoOverWindow, CHFunction.Mode.OverWindow)
+        else Set(CHFunction.Mode.NoOverWindow)
+
+      fn.copy(
+        modes = fn.modes ++ modes,
+        settings = settings,
+        function1s = function1s,
+        function2s = function2s
+      )
 
   private def fuzzDefaultValueOfTypeName(
       fn: CHFunctionFuzzResult
@@ -696,7 +781,8 @@ object FuzzerHardcodedFunctions extends StrictLogging {
       )
     val idExprType = CHFuzzableAbstractType.nonCustomFuzzableTypes
       .map(t => (t, t.fuzzingValues))
-    for attributeNamesTypes <-
+    for
+      function3s <-
         fuzzSignatures(
           fn.name,
           crossJoin(
@@ -707,11 +793,26 @@ object FuzzerHardcodedFunctions extends StrictLogging {
         ).map { signatures =>
           signatures.map { io =>
             io._1 match
-              case Seq(arg1, arg2, arg3) => arg2
+              case Seq(arg1, arg2, arg3) => Function3(arg1, arg2, arg3, io._2)
               case _                     => throw Exception(s"Expected 3 arguments, but found ${io._1.size} arguments")
-          }.distinct
+          }
         }
+
+      attributeNamesTypes = function3s.map(_.arg2).distinct
+
+      supportOverWindow <- Fuzzer.testSampleInputWithOverWindow(
+        fn.name,
+        args = s"'${CommonSettings.Type.FuzzerDictionaryNames.manyTypesDictionaryName}', 'dateValue', 1"
+      )
+      settings <- Fuzzer.detectMandatorySettingsFromSampleInput(
+        fn.name,
+        args = s"'${CommonSettings.Type.FuzzerDictionaryNames.manyTypesDictionaryName}', 'dateValue', 1",
+        fuzzOverWindow = false
+      )
     yield
+      val modes =
+        if supportOverWindow then Set(CHFunction.Mode.NoOverWindow, CHFunction.Mode.OverWindow)
+        else Set(CHFunction.Mode.NoOverWindow)
       val function3s =
         attributeNamesTypes.flatMap(attributeNamesType =>
           Seq(
@@ -731,7 +832,8 @@ object FuzzerHardcodedFunctions extends StrictLogging {
         )
 
       fn.copy(
-        modes = fn.modes + CHFunction.Mode.NoOverWindow,
+        modes = fn.modes ++ modes,
+        settings = settings,
         function3s = function3s
       )
 
@@ -796,7 +898,8 @@ object FuzzerHardcodedFunctions extends StrictLogging {
         .flatMap(_.chFuzzableTypes)
         .map(t => (t, t.fuzzingValues))
 
-    for attributeNamesTypes <-
+    for
+      dictGetFunction3s <-
         fuzzSignatures(
           "dictGet",
           crossJoin(
@@ -807,11 +910,26 @@ object FuzzerHardcodedFunctions extends StrictLogging {
         ).map { signatures =>
           signatures.map { io =>
             io._1 match
-              case Seq(arg1, arg2, arg3) => arg2
+              case Seq(arg1, arg2, arg3) => Function3(arg1, arg2, arg3, io._2)
               case _                     => throw Exception(s"Expected 3 arguments, but found ${io._1.size} arguments")
-          }.distinct
+          }
         }
+
+      attributeNamesTypes = dictGetFunction3s.map(_.arg2).distinct
+
+      supportOverWindow <- Fuzzer.testSampleInputWithOverWindow(
+        fn.name,
+        args = s"'${CommonSettings.Type.FuzzerDictionaryNames.manyTypesDictionaryName}', 'dateValue', 1, today()"
+      )
+      settings <- Fuzzer.detectMandatorySettingsFromSampleInput(
+        fn.name,
+        args = s"'${CommonSettings.Type.FuzzerDictionaryNames.manyTypesDictionaryName}', 'dateValue', 1, today()",
+        fuzzOverWindow = false
+      )
     yield
+      val modes =
+        if supportOverWindow then Set(CHFunction.Mode.NoOverWindow, CHFunction.Mode.OverWindow)
+        else Set(CHFunction.Mode.NoOverWindow)
       val function4s =
         attributeNamesTypes.flatMap(attributeNamesType =>
           Seq(
@@ -833,7 +951,8 @@ object FuzzerHardcodedFunctions extends StrictLogging {
         )
 
       fn.copy(
-        modes = fn.modes + CHFunction.Mode.NoOverWindow,
+        modes = fn.modes ++ modes,
+        settings = settings,
         function4s = function4s
       )
 
@@ -870,7 +989,8 @@ object FuzzerHardcodedFunctions extends StrictLogging {
       )
     val idExprType = CHFuzzableAbstractType.nonCustomFuzzableTypes
       .map(t => (t, t.fuzzingValues))
-    for function3s <-
+    for
+      function3s <-
         fuzzSignatures(
           fn.name,
           crossJoin(
@@ -885,10 +1005,26 @@ object FuzzerHardcodedFunctions extends StrictLogging {
               case _                     => throw Exception(s"Expected 3 arguments, but found ${io._1.size} arguments")
           }
         }
-    yield fn.copy(
-      modes = fn.modes + CHFunction.Mode.NoOverWindow,
-      function3s = function3s
-    )
+
+      supportOverWindow <- Fuzzer.testSampleInputWithOverWindow(
+        "dictGetDate",
+        args = s"'${CommonSettings.Type.FuzzerDictionaryNames.manyTypesDictionaryName}', 'dateValue', 1"
+      )
+      settings <- Fuzzer.detectMandatorySettingsFromSampleInput(
+        "dictGetDate",
+        args = s"'${CommonSettings.Type.FuzzerDictionaryNames.manyTypesDictionaryName}', 'dateValue', 1",
+        fuzzOverWindow = false
+      )
+    yield
+      val modes =
+        if supportOverWindow then Set(CHFunction.Mode.NoOverWindow, CHFunction.Mode.OverWindow)
+        else Set(CHFunction.Mode.NoOverWindow)
+
+      fn.copy(
+        modes = fn.modes ++ modes,
+        settings = settings,
+        function3s = function3s
+      )
 
   private def fuzzDictGetSpecificTypeOrDefault(
       fn: CHFunctionFuzzResult
@@ -962,10 +1098,26 @@ object FuzzerHardcodedFunctions extends StrictLogging {
               case _                           => throw Exception(s"Expected 4 arguments, but found ${io._1.size} arguments")
           }
         }
-    yield fn.copy(
-      modes = fn.modes + CHFunction.Mode.NoOverWindow,
-      function4s = function4s
-    )
+
+      supportOverWindow <- Fuzzer.testSampleInputWithOverWindow(
+        "dictGetDateOrDefault",
+        args = s"'${CommonSettings.Type.FuzzerDictionaryNames.manyTypesDictionaryName}', 'dateValue', 1, today()"
+      )
+      settings <- Fuzzer.detectMandatorySettingsFromSampleInput(
+        "dictGetDateOrDefault",
+        args = s"'${CommonSettings.Type.FuzzerDictionaryNames.manyTypesDictionaryName}', 'dateValue', 1, today()",
+        fuzzOverWindow = false
+      )
+    yield
+      val modes =
+        if supportOverWindow then Set(CHFunction.Mode.NoOverWindow, CHFunction.Mode.OverWindow)
+        else Set(CHFunction.Mode.NoOverWindow)
+
+      fn.copy(
+        modes = fn.modes ++ modes,
+        settings = settings,
+        function4s = function4s
+      )
 
   private def fuzzDictHas(
       fn: CHFunctionFuzzResult
@@ -973,7 +1125,8 @@ object FuzzerHardcodedFunctions extends StrictLogging {
     val dictionaryNameType = Seq((CHFuzzableType.DictionaryName, CHFuzzableType.DictionaryName.fuzzingValues))
     val idExprType = CHFuzzableAbstractType.nonCustomFuzzableTypes
       .map(t => (t, t.fuzzingValues))
-    for outputTypes <-
+    for
+      function2s <-
         fuzzSignatures(
           fn.name,
           crossJoin(
@@ -983,14 +1136,25 @@ object FuzzerHardcodedFunctions extends StrictLogging {
         ).map { signatures =>
           signatures.map { io =>
             io._1 match
-              case Seq(arg1, arg2) => io._2
+              case Seq(arg1, arg2) => Function2(arg1, arg2, io._2)
               case _               => throw Exception(s"Expected 2 arguments, but found ${io._1.size} arguments")
           }
         }
+
+      outputTypes = function2s.map(_.output)
+
+      sampleIO = function2s.head
+      supportOverWindow <- Fuzzer.testSampleFunctionWithOverWindow(fn.name, sampleIO)
+      settings <- Fuzzer.detectMandatorySettingsFromSampleFunction(fn.name, sampleIO, fuzzOverWindow = false)
     yield
+      val modes =
+        if supportOverWindow then Set(CHFunction.Mode.NoOverWindow, CHFunction.Mode.OverWindow)
+        else Set(CHFunction.Mode.NoOverWindow)
+
       if outputTypes.nonEmpty then
         fn.copy(
-          modes = fn.modes + CHFunction.Mode.NoOverWindow,
+          modes = fn.modes ++ modes,
+          settings = settings,
           function2s = Seq(
             Function2(
               CHFuzzableType.DictionaryName,
@@ -1007,7 +1171,8 @@ object FuzzerHardcodedFunctions extends StrictLogging {
     val dictionaryNameType = Seq((CHFuzzableType.DictionaryName, CHFuzzableType.DictionaryName.fuzzingValues))
     val idExprType = CHFuzzableAbstractType.nonCustomFuzzableTypes
       .map(t => (t, t.fuzzingValues))
-    for function2s <-
+    for
+      function2s <-
         fuzzSignatures(
           fn.name,
           crossJoin(
@@ -1021,10 +1186,20 @@ object FuzzerHardcodedFunctions extends StrictLogging {
               case _               => throw Exception(s"Expected 2 arguments, but found ${io._1.size} arguments")
           }
         }
-    yield fn.copy(
-      modes = fn.modes + CHFunction.Mode.NoOverWindow,
-      function2s = function2s
-    )
+
+      sampleIO = function2s.head
+      supportOverWindow <- Fuzzer.testSampleFunctionWithOverWindow(fn.name, sampleIO)
+      settings <- Fuzzer.detectMandatorySettingsFromSampleFunction(fn.name, sampleIO, fuzzOverWindow = false)
+    yield
+      val modes =
+        if supportOverWindow then Set(CHFunction.Mode.NoOverWindow, CHFunction.Mode.OverWindow)
+        else Set(CHFunction.Mode.NoOverWindow)
+
+      fn.copy(
+        modes = fn.modes ++ modes,
+        settings = settings,
+        function2s = function2s
+      )
 
   private def fuzzDictGetDescendants(
       fn: CHFunctionFuzzResult
@@ -1032,7 +1207,8 @@ object FuzzerHardcodedFunctions extends StrictLogging {
     val dictionaryNameType = Seq((CHFuzzableType.DictionaryName, CHFuzzableType.DictionaryName.fuzzingValues))
     val idExprType = CHFuzzableAbstractType.nonCustomFuzzableTypes
       .map(t => (t, t.fuzzingValues))
-    for function2s <-
+    for
+      function2s <-
         fuzzSignatures(
           fn.name,
           crossJoin(
@@ -1046,10 +1222,19 @@ object FuzzerHardcodedFunctions extends StrictLogging {
               case _               => throw Exception(s"Expected 2 arguments, but found ${io._1.size} arguments")
           }
         }
-    yield fn.copy(
-      modes = fn.modes + CHFunction.Mode.NoOverWindow,
-      function2s = function2s
-    )
+
+      sampleIO = function2s.head
+      supportOverWindow <- Fuzzer.testSampleFunctionWithOverWindow(fn.name, sampleIO)
+      settings <- Fuzzer.detectMandatorySettingsFromSampleFunction(fn.name, sampleIO, fuzzOverWindow = false)
+    yield
+      val modes =
+        if supportOverWindow then Set(CHFunction.Mode.NoOverWindow, CHFunction.Mode.OverWindow)
+        else Set(CHFunction.Mode.NoOverWindow)
+      fn.copy(
+        modes = fn.modes ++ modes,
+        settings = settings,
+        function2s = function2s
+      )
 
   private def fuzzDictIsIn(
       fn: CHFunctionFuzzResult
@@ -1057,7 +1242,8 @@ object FuzzerHardcodedFunctions extends StrictLogging {
     val dictionaryNameType = Seq((CHFuzzableType.DictionaryName, CHFuzzableType.DictionaryName.fuzzingValues))
     val idExprType = CHFuzzableAbstractType.nonCustomFuzzableTypes
       .map(t => (t, t.fuzzingValues))
-    for function3s <-
+    for
+      function3s <-
         fuzzSignatures(
           fn.name,
           crossJoin(
@@ -1072,10 +1258,20 @@ object FuzzerHardcodedFunctions extends StrictLogging {
               case _                     => throw Exception(s"Expected 3 arguments, but found ${io._1.size} arguments")
           }
         }
-    yield fn.copy(
-      modes = fn.modes + CHFunction.Mode.NoOverWindow,
-      function3s = function3s
-    )
+
+      sampleIO = function3s.head
+      supportOverWindow <- Fuzzer.testSampleFunctionWithOverWindow(fn.name, sampleIO)
+      settings <- Fuzzer.detectMandatorySettingsFromSampleFunction(fn.name, sampleIO, fuzzOverWindow = false)
+    yield
+      val modes =
+        if supportOverWindow then Set(CHFunction.Mode.NoOverWindow, CHFunction.Mode.OverWindow)
+        else Set(CHFunction.Mode.NoOverWindow)
+
+      fn.copy(
+        modes = fn.modes ++ modes,
+        settings = settings,
+        function3s = function3s
+      )
 
   private def fuzzEncryptDecrypt(
       fn: CHFunctionFuzzResult
@@ -1149,18 +1345,35 @@ object FuzzerHardcodedFunctions extends StrictLogging {
               case _                                 => throw Exception(s"Expected 5 arguments, but found ${io._1.size} arguments")
           }
         }
-    yield fn.copy(
-      modes = fn.modes + CHFunction.Mode.NoOverWindow,
-      function3s = function3s,
-      function4s = function4s,
-      function5s = function5s
-    )
+
+      supportOverWindow <- Fuzzer.testSampleInputWithOverWindow(
+        fn.name,
+        args = s"'aes-256-ofb', unhex('24E9E4966469'), '12345678910121314151617181920212'"
+      )
+      settings <- Fuzzer.detectMandatorySettingsFromSampleInput(
+        fn.name,
+        args = s"'aes-256-ofb', unhex('24E9E4966469'), '12345678910121314151617181920212'",
+        fuzzOverWindow = false
+      )
+    yield
+      val modes =
+        if supportOverWindow then Set(CHFunction.Mode.NoOverWindow, CHFunction.Mode.OverWindow)
+        else Set(CHFunction.Mode.NoOverWindow)
+
+      fn.copy(
+        modes = fn.modes ++ modes,
+        settings = settings,
+        function3s = function3s,
+        function4s = function4s,
+        function5s = function5s
+      )
 
   private def fuzzGeoDistanceLike(
       fn: CHFunctionFuzzResult
   )(using client: CHClient, ec: ExecutionContext): Future[CHFunctionFuzzResult] =
     val fuzzType = CHFuzzableAbstractType.Number.chFuzzableTypes.map(t => (t, Seq(t.fuzzingValues.head)))
-    for function4s <-
+    for
+      function4s <-
         fuzzSignatures(
           fn.name,
           crossJoin(
@@ -1176,16 +1389,27 @@ object FuzzerHardcodedFunctions extends StrictLogging {
               case _                           => throw Exception(s"Expected 4 arguments, but found ${io._1.size} arguments")
           }
         }
-    yield fn.copy(
-      modes = fn.modes + CHFunction.Mode.NoOverWindow,
-      function4s = function4s
-    )
+
+      sampleIO = function4s.head
+      supportOverWindow <- Fuzzer.testSampleFunctionWithOverWindow(fn.name, sampleIO)
+      settings <- Fuzzer.detectMandatorySettingsFromSampleFunction(fn.name, sampleIO, fuzzOverWindow = false)
+    yield
+      val modes =
+        if supportOverWindow then Set(CHFunction.Mode.NoOverWindow, CHFunction.Mode.OverWindow)
+        else Set(CHFunction.Mode.NoOverWindow)
+
+      fn.copy(
+        modes = fn.modes ++ modes,
+        settings = settings,
+        function4s = function4s
+      )
 
   private def fuzzGeoHashesInBox(
       fn: CHFunctionFuzzResult
   )(using client: CHClient, ec: ExecutionContext): Future[CHFunctionFuzzResult] =
     val fuzzType = CHFuzzableAbstractType.Number.chFuzzableTypes.map(t => (t, Seq(t.fuzzingValues.head)))
-    for function5s <-
+    for
+      function5s <-
         fuzzSignatures(
           fn.name,
           crossJoin(
@@ -1202,10 +1426,20 @@ object FuzzerHardcodedFunctions extends StrictLogging {
               case _                                 => throw Exception(s"Expected 5 arguments, but found ${io._1.size} arguments")
           }
         }
-    yield fn.copy(
-      modes = fn.modes + CHFunction.Mode.NoOverWindow,
-      function5s = function5s
-    )
+
+      sampleIO = function5s.head
+      supportOverWindow <- Fuzzer.testSampleFunctionWithOverWindow(fn.name, sampleIO)
+      settings <- Fuzzer.detectMandatorySettingsFromSampleFunction(fn.name, sampleIO, fuzzOverWindow = false)
+    yield
+      val modes =
+        if supportOverWindow then Set(CHFunction.Mode.NoOverWindow, CHFunction.Mode.OverWindow)
+        else Set(CHFunction.Mode.NoOverWindow)
+
+      fn.copy(
+        modes = fn.modes ++ modes,
+        settings = settings,
+        function5s = function5s
+      )
 
   private def fuzzGroupArrayInsertAt(
       fn: CHFunctionFuzzResult
@@ -1214,9 +1448,7 @@ object FuzzerHardcodedFunctions extends StrictLogging {
       CHFuzzableAbstractType.nonCustomFuzzableTypes
         .filterNot(_.name.toLowerCase().contains("enum"))
         .map(t => (t, t.fuzzingValues.take(3)))
-    val numbersType =
-      CHFuzzableAbstractType.Number.chFuzzableTypes.map(t => (t, Seq(t.fuzzingValues.head)))
-    val posType =
+    val posAndSizeType =
       Seq(
         (CHFuzzableType.UInt8, Seq("1::UInt8")),
         (CHFuzzableType.UInt16, Seq("256::UInt16")),
@@ -1230,7 +1462,7 @@ object FuzzerHardcodedFunctions extends StrictLogging {
           Seq(Nil),
           crossJoin(
             xType,
-            numbersType
+            posAndSizeType
           ).map(_.toList)
         ).map { signatures =>
           logger.trace(
@@ -1246,21 +1478,24 @@ object FuzzerHardcodedFunctions extends StrictLogging {
           }
         }
 
+      validPosTypes = parametric0Function2.map(_.arg2).distinct
+
       parametric1Function2 <-
         fuzzParametricSignatures(
           fn.name,
           xType.map(Seq(_)),
           crossJoin(
             xType,
-            numbersType
+            posAndSizeType.filter(_._1 == validPosTypes.head)
           ).map(_.toList)
         ).map { signatures =>
           logger.trace(
-            s"FuzzerHardcodedFunctions - groupArrayInsertAt - fuzzed ${signatures.size} valid signatures with 1 parameter"
+            s"FuzzerHardcodedFunctions - groupArrayInsertAt - fuzzed ${signatures.size} valid combinations of defaultX and x"
           )
-          signatures.map { io =>
+          signatures.flatMap { io =>
             (io._1, io._2) match
-              case (Seq(param1), Seq(arg1, arg2)) => Parametric1Function2(param1, arg1, arg2, io._3)
+              case (Seq(param1), Seq(arg1, _)) =>
+                posAndSizeType.map((arg2, _) => Parametric1Function2(param1, arg1, arg2, io._3))
               case _ =>
                 throw Exception(
                   s"Expected 1 parameter and 2 arguments, but found ${io._1.size} parameters and ${io._2.size} arguments"
@@ -1268,36 +1503,51 @@ object FuzzerHardcodedFunctions extends StrictLogging {
           }
         }
 
+      validXTypeCombinations = parametric1Function2.map(f => (f.paramArg1, f.arg1)).distinct
+
       parametric2Function2 <-
         fuzzParametricSignatures(
           fn.name,
           crossJoin(
-            xType,
-            posType
+            xType.filter(_._1 == validXTypeCombinations.head._1),
+            posAndSizeType
           ).map(_.toList),
           crossJoin(
-            xType,
-            numbersType
+            xType.filter(_._1 == validXTypeCombinations.head._2),
+            posAndSizeType.filter(_._1 == validPosTypes.head)
           ).map(_.toList)
         ).map { signatures =>
           logger.trace(
-            s"FuzzerHardcodedFunctions - groupArrayInsertAt - fuzzed ${signatures.size} valid signatures with 2 parameters"
+            s"FuzzerHardcodedFunctions - groupArrayInsertAt - fuzzed ${signatures.size} valid types for size parameter"
           )
-          signatures.map { io =>
+          signatures.flatMap { io =>
             (io._1, io._2) match
-              case (Seq(param1, param2), Seq(arg1, arg2)) => Parametric2Function2(param1, param2, arg1, arg2, io._3)
+              case (Seq(_, param2), Seq(_, _)) =>
+                crossJoin(validXTypeCombinations, posAndSizeType.map(_._1)).map { case ((param1, arg1), arg2) =>
+                  Parametric2Function2(param1, param2, arg1, arg2, io._3)
+                }
               case _ =>
                 throw Exception(
                   s"Expected 2 parameters and 2 arguments, but found ${io._1.size} parameters and ${io._2.size} arguments"
                 )
           }
         }
-    yield fn.copy(
-      modes = fn.modes + CHFunction.Mode.NoOverWindow + CHFunction.Mode.OverWindow,
-      parametric0Function2s = parametric0Function2,
-      parametric1Function2s = parametric1Function2,
-      parametric2Function2s = parametric2Function2
-    )
+
+      sampleIO = parametric0Function2.head
+      supportOverWindow <- Fuzzer.testSampleFunctionWithOverWindow(fn.name, sampleIO)
+      settings <- Fuzzer.detectMandatorySettingsFromSampleFunction(fn.name, sampleIO, fuzzOverWindow = false)
+    yield
+      val modes =
+        if supportOverWindow then Set(CHFunction.Mode.NoOverWindow, CHFunction.Mode.OverWindow)
+        else Set(CHFunction.Mode.NoOverWindow)
+
+      fn.copy(
+        modes = fn.modes ++ modes,
+        settings = settings,
+        parametric0Function2s = parametric0Function2,
+        parametric1Function2s = parametric1Function2,
+        parametric2Function2s = parametric2Function2
+      )
 
   private def fuzzH3Dist(
       fn: CHFunctionFuzzResult
@@ -1305,7 +1555,8 @@ object FuzzerHardcodedFunctions extends StrictLogging {
     val float64Type: Seq[(CHFuzzableType, Seq[String])] = Seq(
       (CHFuzzableType.Float64, CHFuzzableType.Float64.fuzzingValues)
     )
-    for function4s <-
+    for
+      function4s <-
         fuzzSignatures(
           fn.name,
           crossJoin(
@@ -1321,10 +1572,20 @@ object FuzzerHardcodedFunctions extends StrictLogging {
               case _                           => throw Exception(s"Expected 4 arguments, but found ${io._1.size} arguments")
           }
         }
-    yield fn.copy(
-      modes = fn.modes + CHFunction.Mode.NoOverWindow,
-      function4s = function4s
-    )
+
+      sampleIO = function4s.head
+      supportOverWindow <- Fuzzer.testSampleFunctionWithOverWindow(fn.name, sampleIO)
+      settings <- Fuzzer.detectMandatorySettingsFromSampleFunction(fn.name, sampleIO, fuzzOverWindow = false)
+    yield
+      val modes =
+        if supportOverWindow then Set(CHFunction.Mode.NoOverWindow, CHFunction.Mode.OverWindow)
+        else Set(CHFunction.Mode.NoOverWindow)
+
+      fn.copy(
+        modes = fn.modes ++ modes,
+        settings = settings,
+        function4s = function4s
+      )
 
   private def fuzzHasColumnInTable(
       fn: CHFunctionFuzzResult
@@ -1350,7 +1611,7 @@ object FuzzerHardcodedFunctions extends StrictLogging {
         ).map { signatures =>
           signatures.map { io =>
             io._1 match
-              case Seq(arg1, arg2, arg3) => Function3(arg1, arg2, arg3, io._2)
+              case Seq(arg1, arg2, arg3) => Function3(arg1, arg2, arg3, CHFuzzableType.BooleanType)
               case _                     => throw Exception(s"Expected 3 arguments, but found ${io._1.size} arguments")
           }
         }
@@ -1379,7 +1640,7 @@ object FuzzerHardcodedFunctions extends StrictLogging {
         ).map { signatures =>
           signatures.map { io =>
             io._1 match
-              case Seq(arg1, arg2, arg3, arg4) => Function4(arg1, arg2, arg3, arg4, io._2)
+              case Seq(arg1, arg2, arg3, arg4) => Function4(arg1, arg2, arg3, arg4, CHFuzzableType.BooleanType)
               case _                           => throw Exception(s"Expected 4 arguments, but found ${io._1.size} arguments")
           }
         }
@@ -1412,8 +1673,9 @@ object FuzzerHardcodedFunctions extends StrictLogging {
         ).map { signatures =>
           signatures.map { io =>
             io._1 match
-              case Seq(arg1, arg2, arg3, arg4, arg5) => Function5(arg1, arg2, arg3, arg4, arg5, io._2)
-              case _                                 => throw Exception(s"Expected 5 arguments, but found ${io._1.size} arguments")
+              case Seq(arg1, arg2, arg3, arg4, arg5) =>
+                Function5(arg1, arg2, arg3, arg4, arg5, CHFuzzableType.BooleanType)
+              case _ => throw Exception(s"Expected 5 arguments, but found ${io._1.size} arguments")
           }
         }
 
@@ -1446,17 +1708,31 @@ object FuzzerHardcodedFunctions extends StrictLogging {
         ).map { signatures =>
           signatures.map { io =>
             io._1 match
-              case Seq(arg1, arg2, arg3, arg4, arg5, arg6) => Function6(arg1, arg2, arg3, arg4, arg5, arg6, io._2)
-              case _                                       => throw Exception(s"Expected 6 arguments, but found ${io._1.size} arguments")
+              case Seq(arg1, arg2, arg3, arg4, arg5, arg6) =>
+                Function6(arg1, arg2, arg3, arg4, arg5, arg6, CHFuzzableType.BooleanType)
+              case _ => throw Exception(s"Expected 6 arguments, but found ${io._1.size} arguments")
           }
         }
-    yield fn.copy(
-      modes = fn.modes + CHFunction.Mode.NoOverWindow,
-      function3s = function3s,
-      function4s = function4s,
-      function5s = function5s,
-      function6s = function6s
-    )
+
+      supportOverWindow <- Fuzzer.testSampleInputWithOverWindow(fn.name, args = s"'system', 'numbers', 'number'")
+      settings <- Fuzzer.detectMandatorySettingsFromSampleInput(
+        fn.name,
+        args = s"'system', 'numbers', 'number'",
+        fuzzOverWindow = false
+      )
+    yield
+      val modes =
+        if supportOverWindow then Set(CHFunction.Mode.NoOverWindow, CHFunction.Mode.OverWindow)
+        else Set(CHFunction.Mode.NoOverWindow)
+
+      fn.copy(
+        modes = fn.modes ++ modes,
+        settings = settings,
+        function3s = function3s,
+        function4s = function4s,
+        function5s = function5s,
+        function6s = function6s
+      )
 
   private def fuzzKolmogorovSmirnovTest(
       fn: CHFunctionFuzzResult
@@ -1531,161 +1807,341 @@ object FuzzerHardcodedFunctions extends StrictLogging {
                 )
           }
         }
-    yield fn.copy(
-      modes = fn.modes + CHFunction.Mode.NoOverWindow + CHFunction.Mode.OverWindow,
-      parametric0Function2s = parametric0Function2,
-      parametric1Function2s = parametric1Function2,
-      parametric2Function2s = parametric2Function2
-    )
+
+      supportOverWindow <- Fuzzer.testSampleInputWithOverWindow(
+        fn.name,
+        paramsOpt = Some(""),
+        args = "false, randNormal(0, 1)",
+        sourceTable = Some("numbers(100)")
+      )
+      settings <- Fuzzer.detectMandatorySettingsFromSampleInput(
+        fn.name,
+        paramsOpt = Some(""),
+        args = "false, randNormal(0, 1)",
+        fuzzOverWindow = false,
+        sourceTable = Some("numbers(100)")
+      )
+    yield
+      val modes =
+        if supportOverWindow then Set(CHFunction.Mode.NoOverWindow, CHFunction.Mode.OverWindow)
+        else Set(CHFunction.Mode.NoOverWindow)
+
+      fn.copy(
+        modes = fn.modes ++ modes,
+        settings = settings,
+        parametric0Function2s = parametric0Function2,
+        parametric1Function2s = parametric1Function2,
+        parametric2Function2s = parametric2Function2
+      )
 
   private def fuzzMakeDateTime(
       fn: CHFunctionFuzzResult
   )(using client: CHClient, ec: ExecutionContext): Future[CHFunctionFuzzResult] =
     val fuzzType = CHFuzzableAbstractType.Number.chFuzzableTypes.map(t => (t, Seq(t.fuzzingValues.head)))
+    val uint8Type = Seq((CHFuzzableType.UInt8, Seq(CHFuzzableType.UInt8.fuzzingValues.head)))
 
     for
-      function6s <-
+      arg1Types <-
         fuzzSignatures(
           fn.name,
-          crossJoin(
-            fuzzType,
-            fuzzType,
-            fuzzType,
-            fuzzType,
-            fuzzType,
-            fuzzType
-          ).map(_.toList)
+          crossJoin(fuzzType, uint8Type, uint8Type, uint8Type, uint8Type, uint8Type).map(_.toList)
         ).map { signatures =>
           signatures.map { io =>
             io._1 match
-              case Seq(arg1, arg2, arg3, arg4, arg5, arg6) => Function6(arg1, arg2, arg3, arg4, arg5, arg6, io._2)
-              case _                                       => throw Exception(s"Expected 6 arguments, but found ${io._1.size} arguments")
-          }
+              case Seq(arg1, _, _, _, _, _) => arg1
+              case _                        => throw Exception(s"Expected 6 arguments, but found ${io._1.size} arguments")
+          }.toSet
         }
 
-      function7s <-
+      arg2Types <-
         fuzzSignatures(
           fn.name,
-          crossJoin(
-            fuzzType,
-            fuzzType,
-            fuzzType,
-            fuzzType,
-            fuzzType,
-            fuzzType,
-            Seq((CHFuzzableType.TimeZone, Seq(CHFuzzableType.TimeZone.fuzzingValues.head)))
-          ).map(_.toList)
+          crossJoin(uint8Type, fuzzType, uint8Type, uint8Type, uint8Type, uint8Type).map(_.toList)
         ).map { signatures =>
           signatures.map { io =>
             io._1 match
-              case Seq(arg1, arg2, arg3, arg4, arg5, arg6, arg7) =>
-                Function7(arg1, arg2, arg3, arg4, arg5, arg6, arg7, io._2)
-              case _ => throw Exception(s"Expected 7 arguments, but found ${io._1.size} arguments")
-          }
+              case Seq(_, arg2, _, _, _, _) => arg2
+              case _                        => throw Exception(s"Expected 6 arguments, but found ${io._1.size} arguments")
+          }.toSet
         }
-    yield fn.copy(
-      modes = fn.modes + CHFunction.Mode.NoOverWindow,
-      function6s = function6s,
-      function7s = function7s
-    )
+
+      arg3Types <-
+        fuzzSignatures(
+          fn.name,
+          crossJoin(uint8Type, uint8Type, fuzzType, uint8Type, uint8Type, uint8Type).map(_.toList)
+        ).map { signatures =>
+          signatures.map { io =>
+            io._1 match
+              case Seq(_, _, arg3, _, _, _) => arg3
+              case _                        => throw Exception(s"Expected 6 arguments, but found ${io._1.size} arguments")
+          }.toSet
+        }
+
+      arg4Types <-
+        fuzzSignatures(
+          fn.name,
+          crossJoin(uint8Type, uint8Type, uint8Type, fuzzType, uint8Type, uint8Type).map(_.toList)
+        ).map { signatures =>
+          signatures.map { io =>
+            io._1 match
+              case Seq(_, _, _, arg4, _, _) => arg4
+              case _                        => throw Exception(s"Expected 6 arguments, but found ${io._1.size} arguments")
+          }.toSet
+        }
+
+      arg5Types <-
+        fuzzSignatures(
+          fn.name,
+          crossJoin(uint8Type, uint8Type, uint8Type, uint8Type, fuzzType, uint8Type).map(_.toList)
+        ).map { signatures =>
+          signatures.map { io =>
+            io._1 match
+              case Seq(_, _, _, _, arg5, _) => arg5
+              case _                        => throw Exception(s"Expected 6 arguments, but found ${io._1.size} arguments")
+          }.toSet
+        }
+
+      arg6Types <-
+        fuzzSignatures(
+          fn.name,
+          crossJoin(uint8Type, uint8Type, uint8Type, uint8Type, uint8Type, fuzzType).map(_.toList)
+        ).map { signatures =>
+          signatures.map { io =>
+            io._1 match
+              case Seq(_, _, _, _, _, arg6) => arg6
+              case _                        => throw Exception(s"Expected 6 arguments, but found ${io._1.size} arguments")
+          }.toSet
+        }
+
+      isFunction7 <- client
+        .executeNoResult(
+          s"SELECT toTypeName(${fn.name}(1, 2, 3, 4, 5, 6, ${CHFuzzableType.TimeZone.fuzzingValues.head}))"
+        )
+        .map(_ => true)
+        .recover(_ => false)
+
+      supportOverWindow <- Fuzzer.testSampleInputWithOverWindow(fn.name, args = "1, 1, 1, 1, 1, 1")
+      settings <- Fuzzer.detectMandatorySettingsFromSampleInput(
+        fn.name,
+        args = "1, 1, 1, 1, 1, 1",
+        fuzzOverWindow = false
+      )
+    yield
+      if !isFunction7 then
+        logger.error(s"Unexpected result for hardcoded function ${fn.name}. Skipping it.")
+        fn
+      else
+        val modes =
+          if supportOverWindow then Set(CHFunction.Mode.NoOverWindow, CHFunction.Mode.OverWindow)
+          else Set(CHFunction.Mode.NoOverWindow)
+
+        val (function6s, function7s) =
+          crossJoin(
+            CHTypeMerger.mergeInputTypes(arg1Types).toSeq,
+            CHTypeMerger.mergeInputTypes(arg2Types).toSeq,
+            CHTypeMerger.mergeInputTypes(arg3Types).toSeq,
+            CHTypeMerger.mergeInputTypes(arg4Types).toSeq,
+            CHTypeMerger.mergeInputTypes(arg5Types).toSeq,
+            CHTypeMerger.mergeInputTypes(arg6Types).toSeq
+          ).map((arg1, arg2, arg3, arg4, arg5, arg6) =>
+            (
+              Function6(arg1, arg2, arg3, arg4, arg5, arg6, CHFuzzableType.DateTime),
+              Function7(arg1, arg2, arg3, arg4, arg5, arg6, CHFuzzableType.TimeZone, CHFuzzableType.DateTime)
+            )
+          ).unzip
+
+        fn.copy(
+          modes = fn.modes ++ modes,
+          settings = settings,
+          function6s = function6s,
+          function7s = function7s
+        )
 
   private def fuzzMakeDateTime64(
       fn: CHFunctionFuzzResult
   )(using client: CHClient, ec: ExecutionContext): Future[CHFunctionFuzzResult] =
-    val fuzzType = CHFuzzableAbstractType.Number.chFuzzableTypes.map(t => (t, Seq(t.fuzzingValues.head)))
+    val fuzzType = CHFuzzableAbstractType.Number.chFuzzableTypes.map(t => (t, t.fuzzingValues))
+    val uint8Type = Seq((CHFuzzableType.UInt8, Seq(CHFuzzableType.UInt8.fuzzingValues.head)))
 
     for
-      function6s <-
+      arg1Types <-
         fuzzSignatures(
           fn.name,
-          crossJoin(
-            fuzzType,
-            fuzzType,
-            fuzzType,
-            fuzzType,
-            fuzzType,
-            fuzzType
-          ).map(_.toList)
+          crossJoin(fuzzType, uint8Type, uint8Type, uint8Type, uint8Type, uint8Type).map(_.toList)
         ).map { signatures =>
           signatures.map { io =>
             io._1 match
-              case Seq(arg1, arg2, arg3, arg4, arg5, arg6) => Function6(arg1, arg2, arg3, arg4, arg5, arg6, io._2)
-              case _                                       => throw Exception(s"Expected 6 arguments, but found ${io._1.size} arguments")
-          }
+              case Seq(arg1, _, _, _, _, _) => arg1
+              case _                        => throw Exception(s"Expected 6 arguments, but found ${io._1.size} arguments")
+          }.toSet
         }
 
-      function7s <-
+      arg2Types <-
         fuzzSignatures(
           fn.name,
-          crossJoin(
-            fuzzType,
-            fuzzType,
-            fuzzType,
-            fuzzType,
-            fuzzType,
-            fuzzType,
-            fuzzType
-          ).map(_.toList)
+          crossJoin(uint8Type, fuzzType, uint8Type, uint8Type, uint8Type, uint8Type).map(_.toList)
         ).map { signatures =>
           signatures.map { io =>
             io._1 match
-              case Seq(arg1, arg2, arg3, arg4, arg5, arg6, arg7) =>
-                Function7(arg1, arg2, arg3, arg4, arg5, arg6, arg7, io._2)
-              case _ => throw Exception(s"Expected 7 arguments, but found ${io._1.size} arguments")
-          }
+              case Seq(_, arg2, _, _, _, _) => arg2
+              case _                        => throw Exception(s"Expected 6 arguments, but found ${io._1.size} arguments")
+          }.toSet
         }
 
-      function8s <-
+      arg3Types <-
         fuzzSignatures(
           fn.name,
-          crossJoin(
-            fuzzType,
-            fuzzType,
-            fuzzType,
-            fuzzType,
-            fuzzType,
-            fuzzType,
-            fuzzType,
-            fuzzType
-          ).map(_.toList)
+          crossJoin(uint8Type, uint8Type, fuzzType, uint8Type, uint8Type, uint8Type).map(_.toList)
         ).map { signatures =>
           signatures.map { io =>
             io._1 match
-              case Seq(arg1, arg2, arg3, arg4, arg5, arg6, arg7, arg8) =>
-                Function8(arg1, arg2, arg3, arg4, arg5, arg6, arg7, arg8, io._2)
-              case _ => throw Exception(s"Expected 8 arguments, but found ${io._1.size} arguments")
-          }
+              case Seq(_, _, arg3, _, _, _) => arg3
+              case _                        => throw Exception(s"Expected 6 arguments, but found ${io._1.size} arguments")
+          }.toSet
         }
 
-      function9s <-
+      arg4Types <-
         fuzzSignatures(
           fn.name,
-          crossJoin(
-            fuzzType,
-            fuzzType,
-            fuzzType,
-            fuzzType,
-            fuzzType,
-            fuzzType,
-            fuzzType,
-            fuzzType,
-            Seq((CHFuzzableType.TimeZone, Seq(CHFuzzableType.TimeZone.fuzzingValues.head)))
-          ).map(_.toList)
+          crossJoin(uint8Type, uint8Type, uint8Type, fuzzType, uint8Type, uint8Type).map(_.toList)
         ).map { signatures =>
           signatures.map { io =>
             io._1 match
-              case Seq(arg1, arg2, arg3, arg4, arg5, arg6, arg7, arg8, arg9) =>
-                Function9(arg1, arg2, arg3, arg4, arg5, arg6, arg7, arg8, arg9, io._2)
-              case _ => throw Exception(s"Expected 9 arguments, but found ${io._1.size} arguments")
-          }
+              case Seq(_, _, _, arg4, _, _) => arg4
+              case _                        => throw Exception(s"Expected 6 arguments, but found ${io._1.size} arguments")
+          }.toSet
         }
-    yield fn.copy(
-      modes = fn.modes + CHFunction.Mode.NoOverWindow,
-      function6s = function6s,
-      function7s = function7s,
-      function8s = function8s,
-      function9s = function9s
-    )
+
+      arg5Types <-
+        fuzzSignatures(
+          fn.name,
+          crossJoin(uint8Type, uint8Type, uint8Type, uint8Type, fuzzType, uint8Type).map(_.toList)
+        ).map { signatures =>
+          signatures.map { io =>
+            io._1 match
+              case Seq(_, _, _, _, arg5, _) => arg5
+              case _                        => throw Exception(s"Expected 6 arguments, but found ${io._1.size} arguments")
+          }.toSet
+        }
+
+      arg6Types <-
+        fuzzSignatures(
+          fn.name,
+          crossJoin(uint8Type, uint8Type, uint8Type, uint8Type, uint8Type, fuzzType).map(_.toList)
+        ).map { signatures =>
+          signatures.map { io =>
+            io._1 match
+              case Seq(_, _, _, _, _, arg6) => arg6
+              case _                        => throw Exception(s"Expected 6 arguments, but found ${io._1.size} arguments")
+          }.toSet
+        }
+
+      arg7Types <-
+        fuzzSignatures(
+          fn.name,
+          crossJoin(uint8Type, uint8Type, uint8Type, uint8Type, uint8Type, uint8Type, fuzzType).map(_.toList)
+        ).map { signatures =>
+          signatures.map { io =>
+            io._1 match
+              case Seq(_, _, _, _, _, _, arg7) => arg7
+              case _                           => throw Exception(s"Expected 7 arguments, but found ${io._1.size} arguments")
+          }.toSet
+        }
+
+      arg8Types <-
+        fuzzSignatures(
+          fn.name,
+          crossJoin(uint8Type, uint8Type, uint8Type, uint8Type, uint8Type, uint8Type, uint8Type, fuzzType).map(_.toList)
+        ).map { signatures =>
+          signatures.map { io =>
+            io._1 match
+              case Seq(_, _, _, _, _, _, _, arg8) => arg8
+              case _                              => throw Exception(s"Expected 8 arguments, but found ${io._1.size} arguments")
+          }.toSet
+        }
+
+      isFunction9 <- client
+        .executeNoResult(
+          s"SELECT toTypeName(${fn.name}(1, 2, 3, 4, 5, 6, 7, 8, ${CHFuzzableType.TimeZone.fuzzingValues.head}))"
+        )
+        .map(_ => true)
+        .recover(_ => false)
+
+      supportOverWindow <- Fuzzer.testSampleInputWithOverWindow(fn.name, args = "1, 1, 1, 1, 1, 1")
+      settings <- Fuzzer.detectMandatorySettingsFromSampleInput(
+        fn.name,
+        args = "1, 1, 1, 1, 1, 1",
+        fuzzOverWindow = false
+      )
+    yield
+      if !isFunction9 then
+        logger.error(s"Unexpected result for hardcoded function ${fn.name}. Skipping it.")
+        fn
+      else
+        val modes =
+          if supportOverWindow then Set(CHFunction.Mode.NoOverWindow, CHFunction.Mode.OverWindow)
+          else Set(CHFunction.Mode.NoOverWindow)
+
+        val functions =
+          crossJoin(
+            CHTypeMerger.mergeInputTypes(arg1Types).toSeq,
+            CHTypeMerger.mergeInputTypes(arg2Types).toSeq,
+            CHTypeMerger.mergeInputTypes(arg3Types).toSeq,
+            CHTypeMerger.mergeInputTypes(arg4Types).toSeq,
+            CHTypeMerger.mergeInputTypes(arg5Types).toSeq,
+            CHTypeMerger.mergeInputTypes(arg6Types).toSeq,
+            CHTypeMerger.mergeInputTypes(arg7Types).toSeq,
+            CHTypeMerger.mergeInputTypes(arg8Types).toSeq
+          ).map((arg1, arg2, arg3, arg4, arg5, arg6, arg7, arg8) =>
+            (
+              Function6(
+                arg1,
+                arg2,
+                arg3,
+                arg4,
+                arg5,
+                arg6,
+                CHFuzzableType.DateTime64
+              ), // Missing arg7, arg8 so there are duplications
+              Function7(
+                arg1,
+                arg2,
+                arg3,
+                arg4,
+                arg5,
+                arg6,
+                arg7,
+                CHFuzzableType.DateTime64
+              ), // Missing arg8 so there are duplications
+              Function8(arg1, arg2, arg3, arg4, arg5, arg6, arg7, arg8, CHFuzzableType.DateTime64),
+              Function9(
+                arg1,
+                arg2,
+                arg3,
+                arg4,
+                arg5,
+                arg6,
+                arg7,
+                arg8,
+                CHFuzzableType.TimeZone,
+                CHFuzzableType.DateTime64
+              )
+            )
+          )
+
+        val function6s = functions.map(_._1).distinct
+        val function7s = functions.map(_._2).distinct
+        val function8s = functions.map(_._3)
+        val function9s = functions.map(_._4)
+
+        fn.copy(
+          modes = fn.modes ++ modes,
+          settings = settings,
+          function6s = function6s,
+          function7s = function7s,
+          function8s = function8s,
+          function9s = function9s
+        )
 
   private def fuzzMannWhitneyUTest(
       fn: CHFunctionFuzzResult
@@ -1761,12 +2217,32 @@ object FuzzerHardcodedFunctions extends StrictLogging {
                 )
           }
         }
-    yield fn.copy(
-      modes = fn.modes + CHFunction.Mode.NoOverWindow + CHFunction.Mode.OverWindow,
-      parametric0Function2s = parametric0Function2,
-      parametric1Function2s = parametric1Function2,
-      parametric2Function2s = parametric2Function2
-    )
+
+      supportOverWindow <- Fuzzer.testSampleInputWithOverWindow(
+        fn.name,
+        paramsOpt = Some(""),
+        args = "toInt8(randNormal(0, 1)), randNormal(0, 1)",
+        sourceTable = Some("numbers(100)")
+      )
+      settings <- Fuzzer.detectMandatorySettingsFromSampleInput(
+        fn.name,
+        paramsOpt = Some(""),
+        args = "toInt8(randNormal(0, 1)), randNormal(0, 1)",
+        sourceTable = Some("numbers(100)"),
+        fuzzOverWindow = false
+      )
+    yield
+      val modes =
+        if supportOverWindow then Set(CHFunction.Mode.NoOverWindow, CHFunction.Mode.OverWindow)
+        else Set(CHFunction.Mode.NoOverWindow)
+
+      fn.copy(
+        modes = fn.modes ++ modes,
+        settings = settings,
+        parametric0Function2s = parametric0Function2,
+        parametric1Function2s = parametric1Function2,
+        parametric2Function2s = parametric2Function2
+      )
 
   private def fuzzMap(
       fn: CHFunctionFuzzResult
@@ -1775,7 +2251,8 @@ object FuzzerHardcodedFunctions extends StrictLogging {
     val anyType = CHFuzzableAbstractType.nonCustomFuzzableTypes
       .map(t => (t, Seq(t.fuzzingValues.head)))
 
-    for kvTypes <-
+    for
+      function2s <-
         fuzzSignatures(
           fn.name,
           crossJoin(
@@ -1785,25 +2262,33 @@ object FuzzerHardcodedFunctions extends StrictLogging {
         ).map { signatures =>
           signatures.map { io =>
             io._1 match
-              case Seq(arg1, arg2) => (arg1, arg2)
+              case Seq(arg1, arg2) => Function2(arg1, arg2, io._2)
               case _               => throw Exception(s"Expected 2 arguments, but found ${io._1.size} arguments")
-          }.distinct
+          }
         }
+
+      sampleIO = function2s.head
+      supportOverWindow <- Fuzzer.testSampleFunctionWithOverWindow(fn.name, sampleIO)
+      settings <- Fuzzer.detectMandatorySettingsFromSampleFunction(fn.name, sampleIO, fuzzOverWindow = false)
     yield
       require(
-        kvTypes.map(_._1).distinct.size * kvTypes.map(_._2).distinct.size == kvTypes.size,
+        function2s.map(_.arg1).distinct.size * function2s.map(_.arg2).distinct.size == function2s.size,
         "Expected each map keys to support exactly the same types of values. But it's apparently not the case anymore."
       )
 
-      val t1 = CHTypeMerger.mergeInputTypes(kvTypes.map(_._1).toSet, supportJson = Settings.Fuzzer.supportJson)
-      val t2 = CHTypeMerger.mergeInputTypes(kvTypes.map(_._2).toSet, supportJson = Settings.Fuzzer.supportJson)
+      val modes =
+        if supportOverWindow then Set(CHFunction.Mode.NoOverWindow, CHFunction.Mode.OverWindow)
+        else Set(CHFunction.Mode.NoOverWindow)
+      val t1 = CHTypeMerger.mergeInputTypes(function2s.map(_.arg1).toSet, supportJson = Settings.Fuzzer.supportJson)
+      val t2 = CHTypeMerger.mergeInputTypes(function2s.map(_.arg2).toSet, supportJson = Settings.Fuzzer.supportJson)
       require(t1.size == 1, "Map key type should be aggregatable to a single type")
       require(t2.size == 1, "Map value type should be aggregatable to a single type")
 
       // This signature is wrong, t1 and t2 should be generic types
       // Yet right now I don't have a good idea to express those parameters must be repeated as a duo
       fn.copy(
-        modes = fn.modes + CHFunction.Mode.NoOverWindow,
+        modes = fn.modes ++ modes,
+        settings = settings,
         function1Ns = Seq(Function1N(t1.head, t2.head, CHSpecialType.Map(t1.head, t2.head)))
       )
 
@@ -1846,7 +2331,8 @@ object FuzzerHardcodedFunctions extends StrictLogging {
       .map(t => (t, t.fuzzingValues.take(3)))
     val numbersType = CHFuzzableAbstractType.Number.chFuzzableTypes.map(t => (t, t.fuzzingValues.take(3)))
 
-    for parametric3Function2 <-
+    for
+      parametric3Function2 <-
         fuzzParametricSignatures(
           fn.name,
           crossJoin(
@@ -1869,10 +2355,20 @@ object FuzzerHardcodedFunctions extends StrictLogging {
                 )
           }
         }
-    yield fn.copy(
-      modes = fn.modes + CHFunction.Mode.NoOverWindow + CHFunction.Mode.OverWindow,
-      parametric3Function2s = parametric3Function2
-    )
+
+      sampleIO = parametric3Function2.head
+      supportOverWindow <- Fuzzer.testSampleFunctionWithOverWindow(fn.name, sampleIO)
+      settings <- Fuzzer.detectMandatorySettingsFromSampleFunction(fn.name, sampleIO, fuzzOverWindow = false)
+    yield
+      val modes =
+        if supportOverWindow then Set(CHFunction.Mode.NoOverWindow, CHFunction.Mode.OverWindow)
+        else Set(CHFunction.Mode.NoOverWindow)
+
+      fn.copy(
+        modes = fn.modes ++ modes,
+        settings = settings,
+        parametric3Function2s = parametric3Function2
+      )
 
   private def fuzzMinSampleSizeContinous(
       fn: CHFunctionFuzzResult
@@ -1914,10 +2410,20 @@ object FuzzerHardcodedFunctions extends StrictLogging {
                 case _                                 => throw Exception(s"Expected 5 arguments, but found ${io._1.size} arguments")
             }
           }
-    yield fn.copy(
-      modes = fn.modes + CHFunction.Mode.NoOverWindow,
-      function5s = function5s
-    )
+
+      sampleIO = function5s.head
+      supportOverWindow <- Fuzzer.testSampleFunctionWithOverWindow(fn.name, sampleIO)
+      settings <- Fuzzer.detectMandatorySettingsFromSampleFunction(fn.name, sampleIO, fuzzOverWindow = false)
+    yield
+      val modes =
+        if supportOverWindow then Set(CHFunction.Mode.NoOverWindow, CHFunction.Mode.OverWindow)
+        else Set(CHFunction.Mode.NoOverWindow)
+
+      fn.copy(
+        modes = fn.modes ++ modes,
+        settings = settings,
+        function5s = function5s
+      )
 
   private def fuzzMinSampleSizeConversion(
       fn: CHFunctionFuzzResult
@@ -1959,10 +2465,20 @@ object FuzzerHardcodedFunctions extends StrictLogging {
                 case _                           => throw Exception(s"Expected 4 arguments, but found ${io._1.size} arguments")
             }
           }
-    yield fn.copy(
-      modes = fn.modes + CHFunction.Mode.NoOverWindow,
-      function4s = function4s
-    )
+
+      sampleIO = function4s.head
+      supportOverWindow <- Fuzzer.testSampleFunctionWithOverWindow(fn.name, sampleIO)
+      settings <- Fuzzer.detectMandatorySettingsFromSampleFunction(fn.name, sampleIO, fuzzOverWindow = false)
+    yield
+      val modes =
+        if supportOverWindow then Set(CHFunction.Mode.NoOverWindow, CHFunction.Mode.OverWindow)
+        else Set(CHFunction.Mode.NoOverWindow)
+
+      fn.copy(
+        modes = fn.modes ++ modes,
+        settings = settings,
+        function4s = function4s
+      )
 
   private def fuzzNested(
       fn: CHFunctionFuzzResult
@@ -1975,7 +2491,7 @@ object FuzzerHardcodedFunctions extends StrictLogging {
       )
     )
     for
-      firstArgTypes <-
+      function2s <-
         fuzzSignatures(
           fn.name,
           crossJoin(
@@ -1985,11 +2501,11 @@ object FuzzerHardcodedFunctions extends StrictLogging {
         ).map { signatures =>
           signatures.map { io =>
             io._1 match
-              case Seq(arg1, arg2) => arg1
+              case Seq(arg1, arg2) => Function2(arg1, arg2, io._2)
               case _               => throw Exception(s"Expected 2 arguments, but found ${io._1.size} arguments")
-          }.distinct
+          }
         }
-      isFunction2 = firstArgTypes.nonEmpty
+      isFunction2 = function2s.nonEmpty
       isFunction3 <-
         fuzzSignatures(
           fn.name,
@@ -1999,21 +2515,36 @@ object FuzzerHardcodedFunctions extends StrictLogging {
             stringArrayType
           ).map(_.toList)
         ).map(_.nonEmpty)
+
+      supportOverWindow <- Fuzzer.testSampleInputWithOverWindow(fn.name, args = "['foo'], ['foo']")
+      settings <- Fuzzer.detectMandatorySettingsFromSampleInput(
+        fn.name,
+        args = "['foo'], ['foo']",
+        fuzzOverWindow = false
+      )
     yield
-      if isFunction2 && isFunction3 then
-        fn.copy(
-          modes = fn.modes + CHFunction.Mode.NoOverWindow,
-          function1Ns = firstArgTypes.map(t =>
-            Function1N(
-              t,
-              CHSpecialType.Array(CHAggregatedType.Any),
-              CHSpecialType.Array(CHSpecialType.TupleN(CHAggregatedType.Any))
-            )
-          )
-        )
-      else
+      if !isFunction2 || !isFunction3 then
         logger.error(s"Unexpected result for hardcoded function ${fn.name}. Skipping it.")
         fn
+      else
+        val modes =
+          if supportOverWindow then Set(CHFunction.Mode.NoOverWindow, CHFunction.Mode.OverWindow)
+          else Set(CHFunction.Mode.NoOverWindow)
+
+        fn.copy(
+          modes = fn.modes ++ modes,
+          settings = settings,
+          function1Ns = function2s
+            .map(_._1)
+            .distinct
+            .map(arg1 =>
+              Function1N(
+                arg1,
+                CHSpecialType.Array(CHAggregatedType.Any),
+                CHSpecialType.Array(CHSpecialType.TupleN(CHAggregatedType.Any))
+              )
+            )
+        )
 
   private def fuzzPointInEllipses(
       fn: CHFunctionFuzzResult
@@ -2021,7 +2552,8 @@ object FuzzerHardcodedFunctions extends StrictLogging {
     val float64Type: Seq[(CHFuzzableType, Seq[String])] = Seq(
       (CHFuzzableType.Float64, CHFuzzableType.Float64.fuzzingValues)
     )
-    for function2Ns <-
+    for
+      function2Ns <-
         fuzzSignatures(
           fn.name,
           crossJoin(
@@ -2040,10 +2572,23 @@ object FuzzerHardcodedFunctions extends StrictLogging {
               case _ => throw Exception(s"Expected 6 arguments, but found ${io._1.size} arguments")
           }
         }
-    yield fn.copy(
-      modes = fn.modes + CHFunction.Mode.NoOverWindow,
-      function2Ns = function2Ns
-    )
+
+      supportOverWindow <- Fuzzer.testSampleInputWithOverWindow(fn.name, args = "1., 1., 1., 1., 1., 1.")
+      settings <- Fuzzer.detectMandatorySettingsFromSampleInput(
+        fn.name,
+        args = "1., 1., 1., 1., 1., 1.",
+        fuzzOverWindow = false
+      )
+    yield
+      val modes =
+        if supportOverWindow then Set(CHFunction.Mode.NoOverWindow, CHFunction.Mode.OverWindow)
+        else Set(CHFunction.Mode.NoOverWindow)
+
+      fn.copy(
+        modes = fn.modes ++ modes,
+        settings = settings,
+        function2Ns = function2Ns
+      )
 
   private def fuzzProportionsZTest(
       fn: CHFunctionFuzzResult
@@ -2051,7 +2596,8 @@ object FuzzerHardcodedFunctions extends StrictLogging {
     val number = CHFuzzableAbstractType.Number.chFuzzableTypes.map(t => (t, Seq(t.fuzzingValues.head)))
     val usevarType = Seq((CHFuzzableType.Usevar, CHFuzzableType.Usevar.fuzzingValues))
 
-    for function6s <-
+    for
+      function6s <-
         fuzzSignatures(
           fn.name,
           crossJoin(
@@ -2069,10 +2615,20 @@ object FuzzerHardcodedFunctions extends StrictLogging {
               case _                                       => throw Exception(s"Expected 6 arguments, but found ${io._1.size} arguments")
           }
         }
-    yield fn.copy(
-      modes = fn.modes + CHFunction.Mode.NoOverWindow,
-      function6s = function6s
-    )
+
+      sampleIO = function6s.head
+      supportOverWindow <- Fuzzer.testSampleFunctionWithOverWindow(fn.name, sampleIO)
+      settings <- Fuzzer.detectMandatorySettingsFromSampleFunction(fn.name, sampleIO, fuzzOverWindow = false)
+    yield
+      val modes =
+        if supportOverWindow then Set(CHFunction.Mode.NoOverWindow, CHFunction.Mode.OverWindow)
+        else Set(CHFunction.Mode.NoOverWindow)
+
+      fn.copy(
+        modes = fn.modes ++ modes,
+        settings = settings,
+        function6s = function6s
+      )
 
   private def fuzzReinterpret(
       fn: CHFunctionFuzzResult
@@ -2089,7 +2645,8 @@ object FuzzerHardcodedFunctions extends StrictLogging {
   private def fuzzS2CapUnionLike(
       fn: CHFunctionFuzzResult
   )(using client: CHClient, ec: ExecutionContext): Future[CHFunctionFuzzResult] =
-    for function4s <-
+    for
+      function4s <-
         FuzzerNonParametricFunctions
           .fuzzAbstractInputCombinations(
             fn.name,
@@ -2110,17 +2667,27 @@ object FuzzerHardcodedFunctions extends StrictLogging {
                 case _                           => throw Exception(s"Expected 4 arguments, but found ${io._1.size} arguments")
             }
           }
-    yield fn.copy(
-      modes = fn.modes + CHFunction.Mode.NoOverWindow,
-      function4s = function4s
-    )
+
+      sampleIO = function4s.head
+      supportOverWindow <- Fuzzer.testSampleFunctionWithOverWindow(fn.name, sampleIO)
+      settings <- Fuzzer.detectMandatorySettingsFromSampleFunction(fn.name, sampleIO, fuzzOverWindow = false)
+    yield
+      val modes =
+        if supportOverWindow then Set(CHFunction.Mode.NoOverWindow, CHFunction.Mode.OverWindow)
+        else Set(CHFunction.Mode.NoOverWindow)
+
+      fn.copy(
+        modes = fn.modes ++ modes,
+        settings = settings,
+        function4s = function4s
+      )
 
   private def fuzzSequenceCountLike(
       fn: CHFunctionFuzzResult
   )(using client: CHClient, ec: ExecutionContext): Future[CHFunctionFuzzResult] =
     val patternType = Seq(
-      (CHFuzzableType.FixedString, Seq("'.'::FixedString(1)")),
-      (CHFuzzableType.StringType, Seq("'.'::String"))
+      (CHFuzzableType.SpecialFixedString, Seq("'.'::FixedString(1)")),
+      (CHFuzzableType.SpecialString, Seq("'.'::String"))
     )
 
     val timestampType = CHFuzzableAbstractType.nonCustomFuzzableTypes
@@ -2162,13 +2729,22 @@ object FuzzerHardcodedFunctions extends StrictLogging {
             conditionType
           ).map(_.toList)
         ).map(_.nonEmpty)
+
+      sampleIO = parametric1Function2Ns.head
+      supportOverWindow <- Fuzzer.testSampleFunctionWithOverWindow(fn.name, sampleIO)
+      settings <- Fuzzer.detectMandatorySettingsFromSampleFunction(fn.name, sampleIO, fuzzOverWindow = false)
     yield
       if !isRepeatedConfirmation then
         logger.error(s"Unexpected result for hardcoded function ${fn.name}. Skipping it.")
         fn
       else
+        val modes =
+          if supportOverWindow then Set(CHFunction.Mode.NoOverWindow, CHFunction.Mode.OverWindow)
+          else Set(CHFunction.Mode.NoOverWindow)
+
         fn.copy(
-          modes = fn.modes + CHFunction.Mode.NoOverWindow,
+          modes = fn.modes ++ modes,
+          settings = settings,
           parametric1Function2Ns = parametric1Function2Ns
         )
 
@@ -2193,6 +2769,8 @@ object FuzzerHardcodedFunctions extends StrictLogging {
 
     Future.successful(
       fn.copy(
+        modes = fn.modes ++ Set(CHFunction.Mode.NoOverWindow),
+        settings = Set(CHSetting.AllowExperimentalFunnelFunctions(true)),
         specialParametric2Function2Ns =
           for
             (direction, base) <- 
@@ -2263,16 +2841,27 @@ object FuzzerHardcodedFunctions extends StrictLogging {
                 case _                           => throw Exception(s"Expected 4 arguments, but found ${io._1.size} arguments")
             }
           }
-    yield fn.copy(
-      modes = fn.modes + CHFunction.Mode.NoOverWindow,
-      function1s = function1s,
-      function4s = function4s
-    )
+
+      sampleIO = function1s.head
+      supportOverWindow <- Fuzzer.testSampleFunctionWithOverWindow(fn.name, sampleIO)
+      settings <- Fuzzer.detectMandatorySettingsFromSampleFunction(fn.name, sampleIO, fuzzOverWindow = false)
+    yield
+      val modes =
+        if supportOverWindow then Set(CHFunction.Mode.NoOverWindow, CHFunction.Mode.OverWindow)
+        else Set(CHFunction.Mode.NoOverWindow)
+
+      fn.copy(
+        modes = fn.modes ++ modes,
+        settings = settings,
+        function1s = function1s,
+        function4s = function4s
+      )
 
   private def fuzzToModifiedJulianDay(
       fn: CHFunctionFuzzResult
   )(using client: CHClient, ec: ExecutionContext): Future[CHFunctionFuzzResult] =
-    for function1s <-
+    for
+      function1s <-
         fuzzSignatures(
           fn.name,
           Seq(
@@ -2286,10 +2875,19 @@ object FuzzerHardcodedFunctions extends StrictLogging {
               case _         => throw Exception(s"Expected 1 argument, but found ${io._1.size} arguments")
           }
         }
-    yield fn.copy(
-      modes = fn.modes + CHFunction.Mode.NoOverWindow,
-      function1s = function1s
-    )
+
+      supportOverWindow <- Fuzzer.testSampleInputWithOverWindow(fn.name, args = "'2024-01-01'")
+      settings <- Fuzzer.detectMandatorySettingsFromSampleInput(fn.name, args = "'2024-01-01'", fuzzOverWindow = false)
+    yield
+      val modes =
+        if supportOverWindow then Set(CHFunction.Mode.NoOverWindow, CHFunction.Mode.OverWindow)
+        else Set(CHFunction.Mode.NoOverWindow)
+
+      fn.copy(
+        modes = fn.modes ++ modes,
+        settings = settings,
+        function1s = function1s
+      )
 
   private def fuzzTimeSlots(
       fn: CHFunctionFuzzResult
@@ -2348,11 +2946,21 @@ object FuzzerHardcodedFunctions extends StrictLogging {
               case _                     => throw Exception(s"Expected 3 arguments, but found ${io._1.size} arguments")
           }
         }
-    yield fn.copy(
-      modes = fn.modes + CHFunction.Mode.NoOverWindow,
-      function2s = function2s,
-      function3s = function3s
-    )
+
+      sampleIO = function2s.head
+      supportOverWindow <- Fuzzer.testSampleFunctionWithOverWindow(fn.name, sampleIO)
+      settings <- Fuzzer.detectMandatorySettingsFromSampleFunction(fn.name, sampleIO, fuzzOverWindow = false)
+    yield
+      val modes =
+        if supportOverWindow then Set(CHFunction.Mode.NoOverWindow, CHFunction.Mode.OverWindow)
+        else Set(CHFunction.Mode.NoOverWindow)
+
+      fn.copy(
+        modes = fn.modes ++ modes,
+        settings = settings,
+        function2s = function2s,
+        function3s = function3s
+      )
 
   private def fuzzTupleElement(
       fn: CHFunctionFuzzResult
@@ -2361,7 +2969,7 @@ object FuzzerHardcodedFunctions extends StrictLogging {
       .map(t => (t, t.fuzzingValues))
 
     for
-      validIndexOrNameTypes <-
+      function2s <-
         fuzzSignatures(
           fn.name,
           crossJoin(
@@ -2371,10 +2979,12 @@ object FuzzerHardcodedFunctions extends StrictLogging {
         ).map { signatures =>
           signatures.map { io =>
             io._1 match
-              case Seq(_, arg2) => arg2.asInstanceOf[CHFuzzableType]
-              case _            => throw Exception(s"Expected 2 arguments, but found ${io._1.size} arguments")
+              case Seq(arg1, arg2) => Function2(arg1, arg2, io._2)
+              case _               => throw Exception(s"Expected 2 arguments, but found ${io._1.size} arguments")
           }
         }
+
+      validIndexOrNameTypes = function2s.map(_.arg2)
 
       isValidSignature <-
         client
@@ -2398,6 +3008,10 @@ object FuzzerHardcodedFunctions extends StrictLogging {
           )
           .map(_ => true)
           .recover(_ => false)
+
+      sampleIO = function2s.head
+      supportOverWindow <- Fuzzer.testSampleFunctionWithOverWindow(fn.name, sampleIO)
+      settings <- Fuzzer.detectMandatorySettingsFromSampleFunction(fn.name, sampleIO, fuzzOverWindow = false)
     yield
       if !isValidSignature then
         logger.error(
@@ -2405,8 +3019,13 @@ object FuzzerHardcodedFunctions extends StrictLogging {
         )
         fn
       else
+        val modes =
+          if supportOverWindow then Set(CHFunction.Mode.NoOverWindow, CHFunction.Mode.OverWindow)
+          else Set(CHFunction.Mode.NoOverWindow)
+
         fn.copy(
-          modes = fn.modes + CHFunction.Mode.NoOverWindow,
+          modes = fn.modes ++ modes,
+          settings = settings,
           function2s = validIndexOrNameTypes.flatMap(indexOrNameType =>
             Seq(
               CHFunctionIO.Function2(
@@ -2445,7 +3064,8 @@ object FuzzerHardcodedFunctions extends StrictLogging {
       (CHFuzzableType.FixedString, Seq("'UInt32'::FixedString(6)", "'UInt64'::FixedString(6)"))
     )
 
-    for function2s <-
+    for
+      function2s <-
         fuzzSignatures(
           fn.name,
           crossJoin(
@@ -2459,13 +3079,27 @@ object FuzzerHardcodedFunctions extends StrictLogging {
               case _               => throw Exception(s"Expected 2 arguments, but found ${io._1.size} arguments")
           }
         }
+
+      supportOverWindow <- Fuzzer.testSampleInputWithOverWindow(
+        fn.name,
+        args = "123456::Variant(UInt64, String, Array(UInt64)), 'UInt64'::String"
+      )
+      settings <- Fuzzer.detectMandatorySettingsFromSampleInput(
+        fn.name,
+        args = "123456::Variant(UInt64, String, Array(UInt64)), 'UInt64'::String",
+        fuzzOverWindow = false
+      )
     yield
+      val modes =
+        if supportOverWindow then Set(CHFunction.Mode.NoOverWindow, CHFunction.Mode.OverWindow)
+        else Set(CHFunction.Mode.NoOverWindow)
       val function3s = function2s.map { case Function2(arg1, arg2, _) =>
         Function3(arg1, arg2, CHAggregatedType.Any, CHAggregatedType.Any)
       }
 
       fn.copy(
-        modes = fn.modes + CHFunction.Mode.NoOverWindow,
+        modes = fn.modes ++ modes,
+        settings = settings,
         function2s = function2s,
         function3s = function3s
       )
@@ -2475,7 +3109,8 @@ object FuzzerHardcodedFunctions extends StrictLogging {
   )(using client: CHClient, ec: ExecutionContext): Future[CHFunctionFuzzResult] =
     val variantColumn = Seq((CHFuzzableType.Variant, Seq("123456::Variant(UInt64, String, Array(UInt64))")))
 
-    for function1s <-
+    for
+      function1s <-
         fuzzSignatures(
           fn.name,
           Seq(variantColumn)
@@ -2486,15 +3121,32 @@ object FuzzerHardcodedFunctions extends StrictLogging {
               case _         => throw Exception(s"Expected 1 argument, but found ${io._1.size} arguments")
           }
         }
-    yield fn.copy(
-      modes = fn.modes + CHFunction.Mode.NoOverWindow,
-      function1s = function1s
-    )
+
+      supportOverWindow <- Fuzzer.testSampleInputWithOverWindow(
+        fn.name,
+        args = "123456::Variant(UInt64, String, Array(UInt64))"
+      )
+      settings <- Fuzzer.detectMandatorySettingsFromSampleInput(
+        fn.name,
+        args = "123456::Variant(UInt64, String, Array(UInt64))",
+        fuzzOverWindow = false
+      )
+    yield
+      val modes =
+        if supportOverWindow then Set(CHFunction.Mode.NoOverWindow, CHFunction.Mode.OverWindow)
+        else Set(CHFunction.Mode.NoOverWindow)
+
+      fn.copy(
+        modes = fn.modes ++ modes,
+        settings = settings,
+        function1s = function1s
+      )
 
   private def fuzzWidthBucket(
       fn: CHFunctionFuzzResult
   )(using client: CHClient, ec: ExecutionContext): Future[CHFunctionFuzzResult] =
-    for function4s <-
+    for
+      function4s <-
         FuzzerNonParametricFunctions
           .fuzzAbstractInputCombinations(
             fn.name,
@@ -2515,8 +3167,18 @@ object FuzzerHardcodedFunctions extends StrictLogging {
                 case _                           => throw Exception(s"Expected 4 arguments, but found ${io._1.size} arguments")
             }
           }
-    yield fn.copy(
-      modes = fn.modes + CHFunction.Mode.NoOverWindow,
-      function4s = function4s
-    )
+
+      sampleIO = function4s.head
+      supportOverWindow <- Fuzzer.testSampleFunctionWithOverWindow(fn.name, sampleIO)
+      settings <- Fuzzer.detectMandatorySettingsFromSampleFunction(fn.name, sampleIO, fuzzOverWindow = false)
+    yield
+      val modes =
+        if supportOverWindow then Set(CHFunction.Mode.NoOverWindow, CHFunction.Mode.OverWindow)
+        else Set(CHFunction.Mode.NoOverWindow)
+
+      fn.copy(
+        modes = fn.modes ++ modes,
+        settings = settings,
+        function4s = function4s
+      )
 }

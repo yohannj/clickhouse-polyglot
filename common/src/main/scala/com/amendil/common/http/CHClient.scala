@@ -1,6 +1,6 @@
 package com.amendil.common.http
 
-import com.amendil.common.entities.{CHResponse, CHSetting}
+import com.amendil.common.entities.{CHResponse, CHSetting, CHSettingWithValue}
 import com.fasterxml.jackson.databind.json.JsonMapper
 import com.fasterxml.jackson.module.scala.DefaultScalaModule
 
@@ -14,12 +14,23 @@ import scala.compat.java8.FutureConverters.*
 import scala.concurrent.{ExecutionContext, Future}
 
 trait CHClient:
-  def execute(query: String): Future[CHResponse]
-  def executeNoResult(query: String): Future[Unit]
+  protected val unlockFunctionsSettings = CHClient.unlockFunctionsSettingNames.map(_.apply(true))
+
+  def execute(
+      query: String,
+      unlockFunctionsSettings: Seq[CHSettingWithValue[Boolean]] = unlockFunctionsSettings
+  ): Future[CHResponse]
+  def executeNoResult(
+      query: String,
+      unlockFunctionsSettings: Seq[CHSettingWithValue[Boolean]] = unlockFunctionsSettings
+  ): Future[Unit]
   def executeNoResultNoSettings(query: String): Future[Unit]
 
 object CHClient:
   val baseSettings = Seq(
+    CHSetting.AllowExperimentalDynamicType(true),
+    CHSetting.AllowExperimentalObjectType(true),
+    CHSetting.AllowExperimentalVariantType(true),
     CHSetting.AllowGetClientHttpHeader(true),
     CHSetting.AllowSuspiciousLowCardinalityTypes(true),
     CHSetting.DecimalCheckOverflow(false),
@@ -28,19 +39,10 @@ object CHClient:
 
   val unlockFunctionsSettingNames = Seq(
     CHSetting.AllowDeprecatedErrorProneWindowFunctions,
-    CHSetting.AllowExperimentalDynamicType,
     CHSetting.AllowExperimentalFunnelFunctions,
-    CHSetting.AllowExperimentalObjectType,
     CHSetting.AllowExperimentalNlpFunctions,
-    CHSetting.AllowExperimentalVariantType,
     CHSetting.AllowIntrospectionFunctions
   )
-
-  val settings: String =
-    (
-      baseSettings ++
-        unlockFunctionsSettingNames.map(_.apply(true))
-    ).map(_.asString).mkString(", ")
 
 class CHClientImpl(url: String)(using ExecutionContext) extends CHClient:
 
@@ -63,7 +65,10 @@ class CHClientImpl(url: String)(using ExecutionContext) extends CHClient:
     * @param query Select query to send to ClickHouse
     * @return A Future containing the result of the query.
     */
-  def execute(query: String): Future[CHResponse] =
+  def execute(
+      query: String,
+      unlockFunctionsSettings: Seq[CHSettingWithValue[Boolean]] = unlockFunctionsSettings
+  ): Future[CHResponse] =
     executeAndParseJson(
       HttpRequest
         .newBuilder()
@@ -71,7 +76,7 @@ class CHClientImpl(url: String)(using ExecutionContext) extends CHClient:
         .POST(
           HttpRequest.BodyPublishers.ofString(
             // JSONCompact is an efficient format (small network footprint + quick to parse)
-            s"$query SETTINGS ${CHClient.settings} FORMAT JSONCompact;"
+            s"$query SETTINGS ${(CHClient.baseSettings ++ unlockFunctionsSettings).map(_.asString).mkString(", ")} FORMAT JSONCompact;"
           )
         )
         .setHeader("Content-Type", "application/x-www-form-urlencoded")
@@ -88,14 +93,17 @@ class CHClientImpl(url: String)(using ExecutionContext) extends CHClient:
     * @param query Select query to send to ClickHouse
     * @return Future.successful when ClickHouse executed successfully the query, Future.failure otherwise.
     */
-  def executeNoResult(query: String): Future[Unit] =
+  def executeNoResult(
+      query: String,
+      unlockFunctionsSettings: Seq[CHSettingWithValue[Boolean]] = unlockFunctionsSettings
+  ): Future[Unit] =
     executeNoResult(
       HttpRequest
         .newBuilder()
         .uri(URI(s"$url"))
         .POST(
           HttpRequest.BodyPublishers.ofString(
-            s"$query SETTINGS ${CHClient.settings};"
+            s"$query SETTINGS ${(CHClient.baseSettings ++ unlockFunctionsSettings).map(_.asString).mkString(", ")};"
           )
         )
         .setHeader("Content-Type", "application/x-www-form-urlencoded")
