@@ -47,3 +47,29 @@ object CHType extends StrictLogging:
       case CHSpecialType.Tuple(innerTypes)                => CHSpecialType.Tuple(innerTypes.map(normalize))
       case CHSpecialType.TupleN(innerType)                => CHSpecialType.TupleN(normalize(innerType))
       case _                                              => CHTypeParser.getByName(t.name)
+
+  /**
+    * Tries to update the given type using the updateRule as much as possible
+    * E.g. CHFuzzable.ArrayUInt8 with the rule UInt8 becomes UInt16 will become CHSpecialType.Array(CHFuzzable.UInt16)
+    *
+    * This method will first try to apply the update rule BEFORE trying to dive into any subtypes.
+    *
+    * @param updateRule a function that updates a CHType, this function will always be called with a normalized CHType!
+    */
+  def update(t: CHType, updateRule: CHType => CHType): CHType =
+    val newType = updateRule(normalize(t))
+    normalize(newType) match
+      case CHSpecialType.AggregateFunction(fnName, innerType) =>
+        CHSpecialType.AggregateFunction(fnName, update(innerType, updateRule))
+      case CHSpecialType.Array(innerType)  => CHSpecialType.Array(update(innerType, updateRule))
+      case CHSpecialType.Bitmap(innerType) => CHSpecialType.Bitmap(update(innerType, updateRule))
+      case CHSpecialType.GenericType(typeName, superType) =>
+        CHSpecialType.GenericType(typeName, update(superType, updateRule))
+      case CHSpecialType.LambdaType(outputType)    => CHSpecialType.LambdaType(update(outputType, updateRule))
+      case CHSpecialType.LowCardinality(innerType) => CHSpecialType.LowCardinality(update(innerType, updateRule))
+      case CHSpecialType.Map(keyType, valueType) =>
+        CHSpecialType.Map(update(keyType, updateRule), update(valueType, updateRule))
+      case CHSpecialType.Nullable(innerType) => CHSpecialType.Nullable(update(innerType, updateRule))
+      case CHSpecialType.Tuple(innerTypes)   => CHSpecialType.Tuple(innerTypes.map(update(_, updateRule)))
+      case CHSpecialType.TupleN(innerType)   => CHSpecialType.TupleN(update(innerType, updateRule))
+      case otherType                         => otherType

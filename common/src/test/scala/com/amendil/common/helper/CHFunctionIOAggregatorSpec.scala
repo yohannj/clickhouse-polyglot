@@ -720,4 +720,285 @@ class CHFunctionIOAggregatorSpec extends AnyFreeSpec with Matchers:
         actual.map(_.asString()) shouldBe expected.map(_.asString())
       }
     }
+
+    "should update fields" - {
+      "when Array(Array(UUID)) is part of the input" - {
+        "and there is no usage of UUID elsewhere" in {
+          val actual1 = CHFunctionIOAggregator.aggregate(
+            Seq(
+              CHFunctionIO.Function3(
+                CHFuzzableType.ArrayArrayUUID,
+                CHFuzzableType.StringType,
+                CHFuzzableType.StringType,
+                CHFuzzableType.StringType
+              )
+            )
+          )
+
+          val expected1 = Seq(
+            CHFunctionIO.Function3(
+              CHSpecialType.Array(CHSpecialType.Array(CHAggregatedType.Any)),
+              CHFuzzableType.StringType,
+              CHFuzzableType.StringType,
+              CHFuzzableType.StringType
+            )
+          )
+
+          actual1.map(_.asString()) shouldBe expected1.map(_.asString())
+
+          val actual2 = CHFunctionIOAggregator.aggregate(
+            Seq(
+              CHFunctionIO.Function3(
+                CHFuzzableType.StringType,
+                CHSpecialType.Array(CHSpecialType.Array(CHFuzzableType.UUID)),
+                CHFuzzableType.StringType,
+                CHFuzzableType.StringType
+              )
+            )
+          )
+
+          val expected2 = Seq(
+            CHFunctionIO.Function3(
+              CHFuzzableType.StringType,
+              CHSpecialType.Array(CHSpecialType.Array(CHAggregatedType.Any)),
+              CHFuzzableType.StringType,
+              CHFuzzableType.StringType
+            )
+          )
+
+          actual2.map(_.asString()) shouldBe expected2.map(_.asString())
+
+          val actual3 = CHFunctionIOAggregator.aggregate(
+            Seq(
+              CHFunctionIO.Function3(
+                CHFuzzableType.StringType,
+                CHFuzzableType.StringType,
+                CHSpecialType.Array(CHFuzzableType.ArrayUUID),
+                CHFuzzableType.StringType
+              )
+            )
+          )
+
+          val expected3 = Seq(
+            CHFunctionIO.Function3(
+              CHFuzzableType.StringType,
+              CHFuzzableType.StringType,
+              CHSpecialType.Array(CHSpecialType.Array(CHAggregatedType.Any)),
+              CHFuzzableType.StringType
+            )
+          )
+
+          actual3.map(_.asString()) shouldBe expected3.map(_.asString())
+        }
+
+        "and another input contains UUID" in {
+          val actual = CHFunctionIOAggregator.aggregate(
+            Seq(
+              CHFunctionIO.Function3(
+                CHFuzzableType.StringType,
+                CHFuzzableType.UUID,
+                CHFuzzableType.ArrayArrayUUID,
+                CHFuzzableType.StringType
+              )
+            )
+          )
+
+          val genericType = CHSpecialType.GenericType("T1", CHAggregatedType.Any)
+          val expected = Seq(
+            CHFunctionIO.Function3(
+              CHFuzzableType.StringType,
+              genericType,
+              CHSpecialType.Array(CHSpecialType.Array(genericType)),
+              CHFuzzableType.StringType
+            )
+          )
+
+          actual.map(_.asString()) shouldBe expected.map(_.asString())
+        }
+
+        "and another IO contains Map(UUID, ...)" in {
+          val actual1 = CHFunctionIOAggregator.aggregate(
+            Seq(
+              CHFunctionIO.Function3(
+                CHFuzzableType.StringType,
+                CHFuzzableType.MapUUIDInt,
+                CHFuzzableType.ArrayArrayUUID,
+                CHFuzzableType.StringType
+              )
+            )
+          )
+
+          val genericType1 = CHSpecialType.GenericType("T1", CHAggregatedType.MapKey)
+          val expected1 = Seq(
+            CHFunctionIO.Function3(
+              CHFuzzableType.StringType,
+              CHSpecialType.Map(genericType1, CHSpecialType.UnknownType),
+              CHSpecialType.Array(CHSpecialType.Array(genericType1)),
+              CHFuzzableType.StringType
+            )
+          )
+
+          actual1.map(_.asString()) shouldBe expected1.map(_.asString())
+
+          val actual2 = CHFunctionIOAggregator.aggregate(
+            Seq(
+              CHFunctionIO.Function3(
+                CHFuzzableType.StringType,
+                CHFuzzableType.UUID,
+                CHFuzzableType.ArrayArrayUUID,
+                CHSpecialType.Array(CHSpecialType.Map(CHFuzzableType.UUID, CHFuzzableType.IPv4))
+              )
+            )
+          )
+
+          val genericType2 = CHSpecialType.GenericType("T1", CHAggregatedType.MapKey)
+          val expected2 = Seq(
+            CHFunctionIO.Function3(
+              CHFuzzableType.StringType,
+              genericType2,
+              CHSpecialType.Array(CHSpecialType.Array(genericType2)),
+              CHSpecialType.Array(CHSpecialType.Map(genericType2, CHFuzzableType.IPv4))
+            )
+          )
+
+          actual2.map(_.asString()) shouldBe expected2.map(_.asString())
+        }
+
+        "and another IO contains Map(..., UUID)" in {
+          val actual = CHFunctionIOAggregator.aggregate(
+            Seq(
+              CHFunctionIO.Function3(
+                CHFuzzableType.StringType,
+                CHSpecialType.Array(CHSpecialType.Map(CHFuzzableType.IPv4, CHFuzzableType.UUID)),
+                CHFuzzableType.ArrayArrayUUID,
+                CHFuzzableType.StringType
+              )
+            )
+          )
+
+          val genericType = CHSpecialType.GenericType("T1", CHAggregatedType.Any)
+          val expected = Seq(
+            CHFunctionIO.Function3(
+              CHFuzzableType.StringType,
+              CHSpecialType.Array(CHSpecialType.Map(CHFuzzableType.IPv4, genericType)),
+              CHSpecialType.Array(CHSpecialType.Array(genericType)),
+              CHFuzzableType.StringType
+            )
+          )
+
+          actual.map(_.asString()) shouldBe expected.map(_.asString())
+        }
+
+        "and another IO contains Array(Array(Tuple(..., UUID)))" in {
+          val actual = CHFunctionIOAggregator.aggregate(
+            Seq(
+              CHFunctionIO.Function3(
+                CHFuzzableType.StringType,
+                CHSpecialType.Array(
+                  CHSpecialType.Array(CHSpecialType.Tuple(Seq(CHFuzzableType.IPv4, CHFuzzableType.UUID)))
+                ),
+                CHFuzzableType.ArrayArrayUUID,
+                CHFuzzableType.StringType
+              )
+            )
+          )
+
+          val genericType = CHSpecialType.GenericType("T1", CHAggregatedType.Any)
+          val expected = Seq(
+            CHFunctionIO.Function3(
+              CHFuzzableType.StringType,
+              CHSpecialType.Array(CHSpecialType.Array(CHSpecialType.Tuple(Seq(CHFuzzableType.IPv4, genericType)))),
+              CHSpecialType.Array(CHSpecialType.Array(genericType)),
+              CHFuzzableType.StringType
+            )
+          )
+
+          actual.map(_.asString()) shouldBe expected.map(_.asString())
+        }
+      }
+      "when Array(Map(UUID)) is part of the input" - {
+        "and there is no usage of UUID elsewhere" in {
+          val actual = CHFunctionIOAggregator.aggregate(
+            Seq(
+              CHFunctionIO.Function1(
+                CHFuzzableType.ArrayMapUUIDInt,
+                CHFuzzableType.StringType
+              )
+            )
+          )
+
+          val expected = Seq(
+            CHFunctionIO.Function1(
+              CHSpecialType.Array(CHSpecialType.Map(CHAggregatedType.MapKey, CHSpecialType.UnknownType)),
+              CHFuzzableType.StringType
+            )
+          )
+
+          actual.map(_.asString()) shouldBe expected.map(_.asString())
+        }
+      }
+      "when Array(Tuple(UUID)) is part of the input" - {
+        "and there is no usage of UUID elsewhere" in {
+          val actual = CHFunctionIOAggregator.aggregate(
+            Seq(
+              CHFunctionIO.Function1(
+                CHFuzzableType.ArrayTuple1UUID,
+                CHFuzzableType.StringType
+              )
+            )
+          )
+
+          val expected = Seq(
+            CHFunctionIO.Function1(
+              CHSpecialType.Array(CHSpecialType.Tuple(Seq(CHAggregatedType.Any))),
+              CHFuzzableType.StringType
+            )
+          )
+
+          actual.map(_.asString()) shouldBe expected.map(_.asString())
+        }
+      }
+      "when Tuple(Array(UUID)) is part of the input" - {
+        "and there is no usage of UUID elsewhere" in {
+          val actual = CHFunctionIOAggregator.aggregate(
+            Seq(
+              CHFunctionIO.Function1(
+                CHFuzzableType.Tuple1ArrayUUID,
+                CHFuzzableType.StringType
+              )
+            )
+          )
+
+          val expected = Seq(
+            CHFunctionIO.Function1(
+              CHSpecialType.Tuple(Seq(CHSpecialType.Array(CHAggregatedType.Any))),
+              CHFuzzableType.StringType
+            )
+          )
+
+          actual.map(_.asString()) shouldBe expected.map(_.asString())
+        }
+      }
+      "when Tuple(Map(UUID, ...)) is part of the input" - {
+        "and there is no usage of UUID elsewhere" in {
+          val actual = CHFunctionIOAggregator.aggregate(
+            Seq(
+              CHFunctionIO.Function1(
+                CHFuzzableType.Tuple1MapUUIDInt,
+                CHFuzzableType.StringType
+              )
+            )
+          )
+
+          val expected = Seq(
+            CHFunctionIO.Function1(
+              CHSpecialType.Tuple(Seq(CHSpecialType.Map(CHAggregatedType.MapKey, CHSpecialType.UnknownType))),
+              CHFuzzableType.StringType
+            )
+          )
+
+          actual.map(_.asString()) shouldBe expected.map(_.asString())
+        }
+      }
+    }
   }

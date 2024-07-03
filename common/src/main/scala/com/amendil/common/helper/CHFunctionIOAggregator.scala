@@ -1,8 +1,11 @@
 package com.amendil.common.helper
 
 import com.amendil.common.entities.`type`.*
+import com.amendil.common.entities.`type`.CHType.normalize
 import com.amendil.common.entities.function.CHFunctionIO
 import com.typesafe.scalalogging.StrictLogging
+
+import scala.annotation.nowarn
 
 /**
   * CHFunctionIOAggregator proposes a single method to aggregate different function signatures.
@@ -29,7 +32,7 @@ object CHFunctionIOAggregator extends StrictLogging:
     aggregatedSignatures = aggregateArrayArgumentsWithTupleArrayNullableOutput(aggregatedSignatures)
     aggregatedSignatures = aggregateArrayArgumentsWithTupleArrayOutput(aggregatedSignatures)
 
-    if aggregatedSignatures.size == functions.size then functions
+    if aggregatedSignatures.size == functions.size then functions.map(removeUUIDFromNestedTypes)
     else aggregate(aggregatedSignatures)
 
   private def equalOrUnknown(t1: CHType, t2: CHType): Boolean =
@@ -49,6 +52,55 @@ object CHFunctionIOAggregator extends StrictLogging:
       case (CHSpecialType.UnknownType, _) => true
       case (_, CHSpecialType.UnknownType) => true
       case _                              => t1.name == t2.name
+
+  @nowarn("msg=Unreachable case") // We actually have tests proving the case is reachable
+  val nestedInputNames: Set[String] =
+    CHFuzzableType.values.collect { case t: CHFuzzableNestedType => t.name }.toSet
+
+  private def removeUUIDFromNestedTypes(signature: CHFunctionIO): CHFunctionIO =
+    if !(signature.parameters ++ signature.arguments).exists(t => nestedInputNames.contains(t.name)) then signature
+    else
+      var signatureIO: Seq[CHType] =
+        (signature.parameters ++ signature.arguments :+ signature.output).map(CHType.normalize)
+      val paramCount = signature.parameters.size
+      val argCount = signature.arguments.size
+
+      val aggregatedType =
+        if signatureIO.exists(t => t.name.contains("Map(UUID")) then CHAggregatedType.MapKey else CHAggregatedType.Any
+      val genericType =
+        if signatureIO.count(t => t.name.contains("UUID")) > 1 then
+          createGenericType(
+            aggregatedType,
+            genericTypeIdx = CHType.getGenericTypes(signatureIO).size + 1
+          )
+        else aggregatedType
+
+      def replaceUUIDRecursively(t: CHType): CHType =
+        t match
+          case CHFuzzableType.UUID => genericType
+          case _                   => t
+
+      signatureIO = signatureIO.map(ioField => CHType.update(ioField, replaceUUIDRecursively))
+
+      val newParameters = signatureIO.zipWithIndex.collect {
+        case (t, idx) if idx < paramCount => t
+      }
+
+      val newArguments = signatureIO.zipWithIndex.collect {
+        case (t, idx) if idx >= paramCount && idx < paramCount + argCount => t
+      }
+
+      val newOutput = signatureIO.zipWithIndex.collect {
+        case (t, idx) if idx == paramCount + argCount => t
+      }.head
+
+      new CHFunctionIO:
+        override def parameters: Seq[CHType] = newParameters
+        override def arguments: Seq[CHType] = newArguments
+        override def repeatedParameterIdxOpt: Option[Int] = signature.repeatedParameterIdxOpt
+        override def repeatedArgumentIdxOpt: Option[Int] = signature.repeatedArgumentIdxOpt
+        override def isParametric: Boolean = signature.isParametric
+        override def output: CHType = newOutput
 
   private def aggregateSimilarIOs(signatures: Seq[CHFunctionIO])(using supportJson: SupportJson): Seq[CHFunctionIO] =
     var aggregatedSignatureIOs: Seq[Seq[CHType]] =
@@ -334,9 +386,9 @@ object CHFunctionIOAggregator extends StrictLogging:
     *
     * This will happen when a String works and we also propose things like DateUnit and other String based types.
     */
-  private def deduplicateArguments(signature: Seq[CHFunctionIO]): Seq[CHFunctionIO] =
-    var aggregatedSignatures = signature
-    Range.apply(0, signature.head.arguments.size).foreach { argumentIdx =>
+  private def deduplicateArguments(signatures: Seq[CHFunctionIO]): Seq[CHFunctionIO] =
+    var aggregatedSignatures = signatures
+    Range.apply(0, signatures.head.arguments.size).foreach { argumentIdx =>
       val newAggregatedSignatures = aggregatedSignatures
         .groupBy(sig => // Group based on other fields in the signature
           (
@@ -384,9 +436,9 @@ object CHFunctionIOAggregator extends StrictLogging:
     *
     * This will happen when a String works and we also propose things like DateUnit and other String based types.
     */
-  private def deduplicateParameters(signature: Seq[CHFunctionIO]): Seq[CHFunctionIO] =
-    var aggregatedSignatures = signature
-    Range.apply(0, signature.head.parameters.size).foreach { parameterIdx =>
+  private def deduplicateParameters(signatures: Seq[CHFunctionIO]): Seq[CHFunctionIO] =
+    var aggregatedSignatures = signatures
+    Range.apply(0, signatures.head.parameters.size).foreach { parameterIdx =>
       val newAggregatedSignatures = aggregatedSignatures
         .groupBy(sig =>
           (

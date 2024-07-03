@@ -3,6 +3,8 @@ package com.amendil.common.entities.`type`
 import com.amendil.common.Settings
 import com.amendil.common.entities.*
 
+trait CHFuzzableNestedType
+
 /**
   * CHFuzzableType contains types available in ClickHouse alongside values that can be used for fuzzing.
   *
@@ -1687,11 +1689,14 @@ enum CHFuzzableType(
         "Array(Array(UUID))",
         Seq(s"[[${UUID.fuzzingValues.head}]]::Array(Array(UUID))")
       )
+      with CHFuzzableNestedType
+
   case ArrayMapUUIDInt
       extends CHFuzzableType(
         "Array(Map(UUID, UnknownType))",
         Seq(s"[map(${UUID.fuzzingValues.head}, 1)::Map(UUID, Int8)]::Array(Map(UUID, Int8))")
       )
+      with CHFuzzableNestedType
   case ArrayTuple1UUID
       extends CHFuzzableType(
         "Array(Tuple(UUID))",
@@ -1700,6 +1705,7 @@ enum CHFuzzableType(
           s"[tuple(${UUID.fuzzingValues.head})::Tuple(a UUID)]::Array(Tuple(a UUID))"
         )
       )
+      with CHFuzzableNestedType
   case Tuple1ArrayUUID
       extends CHFuzzableType(
         "Tuple(Array(UUID))",
@@ -1708,6 +1714,7 @@ enum CHFuzzableType(
           s"tuple(${ArrayUUID.fuzzingValues.head})::Tuple(a Array(UUID))"
         )
       )
+      with CHFuzzableNestedType
   case Tuple1MapUUIDInt
       extends CHFuzzableType(
         "Tuple(Map(UUID, UnknownType))",
@@ -1716,6 +1723,7 @@ enum CHFuzzableType(
           s"tuple(map(${UUID.fuzzingValues.head}, 1)::Map(UUID, Int8))::Tuple(a Map(UUID, Int8))"
         )
       )
+      with CHFuzzableNestedType
 
   // Special
   // Special - Geo
