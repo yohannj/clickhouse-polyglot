@@ -16,6 +16,7 @@
             [1]: https://github.com/pocoproject/poco/blob/poco-1.9.4-release/Foundation/include/Poco/Logger.h#L105-L114
         -->
         <level>critical</level>
+        <errorlog remove="1"/>
         <size>100M</size>
         <count>2</count>
     </logger>

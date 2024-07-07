@@ -1,7 +1,6 @@
 <clickhouse>
     <logger>
         <log>/vagrant/ClickHouse/fuzz/running_clickhouse/host/ch24_5/var/log/clickhouse-server/clickhouse-server.log</log>
-        <errorlog>/vagrant/ClickHouse/fuzz/running_clickhouse/host/ch24_5/var/log/clickhouse-server/clickhouse-server.err.log</errorlog>
     </logger>
 
     <!-- Cache path for custom (created from SQL) cached disks -->
