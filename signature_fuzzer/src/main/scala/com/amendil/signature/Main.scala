@@ -44,70 +44,72 @@ import scala.util.{Failure, Success, Try}
 private def fuzzFunctionsAndSave(
     chVersion: String
 )(using logger: Logger, client: CHClient, ec: ExecutionContext): Future[Unit] =
-  // val functions <- getCHFunctions()
-  val functions =
-    unknownFunctions.map(
-      CHFunctionFuzzResult(_, isAggregate = false, aliasTo = "")
-    ) ++ unknownFunctionsWithAlias.map((name, alias) =>
-      CHFunctionFuzzResult(name, isAggregate = false, aliasTo = alias)
-    )
+  for
+    // functions <- getCHFunctions()
 
-  val functionsToFuzz = functions.filter { fn =>
-    Settings.Fuzzer.supportJson || !fn.name.toLowerCase().contains("json")
-  }
-
-  val pw = PrintWriter(File(s"res/functions_v${chVersion}.txt.part"))
-  val functionCount = functionsToFuzz.size
-
-  val functionsFuzzResultsF =
-    ConcurrencyUtils
-      .executeInSequence(
-        functionsToFuzz.zipWithIndex, // .filter(_._1.name >= "caseWithoutExpression"),
-        (function: CHFunctionFuzzResult, idx: Int) =>
-          if idx % Math.max(functionCount / 20, 1) == 0 then
-            logger.info(s"===============================================================")
-            logger.info(s"${100 * idx / functionCount}%")
-            logger.info(s"===============================================================")
-          logger.info(function.name)
-
-          Fuzzer
-            .fuzz(function)
-            .recover { err =>
-              if err.getCause() == null then
-                logger.error(s"Failed to fuzz function ${function.name}: ${err.getMessage()}")
-              else logger.error(s"Failed to fuzz function ${function.name}: ${err.getCause().getMessage()}")
-              function
-            }
-            .map { (fuzzResult: CHFunctionFuzzResult) =>
-              if !fuzzResult.atLeastOneSignatureFound then
-                logger.error(s"No signatures found for method ${function.name}")
-              pw.write(s"${CHFunctionFuzzResult.toCHFunction(fuzzResult).asString()}\n")
-              pw.flush()
-              fuzzResult
-            }
-      )
-      .recover(err =>
-        pw.close()
-        throw err
-      )
-      .map(res =>
-        pw.close()
-        res
+    functions <-
+      Future.successful(
+        unknownFunctions.map(
+          CHFunctionFuzzResult(_, isAggregate = false, aliasTo = "")
+        ) ++ unknownFunctionsWithAlias.map((name, alias) =>
+          CHFunctionFuzzResult(name, isAggregate = false, aliasTo = alias)
+        )
       )
 
-  functionsFuzzResultsF.map { (functionsFuzzResults: Seq[CHFunctionFuzzResult]) =>
-    val functionsWithoutASignature: Seq[String] =
+    functionsToFuzz = functions.filter { fn =>
+      Settings.Fuzzer.supportJson || !fn.name.toLowerCase().contains("json")
+    }
+    functionCount = functionsToFuzz.size
+
+    pw = PrintWriter(File(s"res/functions_v${chVersion}.txt.part"))
+    functionsFuzzResults <-
+      ConcurrencyUtils
+        .executeInSequence(
+          functionsToFuzz.zipWithIndex, // .filter(_._1.name >= "kql_array_sort_desc"),
+          (function: CHFunctionFuzzResult, idx: Int) =>
+            if idx % Math.max(functionCount / 20, 1) == 0 then
+              logger.info(s"===============================================================")
+              logger.info(s"${100 * idx / functionCount}%")
+              logger.info(s"===============================================================")
+            logger.info(function.name)
+
+            Fuzzer
+              .fuzz(function)
+              .recover { err =>
+                if err.getCause() == null then
+                  logger.error(s"Failed to fuzz function ${function.name}: ${err.getMessage()}")
+                else logger.error(s"Failed to fuzz function ${function.name}: ${err.getCause().getMessage()}")
+                function
+              }
+              .map { (fuzzResult: CHFunctionFuzzResult) =>
+                if !fuzzResult.atLeastOneSignatureFound then
+                  logger.error(s"No signatures found for method ${function.name}")
+                pw.write(s"${CHFunctionFuzzResult.toCHFunction(fuzzResult).asString()}\n")
+                pw.flush()
+                fuzzResult
+              }
+        )
+        .recover(err =>
+          pw.close()
+          throw err
+        )
+        .map(res =>
+          pw.close()
+          res
+        )
+
+    functionsWithoutASignature: Seq[String] =
       functionsFuzzResults.filterNot(_.atLeastOneSignatureFound).map(_.name)
 
-    logger.info(s"===============================================================")
-    logger.info(s"100% - Fuzz finished")
-    logger.info(s"===============================================================")
-    logger.info(
+    _ = logger.info(s"===============================================================")
+    _ = logger.info(s"100% - Fuzz finished")
+    _ = logger.info(s"===============================================================")
+    _ = logger.info(
       s"Rate of functions with a signature found: ${functionCount - functionsWithoutASignature.size}/$functionCount"
     )
-    logger.info("Functions we were unable to determine any signature:")
-    logger.info(functionsWithoutASignature.sorted.mkString("\"", "\", \"", "\""))
-  }
+    _ = logger.info("Functions we were unable to determine any signature:")
+    _ = logger.info(functionsWithoutASignature.sorted.mkString("\"", "\", \"", "\""))
+  yield ()
 
 private def describeCHTypesAndSave(chVersion: String): Unit =
   val pw = PrintWriter(File(s"res/types_v${chVersion}.txt.part"))
