@@ -3,6 +3,7 @@ package com.amendil.common.entities.`type`
 import com.amendil.common.Settings
 import com.amendil.common.entities.*
 
+trait CHFuzzableTypeDuplicatedForPerfReasons
 trait CHFuzzableNestedType
 
 /**
@@ -1855,21 +1856,25 @@ enum CHFuzzableType(
         "UInt64",
         Seq("599686042433355775::UInt64")
       )
+      with CHFuzzableTypeDuplicatedForPerfReasons
   case SpecialLowCardinalityUInt64
       extends CHFuzzableType(
         "LowCardinality(UInt64)",
         CHFuzzableType.lowCardinalityFuzzingValues(SpecialUInt64.fuzzingValues)
       )
+      with CHFuzzableTypeDuplicatedForPerfReasons
   case SpecialLowCardinalityNullableUInt64
       extends CHFuzzableType(
         "LowCardinality(Nullable(UInt64))",
         CHFuzzableType.lowCardinalityFuzzingValues(CHFuzzableType.nullableFuzzingValues(SpecialUInt64.fuzzingValues))
       )
+      with CHFuzzableTypeDuplicatedForPerfReasons
   case SpecialNullableUInt64
       extends CHFuzzableType(
         "Nullable(UInt64)",
         CHFuzzableType.nullableFuzzingValues(SpecialUInt64.fuzzingValues)
       )
+      with CHFuzzableTypeDuplicatedForPerfReasons
   case SpecialFixedString
       extends CHFuzzableType(
         "FixedString",
@@ -1910,6 +1915,7 @@ enum CHFuzzableType(
           "'.'::FixedString(1)"
         )
       )
+      with CHFuzzableTypeDuplicatedForPerfReasons
   // Separate from String because those values are specific to some functions.
   // This will improve performances in many cases.
   case SpecialString
@@ -1936,6 +1942,7 @@ enum CHFuzzableType(
           "'.'::String"
         )
       )
+      with CHFuzzableTypeDuplicatedForPerfReasons
   case SpecialArrayFixedString
       extends CHFuzzableType(
         "Array(FixedString)",
@@ -1944,6 +1951,7 @@ enum CHFuzzableType(
           s"[${SpecialFixedString.fuzzingValues.mkString(", ")}]::Array(FixedString(96))"
         )
       )
+      with CHFuzzableTypeDuplicatedForPerfReasons
   case SpecialArrayString
       extends CHFuzzableType(
         "Array(String)",
@@ -1952,6 +1960,7 @@ enum CHFuzzableType(
           s"[${SpecialString.fuzzingValues.mkString(", ")}]::Array(String)"
         )
       )
+      with CHFuzzableTypeDuplicatedForPerfReasons
   case SynonymExtensionName
       extends CHFuzzableType(
         "SynonymExtensionName",
@@ -1999,6 +2008,12 @@ enum CHFuzzableType(
       )
 
 object CHFuzzableType:
+
+  val fuzzableTypeByName: Map[String, CHFuzzableType] =
+    CHFuzzableType.values
+      .filterNot(_.isInstanceOf[CHFuzzableTypeDuplicatedForPerfReasons])
+      .map(t => (t.name, t))
+      .toMap
 
   private def lowCardinalityFuzzingValues(baseFuzzingValues: Seq[String]): Seq[String] =
     val (fuzzingValueWithoutType, fuzzingType) = extractValueAndType(baseFuzzingValues.head)

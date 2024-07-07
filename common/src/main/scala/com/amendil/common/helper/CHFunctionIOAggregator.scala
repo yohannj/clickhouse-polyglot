@@ -14,15 +14,20 @@ import scala.annotation.nowarn
   * Other methods aim to handle when the Output
   */
 object CHFunctionIOAggregator extends StrictLogging:
-  def aggregate[T <: CHFunctionIO](functions: Seq[T], supportJson: Boolean = true): Seq[CHFunctionIO] =
+
+  def aggregate[T <: CHFunctionIO](functions: Seq[T], supportJson: Boolean = true): Seq[T] =
     require(
-      functions.map(_.getClass.getName()).distinct.size <= 1,
+      functions
+        .distinctBy(f =>
+          (f.parameters.size, f.arguments.size, f.isParametric, f.repeatedParameterIdxOpt, f.repeatedArgumentIdxOpt)
+        )
+        .size <= 1,
       s"Cannot aggregate different kind of functions, but asked to aggregate '${functions.map(_.getClass.getName()).distinct.sorted.mkString("', '")}' together."
     )
 
     given SupportJson = supportJson
 
-    var aggregatedSignatures: Seq[CHFunctionIO] = functions
+    var aggregatedSignatures: Seq[T] = functions
 
     aggregatedSignatures = deduplicateArguments(aggregatedSignatures)
     aggregatedSignatures = deduplicateParameters(aggregatedSignatures)
@@ -57,7 +62,7 @@ object CHFunctionIOAggregator extends StrictLogging:
   val nestedInputNames: Set[String] =
     CHFuzzableType.values.collect { case t: CHFuzzableNestedType => t.name }.toSet
 
-  private def removeUUIDFromNestedTypes(signature: CHFunctionIO): CHFunctionIO =
+  private def removeUUIDFromNestedTypes[T <: CHFunctionIO](signature: T): T =
     if !(signature.parameters ++ signature.arguments).exists(t => nestedInputNames.contains(t.name)) then signature
     else
       var signatureIO: Seq[CHType] =
@@ -94,15 +99,18 @@ object CHFunctionIOAggregator extends StrictLogging:
         case (t, idx) if idx == paramCount + argCount => t
       }.head
 
-      new CHFunctionIO:
-        override def parameters: Seq[CHType] = newParameters
-        override def arguments: Seq[CHType] = newArguments
-        override def repeatedParameterIdxOpt: Option[Int] = signature.repeatedParameterIdxOpt
-        override def repeatedArgumentIdxOpt: Option[Int] = signature.repeatedArgumentIdxOpt
-        override def isParametric: Boolean = signature.isParametric
-        override def output: CHType = newOutput
+      val res =
+        new CHFunctionIO:
+          override def parameters: Seq[CHType] = newParameters
+          override def arguments: Seq[CHType] = newArguments
+          override def repeatedParameterIdxOpt: Option[Int] = signature.repeatedParameterIdxOpt
+          override def repeatedArgumentIdxOpt: Option[Int] = signature.repeatedArgumentIdxOpt
+          override def isParametric: Boolean = signature.isParametric
+          override def output: CHType = newOutput
 
-  private def aggregateSimilarIOs(signatures: Seq[CHFunctionIO])(using supportJson: SupportJson): Seq[CHFunctionIO] =
+      res.asInstanceOf[T]
+
+  private def aggregateSimilarIOs[T <: CHFunctionIO](signatures: Seq[T])(using supportJson: SupportJson): Seq[T] =
     var aggregatedSignatureIOs: Seq[Seq[CHType]] =
       signatures.map(s => (s.parameters ++ s.arguments :+ s.output).map(CHType.normalize))
     val paramCount = signatures.head.parameters.size
@@ -371,13 +379,16 @@ object CHFunctionIOAggregator extends StrictLogging:
           case (t, idx) if idx == paramCount + argCount => t
         }.head
 
-        new CHFunctionIO:
-          override def parameters: Seq[CHType] = aggregatedParameters
-          override def arguments: Seq[CHType] = aggregatedArguments
-          override def repeatedParameterIdxOpt: Option[Int] = signatures.head.repeatedParameterIdxOpt
-          override def repeatedArgumentIdxOpt: Option[Int] = signatures.head.repeatedArgumentIdxOpt
-          override def isParametric: Boolean = signatures.head.isParametric
-          override def output: CHType = aggregatedOutput
+        val res =
+          new CHFunctionIO:
+            override def parameters: Seq[CHType] = aggregatedParameters
+            override def arguments: Seq[CHType] = aggregatedArguments
+            override def repeatedParameterIdxOpt: Option[Int] = signatures.head.repeatedParameterIdxOpt
+            override def repeatedArgumentIdxOpt: Option[Int] = signatures.head.repeatedArgumentIdxOpt
+            override def isParametric: Boolean = signatures.head.isParametric
+            override def output: CHType = aggregatedOutput
+
+        res.asInstanceOf[T]
       }
 
   /**
@@ -386,7 +397,7 @@ object CHFunctionIOAggregator extends StrictLogging:
     *
     * This will happen when a String works and we also propose things like DateUnit and other String based types.
     */
-  private def deduplicateArguments(signatures: Seq[CHFunctionIO]): Seq[CHFunctionIO] =
+  private def deduplicateArguments[T <: CHFunctionIO](signatures: Seq[T]): Seq[T] =
     var aggregatedSignatures = signatures
     Range.apply(0, signatures.head.arguments.size).foreach { argumentIdx =>
       val newAggregatedSignatures = aggregatedSignatures
@@ -405,13 +416,16 @@ object CHFunctionIOAggregator extends StrictLogging:
           if types.size == deduplicatedTypes.size then groupedSignatures
           else
             deduplicatedTypes.map(aggregatedType =>
-              new CHFunctionIO:
-                override def parameters: Seq[CHType] = groupedSignatures.head.parameters
-                override def arguments: Seq[CHType] = (groupingKey._2 :+ aggregatedType) ++ groupingKey._3
-                override def repeatedParameterIdxOpt: Option[Int] = groupedSignatures.head.repeatedParameterIdxOpt
-                override def repeatedArgumentIdxOpt: Option[Int] = groupedSignatures.head.repeatedArgumentIdxOpt
-                override def isParametric: Boolean = groupedSignatures.head.isParametric
-                override def output: CHType = groupedSignatures.head.output
+              val aggregatedFn =
+                new CHFunctionIO:
+                  override def parameters: Seq[CHType] = groupedSignatures.head.parameters
+                  override def arguments: Seq[CHType] = (groupingKey._2 :+ aggregatedType) ++ groupingKey._3
+                  override def repeatedParameterIdxOpt: Option[Int] = groupedSignatures.head.repeatedParameterIdxOpt
+                  override def repeatedArgumentIdxOpt: Option[Int] = groupedSignatures.head.repeatedArgumentIdxOpt
+                  override def isParametric: Boolean = groupedSignatures.head.isParametric
+                  override def output: CHType = groupedSignatures.head.output
+
+              aggregatedFn.asInstanceOf[T]
             )
         }
         .flatten
@@ -436,7 +450,7 @@ object CHFunctionIOAggregator extends StrictLogging:
     *
     * This will happen when a String works and we also propose things like DateUnit and other String based types.
     */
-  private def deduplicateParameters(signatures: Seq[CHFunctionIO]): Seq[CHFunctionIO] =
+  private def deduplicateParameters[T <: CHFunctionIO](signatures: Seq[T]): Seq[T] =
     var aggregatedSignatures = signatures
     Range.apply(0, signatures.head.parameters.size).foreach { parameterIdx =>
       val newAggregatedSignatures = aggregatedSignatures
@@ -455,13 +469,16 @@ object CHFunctionIOAggregator extends StrictLogging:
           if types.size == deduplicatedTypes.size then groupedSignatures
           else
             deduplicatedTypes.map(aggregatedType =>
-              new CHFunctionIO:
-                override def parameters: Seq[CHType] = (groupingKey._1 :+ aggregatedType) ++ groupingKey._2
-                override def arguments: Seq[CHType] = groupedSignatures.head.arguments
-                override def repeatedParameterIdxOpt: Option[Int] = groupedSignatures.head.repeatedParameterIdxOpt
-                override def repeatedArgumentIdxOpt: Option[Int] = groupedSignatures.head.repeatedArgumentIdxOpt
-                override def isParametric: Boolean = groupedSignatures.head.isParametric
-                override def output: CHType = groupedSignatures.head.output
+              val aggregatedFn =
+                new CHFunctionIO:
+                  override def parameters: Seq[CHType] = (groupingKey._1 :+ aggregatedType) ++ groupingKey._2
+                  override def arguments: Seq[CHType] = groupedSignatures.head.arguments
+                  override def repeatedParameterIdxOpt: Option[Int] = groupedSignatures.head.repeatedParameterIdxOpt
+                  override def repeatedArgumentIdxOpt: Option[Int] = groupedSignatures.head.repeatedArgumentIdxOpt
+                  override def isParametric: Boolean = groupedSignatures.head.isParametric
+                  override def output: CHType = groupedSignatures.head.output
+
+              aggregatedFn.asInstanceOf[T]
             )
         }
         .flatten
@@ -473,10 +490,10 @@ object CHFunctionIOAggregator extends StrictLogging:
     }
     aggregatedSignatures
 
-  private def aggregateArrayArgumentsWithMapOutput(
-      functions: Seq[CHFunctionIO]
-  )(using supportJson: SupportJson): Seq[CHFunctionIO] =
-    var aggregatedSignatures: Seq[CHFunctionIO] = functions
+  private def aggregateArrayArgumentsWithMapOutput[T <: CHFunctionIO](
+      functions: Seq[T]
+  )(using supportJson: SupportJson): Seq[T] =
+    var aggregatedSignatures: Seq[T] = functions
     Range.apply(0, functions.head.arguments.size).foreach { argumentIdx =>
       val argAndOutput = aggregatedSignatures.map(fn =>
         (
@@ -614,9 +631,9 @@ object CHFunctionIOAggregator extends StrictLogging:
     }
     aggregatedSignatures
 
-  private def aggregateArrayArgumentsWithTupleArrayNullableOutput(
-      functions: Seq[CHFunctionIO]
-  )(using supportJson: SupportJson): Seq[CHFunctionIO] =
+  private def aggregateArrayArgumentsWithTupleArrayNullableOutput[T <: CHFunctionIO](
+      functions: Seq[T]
+  )(using supportJson: SupportJson): Seq[T] =
     val twoArgumentsFn =
       functions.filter(fn =>
         fn.output match
@@ -634,10 +651,10 @@ object CHFunctionIOAggregator extends StrictLogging:
     val unhandledFn =
       functions.filterNot(f => twoArgumentsFn.contains(f) || threeArgumentsFn.contains(f))
 
-    var aggregatedSignatures: Seq[CHFunctionIO] = unhandledFn
+    var aggregatedSignatures: Seq[T] = unhandledFn
 
     // Testing two arguments
-    var twoArgumentsFnAggregated: Seq[CHFunctionIO] = Nil
+    var twoArgumentsFnAggregated: Seq[T] = Nil
     var cancelAggregationTwoArgumentsFn = false
     Range.apply(0, twoArgumentsFn.headOption.map(_.arguments.size).getOrElse(0) - 1).foreach { argumentIdx1 =>
       // We assume arguments are provided in order
@@ -711,7 +728,7 @@ object CHFunctionIOAggregator extends StrictLogging:
     else aggregatedSignatures ++= twoArgumentsFn
 
     // Testing three arguments
-    var threeArgumentsFnAggregated: Seq[CHFunctionIO] = Nil
+    var threeArgumentsFnAggregated: Seq[T] = Nil
     var cancelAggregationThreeArgumentsFn = false
     Range.apply(0, threeArgumentsFn.headOption.map(_.arguments.size).getOrElse(0) - 2).foreach { argumentIdx1 =>
       // We assume arguments are provided in order
@@ -799,9 +816,9 @@ object CHFunctionIOAggregator extends StrictLogging:
 
     aggregatedSignatures
 
-  private def aggregateArrayArgumentsWithTupleArrayOutput(
-      functions: Seq[CHFunctionIO]
-  )(using supportJson: SupportJson): Seq[CHFunctionIO] =
+  private def aggregateArrayArgumentsWithTupleArrayOutput[T <: CHFunctionIO](
+      functions: Seq[T]
+  )(using supportJson: SupportJson): Seq[T] =
     val twoArgumentsFn =
       functions.filter(fn =>
         fn.output match
@@ -819,10 +836,10 @@ object CHFunctionIOAggregator extends StrictLogging:
     val unhandledFn =
       functions.filterNot(f => twoArgumentsFn.contains(f) || threeArgumentsFn.contains(f))
 
-    var aggregatedSignatures: Seq[CHFunctionIO] = unhandledFn
+    var aggregatedSignatures: Seq[T] = unhandledFn
 
     // Testing two arguments
-    var twoArgumentsFnAggregated: Seq[CHFunctionIO] = Nil
+    var twoArgumentsFnAggregated: Seq[T] = Nil
     var cancelAggregationTwoArgumentsFn = false
     Range.apply(0, twoArgumentsFn.headOption.map(_.arguments.size).getOrElse(0) - 1).foreach { argumentIdx1 =>
       // We assume arguments are provided in order
@@ -888,7 +905,7 @@ object CHFunctionIOAggregator extends StrictLogging:
     else aggregatedSignatures ++= twoArgumentsFn
 
     // Testing three arguments
-    var threeArgumentsFnAggregated: Seq[CHFunctionIO] = Nil
+    var threeArgumentsFnAggregated: Seq[T] = Nil
     var cancelAggregationThreeArgumentsFn = false
     Range.apply(0, threeArgumentsFn.headOption.map(_.arguments.size).getOrElse(0) - 2).foreach { argumentIdx1 =>
       // We assume arguments are provided in order
@@ -966,14 +983,14 @@ object CHFunctionIOAggregator extends StrictLogging:
 
     aggregatedSignatures
 
-  private def aggregateWithGenericType(
-      functions: Seq[CHFunctionIO],
+  private def aggregateWithGenericType[T <: CHFunctionIO](
+      functions: Seq[T],
       argumentIdx: Int,
-      typeSelector: CHFunctionIO => CHType,
+      typeSelector: T => CHType,
       aggregatedTypeGenerator: CHType => CHType,
       inputTypeGenerator: CHType => CHType,
       outputTypeGenerator: CHType => CHType
-  )(using supportJson: SupportJson): Seq[CHFunctionIO] =
+  )(using supportJson: SupportJson): Seq[T] =
     if functions.map(typeSelector).distinct.size <= 1
     then functions
     else
@@ -998,30 +1015,33 @@ object CHFunctionIOAggregator extends StrictLogging:
                     CHSpecialType.GenericType(s"T${functions.head.getGenericTypes().size + 1}", t)
                   case t => t
 
-              new CHFunctionIO:
-                override def parameters: Seq[CHType] = groupedSignatures.head.parameters
-                override def arguments: Seq[CHType] =
-                  (groupingKey._2 :+ inputTypeGenerator(genericType)) ++ groupingKey._3
-                override def repeatedParameterIdxOpt: Option[Int] = groupedSignatures.head.repeatedParameterIdxOpt
-                override def repeatedArgumentIdxOpt: Option[Int] = groupedSignatures.head.repeatedArgumentIdxOpt
-                override def isParametric: Boolean = groupedSignatures.head.isParametric
-                override def output: CHType = outputTypeGenerator(genericType)
+              val aggregatedFn =
+                new CHFunctionIO:
+                  override def parameters: Seq[CHType] = groupedSignatures.head.parameters
+                  override def arguments: Seq[CHType] =
+                    (groupingKey._2 :+ inputTypeGenerator(genericType)) ++ groupingKey._3
+                  override def repeatedParameterIdxOpt: Option[Int] = groupedSignatures.head.repeatedParameterIdxOpt
+                  override def repeatedArgumentIdxOpt: Option[Int] = groupedSignatures.head.repeatedArgumentIdxOpt
+                  override def isParametric: Boolean = groupedSignatures.head.isParametric
+                  override def output: CHType = outputTypeGenerator(genericType)
+
+              aggregatedFn.asInstanceOf[T]
             )
           else groupedSignatures
         }
 
-  private def aggregateWithGenericTypes(
-      functions: Seq[CHFunctionIO],
+  private def aggregateWithGenericTypes[T <: CHFunctionIO](
+      functions: Seq[T],
       argumentIdx1: Int,
       argumentIdx2: Int,
-      typeSelector1: CHFunctionIO => CHType,
-      typeSelector2: CHFunctionIO => CHType,
+      typeSelector1: T => CHType,
+      typeSelector2: T => CHType,
       aggregatedTypeGenerator1: CHType => CHType,
       aggregatedTypeGenerator2: CHType => CHType,
       inputTypeGenerator1: CHType => CHType,
       inputTypeGenerator2: CHType => CHType,
       outputTypeGenerator: (CHType, CHType) => CHType
-  )(using supportJson: SupportJson): Seq[CHFunctionIO] =
+  )(using supportJson: SupportJson): Seq[T] =
     if functions.map(f => (typeSelector1(f), typeSelector2(f))).distinct.size <= 1
     then functions
     else
@@ -1067,16 +1087,19 @@ object CHFunctionIOAggregator extends StrictLogging:
                       CHSpecialType.GenericType(s"T${functions.head.getGenericTypes().size + 1}", t)
                     case t => t
 
-                new CHFunctionIO:
-                  override def parameters: Seq[CHType] = groupedSignatures.head.parameters
-                  override def arguments: Seq[CHType] =
-                    (groupingKey._2 :+ inputTypeGeneratorT1(genericType)) ++
-                      (groupingKey._3 :+ inputTypeGeneratorT2(genericType)) ++
-                      groupingKey._4
-                  override def repeatedParameterIdxOpt: Option[Int] = groupedSignatures.head.repeatedParameterIdxOpt
-                  override def repeatedArgumentIdxOpt: Option[Int] = groupedSignatures.head.repeatedArgumentIdxOpt
-                  override def isParametric: Boolean = groupedSignatures.head.isParametric
-                  override def output: CHType = outputTypeGenerator(genericType, genericType)
+                val aggregatedFn =
+                  new CHFunctionIO:
+                    override def parameters: Seq[CHType] = groupedSignatures.head.parameters
+                    override def arguments: Seq[CHType] =
+                      (groupingKey._2 :+ inputTypeGeneratorT1(genericType)) ++
+                        (groupingKey._3 :+ inputTypeGeneratorT2(genericType)) ++
+                        groupingKey._4
+                    override def repeatedParameterIdxOpt: Option[Int] = groupedSignatures.head.repeatedParameterIdxOpt
+                    override def repeatedArgumentIdxOpt: Option[Int] = groupedSignatures.head.repeatedArgumentIdxOpt
+                    override def isParametric: Boolean = groupedSignatures.head.isParametric
+                    override def output: CHType = outputTypeGenerator(genericType, genericType)
+
+                aggregatedFn.asInstanceOf[T]
               )
             else groupedSignatures
           else if groupedSignatures
@@ -1113,28 +1136,31 @@ object CHFunctionIOAggregator extends StrictLogging:
                       )
                     case Tuple2(t1, t2) => (t1, t2)
 
-                new CHFunctionIO:
-                  override def parameters: Seq[CHType] = groupedSignatures.head.parameters
-                  override def arguments: Seq[CHType] =
-                    (groupingKey._2 :+ inputTypeGeneratorT1(genericType1)) ++
-                      (groupingKey._3 :+ inputTypeGeneratorT2(genericType2)) ++
-                      groupingKey._4
-                  override def repeatedParameterIdxOpt: Option[Int] = groupedSignatures.head.repeatedParameterIdxOpt
-                  override def repeatedArgumentIdxOpt: Option[Int] = groupedSignatures.head.repeatedArgumentIdxOpt
-                  override def isParametric: Boolean = groupedSignatures.head.isParametric
-                  override def output: CHType = outputTypeGenerator(genericType1, genericType2)
+                val aggregatedFn =
+                  new CHFunctionIO:
+                    override def parameters: Seq[CHType] = groupedSignatures.head.parameters
+                    override def arguments: Seq[CHType] =
+                      (groupingKey._2 :+ inputTypeGeneratorT1(genericType1)) ++
+                        (groupingKey._3 :+ inputTypeGeneratorT2(genericType2)) ++
+                        groupingKey._4
+                    override def repeatedParameterIdxOpt: Option[Int] = groupedSignatures.head.repeatedParameterIdxOpt
+                    override def repeatedArgumentIdxOpt: Option[Int] = groupedSignatures.head.repeatedArgumentIdxOpt
+                    override def isParametric: Boolean = groupedSignatures.head.isParametric
+                    override def output: CHType = outputTypeGenerator(genericType1, genericType2)
+
+                aggregatedFn.asInstanceOf[T]
             else groupedSignatures
           else groupedSignatures
         }
 
-  private def aggregateWithGenericTypes(
-      functions: Seq[CHFunctionIO],
+  private def aggregateWithGenericTypes[T <: CHFunctionIO](
+      functions: Seq[T],
       argumentIdx1: Int,
       argumentIdx2: Int,
       argumentIdx3: Int,
-      typeSelector1: CHFunctionIO => CHType,
-      typeSelector2: CHFunctionIO => CHType,
-      typeSelector3: CHFunctionIO => CHType,
+      typeSelector1: T => CHType,
+      typeSelector2: T => CHType,
+      typeSelector3: T => CHType,
       aggregatedTypeGenerator1: CHType => CHType,
       aggregatedTypeGenerator2: CHType => CHType,
       aggregatedTypeGenerator3: CHType => CHType,
@@ -1142,7 +1168,7 @@ object CHFunctionIOAggregator extends StrictLogging:
       inputTypeGenerator2: CHType => CHType,
       inputTypeGenerator3: CHType => CHType,
       outputTypeGenerator: (CHType, CHType, CHType) => CHType
-  )(using supportJson: SupportJson): Seq[CHFunctionIO] =
+  )(using supportJson: SupportJson): Seq[T] =
     if functions.map(f => (typeSelector1(f), typeSelector2(f))).distinct.size <= 1
     then functions
     else
@@ -1196,17 +1222,20 @@ object CHFunctionIOAggregator extends StrictLogging:
                       CHSpecialType.GenericType(s"T${functions.head.getGenericTypes().size + 1}", t)
                     case t => t
 
-                new CHFunctionIO:
-                  override def parameters: Seq[CHType] = groupedSignatures.head.parameters
-                  override def arguments: Seq[CHType] =
-                    (groupingKey._2 :+ inputTypeGeneratorT1(genericType)) ++
-                      (groupingKey._3 :+ inputTypeGeneratorT2(genericType)) ++
-                      (groupingKey._4 :+ inputTypeGeneratorT3(genericType)) ++
-                      groupingKey._5
-                  override def repeatedParameterIdxOpt: Option[Int] = groupedSignatures.head.repeatedParameterIdxOpt
-                  override def repeatedArgumentIdxOpt: Option[Int] = groupedSignatures.head.repeatedArgumentIdxOpt
-                  override def isParametric: Boolean = groupedSignatures.head.isParametric
-                  override def output: CHType = outputTypeGenerator(genericType, genericType, genericType)
+                val aggregatedFn =
+                  new CHFunctionIO:
+                    override def parameters: Seq[CHType] = groupedSignatures.head.parameters
+                    override def arguments: Seq[CHType] =
+                      (groupingKey._2 :+ inputTypeGeneratorT1(genericType)) ++
+                        (groupingKey._3 :+ inputTypeGeneratorT2(genericType)) ++
+                        (groupingKey._4 :+ inputTypeGeneratorT3(genericType)) ++
+                        groupingKey._5
+                    override def repeatedParameterIdxOpt: Option[Int] = groupedSignatures.head.repeatedParameterIdxOpt
+                    override def repeatedArgumentIdxOpt: Option[Int] = groupedSignatures.head.repeatedArgumentIdxOpt
+                    override def isParametric: Boolean = groupedSignatures.head.isParametric
+                    override def output: CHType = outputTypeGenerator(genericType, genericType, genericType)
+
+                aggregatedFn.asInstanceOf[T]
               )
             else groupedSignatures
           else if groupedSignatures.map(typeSelectorT1).distinct.size *
@@ -1252,17 +1281,20 @@ object CHFunctionIOAggregator extends StrictLogging:
                       genericTypeIdx += 1
                       genericType
 
-                new CHFunctionIO:
-                  override def parameters: Seq[CHType] = groupedSignatures.head.parameters
-                  override def arguments: Seq[CHType] =
-                    (groupingKey._2 :+ inputTypeGeneratorT1(genericType1)) ++
-                      (groupingKey._3 :+ inputTypeGeneratorT2(genericType2)) ++
-                      (groupingKey._4 :+ inputTypeGeneratorT3(genericType3)) ++
-                      groupingKey._5
-                  override def repeatedParameterIdxOpt: Option[Int] = groupedSignatures.head.repeatedParameterIdxOpt
-                  override def repeatedArgumentIdxOpt: Option[Int] = groupedSignatures.head.repeatedArgumentIdxOpt
-                  override def isParametric: Boolean = groupedSignatures.head.isParametric
-                  override def output: CHType = outputTypeGenerator(genericType1, genericType2, genericType3)
+                val aggregatedFn =
+                  new CHFunctionIO:
+                    override def parameters: Seq[CHType] = groupedSignatures.head.parameters
+                    override def arguments: Seq[CHType] =
+                      (groupingKey._2 :+ inputTypeGeneratorT1(genericType1)) ++
+                        (groupingKey._3 :+ inputTypeGeneratorT2(genericType2)) ++
+                        (groupingKey._4 :+ inputTypeGeneratorT3(genericType3)) ++
+                        groupingKey._5
+                    override def repeatedParameterIdxOpt: Option[Int] = groupedSignatures.head.repeatedParameterIdxOpt
+                    override def repeatedArgumentIdxOpt: Option[Int] = groupedSignatures.head.repeatedArgumentIdxOpt
+                    override def isParametric: Boolean = groupedSignatures.head.isParametric
+                    override def output: CHType = outputTypeGenerator(genericType1, genericType2, genericType3)
+
+                aggregatedFn.asInstanceOf[T]
             else groupedSignatures
           else groupedSignatures
         }

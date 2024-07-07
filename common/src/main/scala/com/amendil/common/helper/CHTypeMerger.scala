@@ -44,18 +44,20 @@ object CHTypeMerger {
       supertypeDeduplicationRules
     )
 
+  private lazy val filteredSubstitutionRulesNoJson = typeSubstitutionRules.collect {
+    case (rule, mergedType) if !mergedType.name.toLowerCase.contains("json") =>
+      (rule.filter(t => !t.name.toLowerCase.contains("json")), Seq(mergedType))
+  }
+  private lazy val allFilteredSubstitutionRules = typeSubstitutionRules.map { case (rule, mergedType) =>
+    (rule, Seq(mergedType))
+  }
   def mergeInputTypes(types: Set[CHType], supportJson: Boolean = true): Set[CHType] =
-    val filteredSubstitutionRules = typeSubstitutionRules.collect {
-      case (rule, mergedType) if supportJson || !mergedType.name.toLowerCase.contains("json") =>
-        (rule.filter(t => supportJson || !t.name.toLowerCase.contains("json")), Seq(mergedType))
-    }
+    val filteredSubstitutionRules =
+      if supportJson then allFilteredSubstitutionRules else filteredSubstitutionRulesNoJson
 
     filterCHTypes(
       cleanTypes(deduplicateSupertypes(types)),
-      typeSubstitutionRules.collect {
-        case (rule, mergedType) if supportJson || !mergedType.name.toLowerCase.contains("json") =>
-          (rule.filter(t => supportJson || !t.name.toLowerCase.contains("json")), Seq(mergedType))
-      }
+      filteredSubstitutionRules
     )
 
   def mergeOutputType(type1: CHType, type2: CHType): CHType =
@@ -304,8 +306,7 @@ object CHTypeMerger {
   // Utils
   private def cleanTypes(types: Set[CHType]): Set[CHType] =
     types.map { t =>
-      if t.isInstanceOf[CHFuzzableType] then t
-      else CHFuzzableType.values.find(_.name == t.name).getOrElse(t)
+      CHFuzzableType.fuzzableTypeByName.getOrElse(t.name, t)
     }
 
   private def filterCHTypes(types: Set[CHType], filteringRules: Map[Set[CHType], Seq[CHType]]): Set[CHType] =
@@ -313,7 +314,7 @@ object CHTypeMerger {
     var toMerge = true
     while toMerge do
       val newMergedTypes = filteringRules.foldLeft(mergedTypes) { case (currentTypes, (subTypes, aggregatedTypes)) =>
-        if subTypes.forall(currentTypes.contains) then currentTypes.removedAll(subTypes) ++ aggregatedTypes
+        if subTypes.forall(currentTypes) then currentTypes.removedAll(subTypes) ++ aggregatedTypes
         else currentTypes
       }
 
