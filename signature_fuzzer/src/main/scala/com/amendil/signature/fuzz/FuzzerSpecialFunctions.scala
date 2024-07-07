@@ -6,6 +6,7 @@ import com.amendil.common.entities.function.{CHFunction, CHFunctionIO}
 import com.amendil.common.helper.*
 import com.amendil.common.http.CHClient
 import com.amendil.signature.entities.*
+import com.amendil.signature.fuzz.Fuzzer.*
 import com.typesafe.scalalogging.StrictLogging
 
 import scala.concurrent.{ExecutionContext, Future}
@@ -41,9 +42,16 @@ object FuzzerSpecialFunctions extends StrictLogging:
     val exprs1: String = manyCHFuzzableTypes.map(_.fuzzingValues.head).mkString(",")
     val exprs2: String = manyCHFuzzableTypes.reverse.map(_.fuzzingValues.head).mkString(",")
 
-    client
-      .execute(s"SELECT toTypeName(${fn.name}($exprs1)), toTypeName(${fn.name}($exprs2))")
-      .map { (resp: CHResponse) =>
+    val resF =
+      for
+        resp <- client.execute(s"SELECT toTypeName(${fn.name}($exprs1)), toTypeName(${fn.name}($exprs2))")
+        supportOverWindow <- Fuzzer.testSampleInputWithOverWindow(fn.name, args = exprs1)
+        settings <- detectMandatorySettingsFromSampleInput(fn.name, args = exprs1, fuzzOverWindow = false)
+      yield
+        val modes =
+          if supportOverWindow then Set(CHFunction.Mode.NoOverWindow, CHFunction.Mode.OverWindow)
+          else Set(CHFunction.Mode.NoOverWindow)
+
         val returnType = CHTypeParser.getByName(resp.data.head.head.asInstanceOf[String]) match
           case CHSpecialType.Tuple(
                 Seq(
@@ -58,10 +66,11 @@ object FuzzerSpecialFunctions extends StrictLogging:
           case t => t
 
         fn.copy(
-          modes = fn.modes + CHFunction.Mode.NoOverWindow,
+          modes = fn.modes ++ modes,
+          settings = settings,
           specialFunction0Ns = Seq(
             CHFunctionIO.Function0N(CHAggregatedType.Any, returnType)
           )
         )
-      }
-      .recover(_ => fn)
+
+    resF.recover(_ => fn)

@@ -8,6 +8,7 @@ import com.amendil.common.helper.ConcurrencyUtils.executeInParallelOnlySuccess
 import com.amendil.common.http.CHClient
 import com.amendil.signature.Settings
 import com.amendil.signature.entities.*
+import com.amendil.signature.fuzz.Fuzzer.*
 import com.typesafe.scalalogging.StrictLogging
 
 import scala.concurrent.{ExecutionContext, Future}
@@ -38,11 +39,23 @@ object FuzzerLambdaFunctions extends StrictLogging:
     logger.debug("fuzzBlandLambdaFunctionWithArray")
     if fn.isSpecialRepeatedFunction then Future.successful(fn)
     else
-      client
-        .executeNoResult(s"SELECT toTypeName(${fn.name}(x -> today(), ['s']))")
-        .map { _ =>
+      val resF =
+        for
+          _ <- client.executeNoResult(s"SELECT toTypeName(${fn.name}(x -> today(), ['s']))")
+          supportOverWindow <- Fuzzer.testSampleInputWithOverWindow(fn.name, args = "x -> today(), ['s']")
+          settings <- detectMandatorySettingsFromSampleInput(
+            fn.name,
+            args = "x -> today(), ['s']",
+            fuzzOverWindow = false
+          )
+        yield
+          val modes =
+            if supportOverWindow then Set(CHFunction.Mode.NoOverWindow, CHFunction.Mode.OverWindow)
+            else Set(CHFunction.Mode.NoOverWindow)
+
           fn.copy(
-            modes = fn.modes + CHFunction.Mode.NoOverWindow,
+            modes = fn.modes ++ modes,
+            settings = settings,
             lambdaArrayFunction0NOpt = Some(
               CHFunctionIO.LambdaArrayFunction0N(
                 CHSpecialType.LambdaType(CHSpecialType.GenericType("T1", CHAggregatedType.Any)),
@@ -51,8 +64,8 @@ object FuzzerLambdaFunctions extends StrictLogging:
               )
             )
           )
-        }
-        .recover(_ => fn)
+
+      resF.recover(_ => fn)
 
   /**
     * Detect functions that uses a lambda as their first argument, and arrays afterwards.
@@ -67,42 +80,55 @@ object FuzzerLambdaFunctions extends StrictLogging:
     else
       val innerQuery = s"SELECT ${fn.name}(x, y -> 3, ['s'], [2]) as r, toTypeName(r) as type"
       val query = s"SELECT if(type = 'UInt8' AND (r = 0 OR r = 1), 'Bool', type) as type FROM ($innerQuery)"
-      client
-        .execute(query)
-        .map { (resp: CHResponse) =>
-          val outputType = CHTypeParser.getByName(resp.data.head.head.asInstanceOf[String])
 
-          if outputType == CHFuzzableType.StringType || outputType == CHSpecialType.Array(CHFuzzableType.StringType)
-          then
-            // Return type is the type of the first Array, so a generic type!
-            fn.copy(
-              modes = fn.modes + CHFunction.Mode.NoOverWindow,
-              lambdaArrayFunction1NOpt = Some(
-                CHFunctionIO.LambdaArrayFunction1N(
-                  CHSpecialType.LambdaType(CHFuzzableType.BooleanType),
-                  arg1 = CHSpecialType.Array(CHSpecialType.GenericType("T1", CHAggregatedType.Any)),
-                  argN = CHSpecialType.Array(CHAggregatedType.Any),
-                  output =
-                    if outputType == CHFuzzableType.StringType then
-                      CHSpecialType.GenericType("T1", CHAggregatedType.Any)
-                    else CHSpecialType.Array(CHSpecialType.GenericType("T1", CHAggregatedType.Any))
+      val resF =
+        for
+          resp <- client.execute(query)
+          supportOverWindow <- Fuzzer.testSampleInputWithOverWindow(fn.name, args = "x, y -> 3, ['s'], [2]")
+          settings <- detectMandatorySettingsFromSampleInput(
+            fn.name,
+            args = "x, y -> 3, ['s'], [2]",
+            fuzzOverWindow = false
+          )
+        yield
+          val modes =
+            if supportOverWindow then Set(CHFunction.Mode.NoOverWindow, CHFunction.Mode.OverWindow)
+            else Set(CHFunction.Mode.NoOverWindow)
+
+          val outputType = CHTypeParser.getByName(resp.data.head.head.asInstanceOf[String])
+          outputType match
+            case CHFuzzableType.StringType | CHSpecialType.Array(CHFuzzableType.StringType) =>
+              // Return type is the type of the first Array, so a generic type!
+              fn.copy(
+                modes = fn.modes ++ modes,
+                settings = settings,
+                lambdaArrayFunction1NOpt = Some(
+                  CHFunctionIO.LambdaArrayFunction1N(
+                    CHSpecialType.LambdaType(CHFuzzableType.BooleanType),
+                    arg1 = CHSpecialType.Array(CHSpecialType.GenericType("T1", CHAggregatedType.Any)),
+                    argN = CHSpecialType.Array(CHAggregatedType.Any),
+                    output =
+                      if outputType == CHFuzzableType.StringType then
+                        CHSpecialType.GenericType("T1", CHAggregatedType.Any)
+                      else CHSpecialType.Array(CHSpecialType.GenericType("T1", CHAggregatedType.Any))
+                  )
                 )
               )
-            )
-          else
-            // Return type is unrelated to the type of the first Array so we keep it as is!
-            fn.copy(
-              modes = fn.modes + CHFunction.Mode.NoOverWindow,
-              lambdaArrayFunction0NOpt = Some(
-                CHFunctionIO.LambdaArrayFunction0N(
-                  CHSpecialType.LambdaType(CHFuzzableType.BooleanType),
-                  argN = CHSpecialType.Array(CHAggregatedType.Any),
-                  output = outputType
+            case _ =>
+              // Return type is unrelated to the type of the first Array so we keep it as is!
+              fn.copy(
+                modes = fn.modes ++ modes,
+                settings = settings,
+                lambdaArrayFunction0NOpt = Some(
+                  CHFunctionIO.LambdaArrayFunction0N(
+                    CHSpecialType.LambdaType(CHFuzzableType.BooleanType),
+                    argN = CHSpecialType.Array(CHAggregatedType.Any),
+                    output = outputType
+                  )
                 )
               )
-            )
-        }
-        .recover(_ => fn)
+
+      resF.recover(_ => fn)
 
   /**
     * Detect functions that uses a lambda as their first argument, and a map as their second argument.
@@ -131,7 +157,17 @@ object FuzzerLambdaFunctions extends StrictLogging:
             .execute(query2)
             .map(Some(_))
             .recover(_ => None)
+          supportOverWindow <- Fuzzer.testSampleInputWithOverWindow(fn.name, args = "x, y -> 1, map(now(), today())")
+          settings <- detectMandatorySettingsFromSampleInput(
+            fn.name,
+            args = "x, y -> 1, map(now(), today())",
+            fuzzOverWindow = false
+          )
         yield
+          val modes =
+            if supportOverWindow then Set(CHFunction.Mode.NoOverWindow, CHFunction.Mode.OverWindow)
+            else Set(CHFunction.Mode.NoOverWindow)
+
           // Set default value that can be overriden with generic types
           var lambdaOutputType: CHType =
             resp2Opt match
@@ -164,7 +200,8 @@ object FuzzerLambdaFunctions extends StrictLogging:
 
           if isInfinite then
             fn.copy(
-              modes = fn.modes + CHFunction.Mode.NoOverWindow,
+              modes = fn.modes ++ modes,
+              settings = settings,
               lambdaMapFunction0NOpt = Some(
                 CHFunctionIO.LambdaMapFunction0N(
                   CHSpecialType.LambdaType(lambdaOutputType),
@@ -175,7 +212,8 @@ object FuzzerLambdaFunctions extends StrictLogging:
             )
           else
             fn.copy(
-              modes = fn.modes + CHFunction.Mode.NoOverWindow,
+              modes = fn.modes ++ modes,
+              settings = settings,
               lambdaMapFunction1Opt = Some(
                 CHFunctionIO.LambdaMapFunction1(
                   CHSpecialType.LambdaType(lambdaOutputType),
@@ -224,7 +262,20 @@ object FuzzerLambdaFunctions extends StrictLogging:
             .execute(query2)
             .map(Some(_))
             .recover(_ => None)
+          supportOverWindow <- Fuzzer.testSampleInputWithOverWindow(
+            fn.name,
+            args = s"x, y -> 1, ${resps1.head._2.fuzzingValues.head}, map(now(), today())"
+          )
+          settings <- detectMandatorySettingsFromSampleInput(
+            fn.name,
+            args = s"x, y -> 1, ${resps1.head._2.fuzzingValues.head}, map(now(), today())",
+            fuzzOverWindow = false
+          )
         yield
+          val modes =
+            if supportOverWindow then Set(CHFunction.Mode.NoOverWindow, CHFunction.Mode.OverWindow)
+            else Set(CHFunction.Mode.NoOverWindow)
+
           // Set default value that can be overriden with generic types
           var lambdaOutputType: CHType =
             resp2Opt match
@@ -267,7 +318,8 @@ object FuzzerLambdaFunctions extends StrictLogging:
               )
             )
             fn.copy(
-              modes = fn.modes + CHFunction.Mode.NoOverWindow,
+              modes = fn.modes ++ modes,
+              settings = settings,
               lambdaMapFunction1N = lambdaMapFunction1N
             )
           else
@@ -280,7 +332,8 @@ object FuzzerLambdaFunctions extends StrictLogging:
               )
             )
             fn.copy(
-              modes = fn.modes + CHFunction.Mode.NoOverWindow,
+              modes = fn.modes ++ modes,
+              settings = settings,
               lambdaMapFunction2 = lambdaMapFunction2
             )
 

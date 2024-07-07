@@ -3,8 +3,7 @@ package com.amendil
 package object signature:
 
   val unknownFunctions: Seq[String] = Seq(
-    "countEqual",
-    "clamp"
+    "kql_array_sort_asc"
   )
   val unknownFunctionsWithAlias: Seq[(String, String)] = Seq(
     // ("STDDEV_POP", "stddevPop"),
