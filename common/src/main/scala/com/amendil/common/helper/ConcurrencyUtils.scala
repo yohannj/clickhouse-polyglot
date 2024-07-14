@@ -4,6 +4,10 @@ import java.util.concurrent.atomic.AtomicBoolean
 import scala.collection.mutable.ListBuffer
 import scala.concurrent.{ExecutionContext, Future}
 
+/**
+  * Inspiration taken from https://stackoverflow.com/questions/20414500/how-to-do-sequential-execution-of-futures-in-scala
+  * in order to replace some recursions by interations
+  */
 object ConcurrencyUtils:
 
   /**
@@ -15,9 +19,8 @@ object ConcurrencyUtils:
     * @return The result of the very last function, if no function has been provided, returns the provided element
     */
   def executeChain[T, U](element: T, fns: Seq[(T) => Future[T]])(using ExecutionContext): Future[T] =
-    fns match
-      case Seq(fn, tail*) => fn(element).flatMap(executeChain(_, tail))
-      case _              => Future.successful(element)
+    val initF = Future.successful(element)
+    fns.foldLeft(initF)((resF, fn) => resF.flatMap(el => fn(el)))
 
   /**
     * The maxConcurrency is handled by grouping the elements into maxConcurrency partition (or bucket).
@@ -40,12 +43,11 @@ object ConcurrencyUtils:
 
     val futures = elements
       .grouped(partitionSize)
-      .toSeq
       .map { (subElements: Seq[T]) =>
         executeInSequence(subElements, el => fn(el))
       }
 
-    Future.sequence(futures).map(_.flatten)
+    Future.sequence(futures).map(_.flatten.toSeq)
 
   /**
     * The maxConcurrency is handled by grouping the elements into maxConcurrency partition (or bucket).
@@ -68,7 +70,6 @@ object ConcurrencyUtils:
 
     val futures = elements
       .grouped(partitionSize)
-      .toSeq
       .map { (subElements: Seq[T]) =>
         executeInSequence(
           subElements,
@@ -76,7 +77,7 @@ object ConcurrencyUtils:
         )
       }
 
-    Future.sequence(futures).map(_.flatten.flatten)
+    Future.sequence(futures).map(_.flatten.flatten.toSeq)
 
   /**
     * Executes all calls in parallel until receiving a Future.Success
@@ -94,7 +95,6 @@ object ConcurrencyUtils:
     val status = AtomicBoolean(false)
     val futures = elements
       .grouped(partitionSize)
-      .toSeq
       .map { (subElements: Seq[T]) =>
         executeInSequenceUntilSuccess(
           subElements,
@@ -109,9 +109,9 @@ object ConcurrencyUtils:
       }
 
     Future.sequence(futures).map { results =>
-      results.flatten.headOption match
-        case Some(res) => res
-        case None      => throw Exception("Executed all elements, but none worked")
+      results.find(!_.isEmpty) match
+        case Some(Some(res)) => res
+        case _               => throw Exception("Executed all elements, but none worked")
     }
 
   /**
@@ -125,15 +125,8 @@ object ConcurrencyUtils:
     * @return A sequence of the same size as the provided elements
     */
   def executeInSequence[T, U](elements: Seq[T], fn: (T) => Future[U])(using ExecutionContext): Future[Seq[U]] =
-    executeInSequence(ListBuffer.from(elements), fn).map(_.toSeq)
-
-  def executeInSequence[T, U](elements: ListBuffer[T], fn: (T) => Future[U])(
-      using ExecutionContext
-  ): Future[ListBuffer[U]] =
-    elements match
-      case buffer if buffer.nonEmpty =>
-        fn(buffer.head).flatMap(res => executeInSequence(buffer.tail, fn).map(_.prepend(res)))
-      case _ => Future.successful(ListBuffer.empty)
+    val initF = Future.successful(ListBuffer.empty[U])
+    elements.foldLeft(initF)((resF, el) => resF.flatMap(acc => fn(el).map(acc += _))).map(_.toSeq)
 
   /**
     * Executes all calls sequentially.
@@ -148,12 +141,10 @@ object ConcurrencyUtils:
   def executeInSequenceOnlySuccess[T, U](elements: Seq[T], fn: (T) => Future[U])(
       using ExecutionContext
   ): Future[Seq[U]] =
-    elements match
-      case Seq(head, tail*) =>
-        fn(head)
-          .flatMap(res => executeInSequenceOnlySuccess(tail, fn).map(l => l :+ res))
-          .recoverWith(_ => executeInSequenceOnlySuccess(tail, fn))
-      case _ => Future.successful(Nil)
+    val initF = Future.successful(ListBuffer.empty[U])
+    elements
+      .foldLeft(initF)((resF, el) => resF.flatMap(acc => fn(el).map(acc += _)).recoverWith(_ => resF))
+      .map(_.toSeq)
 
   /**
     * Executes all calls sequentially until receiving a Future.Success
