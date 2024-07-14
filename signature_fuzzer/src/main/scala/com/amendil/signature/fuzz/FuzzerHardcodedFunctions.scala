@@ -24,6 +24,7 @@ object FuzzerHardcodedFunctions extends StrictLogging {
     fn.name match
       case "CAST" | "_CAST" | "accurateCast" | "accurateCastOrNull" => fuzzCastLike(fn)
       case "accurateCastOrDefault"                                  => fuzzAccurateCastOrDefault(fn)
+      case "anova" | "analysisOfVariance"                           => fuzzAnova(fn)
       case "arrayFold"                                              => fuzzArrayFold(fn)
       case "arrayEnumerateDenseRanked" | "arrayEnumerateUniqRanked" => fuzzArrayEnumerateRanked(fn)
       case "arrayFlatten"                                           => fuzzArrayFlatten(fn)
@@ -222,6 +223,68 @@ object FuzzerHardcodedFunctions extends StrictLogging {
             )
           )
         )
+
+  private def fuzzAnova(
+      fn: CHFunctionFuzzResult
+  )(using client: CHClient, ec: ExecutionContext): Future[CHFunctionFuzzResult] =
+    val valTypes = CHFuzzableAbstractType.Number.chFuzzableTypes.map(t => (t, Seq(t.fuzzingValues.head)))
+    val groupIndexTypes = Seq(
+      (CHFuzzableType.UInt8, Seq("(number % 2)::UInt8")),
+      (CHFuzzableType.UInt16, Seq("(number % 2)::UInt16")),
+      (CHFuzzableType.UInt32, Seq("(number % 2)::UInt32")),
+      (CHFuzzableType.UInt64, Seq("(number % 2)::UInt64")),
+      (CHFuzzableType.UInt128, Seq("(number % 2)::UInt128")),
+      (CHFuzzableType.UInt256, Seq("(number % 2)::UInt256")),
+      (CHFuzzableType.Int8, Seq("(number % 2)::Int8")),
+      (CHFuzzableType.Int16, Seq("(number % 2)::Int16")),
+      (CHFuzzableType.Int32, Seq("(number % 2)::Int32")),
+      (CHFuzzableType.Int64, Seq("(number % 2)::Int64")),
+      (CHFuzzableType.Int128, Seq("(number % 2)::Int128")),
+      (CHFuzzableType.Int256, Seq("(number % 2)::Int256")),
+      (CHFuzzableType.Decimal32, Seq("(number % 2)::Decimal32(1)")),
+      (CHFuzzableType.Decimal64, Seq("(number % 2)::Decimal64(1)")),
+      (CHFuzzableType.Decimal128, Seq("(number % 2)::Decimal128(1)")),
+      (CHFuzzableType.Decimal256, Seq("(number % 2)::Decimal256(1)"))
+    )
+
+    for
+      function2s <-
+        fuzzSignatures(
+          fn.name,
+          crossJoin(
+            valTypes,
+            groupIndexTypes
+          ).map(_.toList),
+          sourceTable = Some("(SELECT arrayJoin([1, 2, 10000000000000000001]) as number)")
+        ).map { signatures =>
+          signatures.map { io =>
+            io._1 match
+              case Seq(arg1, arg2) => Function2(arg1, arg2, io._2)
+              case _               => throw Exception(s"Expected 2 arguments, but found ${io._1.size} arguments")
+          }
+        }
+
+      supportOverWindow <- Fuzzer.testSampleInputWithOverWindow(
+        fn.name,
+        args = "0, (number % 2)::UInt8",
+        sourceTable = Some("(SELECT arrayJoin([1, 2, 10000000000000000001]) as number)")
+      )
+      settings <- Fuzzer.detectMandatorySettingsFromSampleInput(
+        fn.name,
+        args = "0, (number % 2)::UInt8",
+        fuzzOverWindow = false,
+        sourceTable = Some("(SELECT arrayJoin([1, 2, 10000000000000000001]) as number)")
+      )
+    yield
+      val modes =
+        if supportOverWindow then Set(CHFunction.Mode.NoOverWindow, CHFunction.Mode.OverWindow)
+        else Set(CHFunction.Mode.NoOverWindow)
+
+      fn.copy(
+        modes = fn.modes ++ modes,
+        settings = settings,
+        function2s = function2s
+      )
 
   private def fuzzArrayFold(
       fn: CHFunctionFuzzResult
