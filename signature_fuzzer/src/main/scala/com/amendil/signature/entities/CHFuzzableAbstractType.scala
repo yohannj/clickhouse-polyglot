@@ -253,11 +253,6 @@ enum CHFuzzableAbstractType(_fuzzingValues: Seq[String], _chFuzzableTypes: Seq[C
       )
 
   // Misc
-  case Dynamic
-      extends CHFuzzableAbstractType(
-        CHFuzzableType.Dynamic.fuzzingValues,
-        Seq(CHFuzzableType.Dynamic)
-      )
   case Enum
       extends CHFuzzableAbstractType(
         Seq(CHFuzzableType.Enum8.fuzzingValues.head, CHFuzzableType.Enum16.fuzzingValues.head),
@@ -663,6 +658,12 @@ enum CHFuzzableAbstractType(_fuzzingValues: Seq[String], _chFuzzableTypes: Seq[C
         Seq(CHFuzzableType.DictionaryName)
       )
       with CustomStringBasedAbstractType
+  case Dynamic
+      extends CHFuzzableAbstractType(
+        CHFuzzableType.Dynamic.fuzzingValues,
+        Seq(CHFuzzableType.Dynamic)
+      )
+      with CustomAbstractType
   case InputFormat
       extends CHFuzzableAbstractType(
         CHFuzzableType.InputFormat.fuzzingValues,
