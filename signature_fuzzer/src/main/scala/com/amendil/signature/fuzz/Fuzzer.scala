@@ -18,7 +18,8 @@ object Fuzzer extends StrictLogging:
       case "range" =>
         // Ends up in OOM, to be handled at another time
         Future.successful(fn)
-      case "randBinomial" | "hop" | "hopStart" | "hopEnd" | "windowID" =>
+      case "randBinomial" | "hop" | "hopStart" | "hopEnd" | "lagInFrame" | "leadInFrame" | "maxIntersections" |
+          "maxIntersectionsPosition" | "windowID" =>
         // To be handled at a later time
         // Known issues
         Future.successful(fn)
@@ -206,7 +207,7 @@ object Fuzzer extends StrictLogging:
   ): String =
     val innerQuery =
       if fuzzOverWindow then
-        s"SELECT $fnName($params)($args) OVER w1 as r, toTypeName(r) as type${sourceTable.map(" FROM " + _).getOrElse("")} WINDOW w1 AS ()"
+        s"SELECT $fnName($params)($args) OVER w1 as r, toTypeName(r) as type${sourceTable.map(" FROM " + _).getOrElse("")} WINDOW w1 AS (ORDER BY 1)"
       else s"SELECT $fnName($params)($args) as r, toTypeName(r) as type${sourceTable.map(" FROM " + _).getOrElse("")}"
 
     s"SELECT if(type = 'UInt8' AND (r::Dynamic = 0 OR r::Dynamic = 1), 'Bool', type) as type FROM ($innerQuery)"
@@ -219,7 +220,7 @@ object Fuzzer extends StrictLogging:
   ): String =
     val innerQuery =
       if fuzzOverWindow then
-        s"SELECT $fnName($args) OVER w1 as r, toTypeName(r) as type${sourceTable.map(" FROM " + _).getOrElse("")} WINDOW w1 AS ()"
+        s"SELECT $fnName($args) OVER w1 as r, toTypeName(r) as type${sourceTable.map(" FROM " + _).getOrElse("")} WINDOW w1 AS (ORDER BY 1)"
       else s"SELECT $fnName($args) as r, toTypeName(r) as type${sourceTable.map(" FROM " + _).getOrElse("")}"
 
     s"SELECT if(type = 'UInt8' AND (r::Dynamic = 0 OR r::Dynamic = 1), 'Bool', type) as type FROM ($innerQuery)"
