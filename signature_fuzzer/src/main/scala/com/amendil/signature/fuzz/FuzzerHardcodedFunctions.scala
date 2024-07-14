@@ -67,6 +67,7 @@ object FuzzerHardcodedFunctions extends StrictLogging {
       case "nested"                                                                         => fuzzNested(fn)
       case "pointInEllipses"                                                                => fuzzPointInEllipses(fn)
       case "proportionsZTest"                                                               => fuzzProportionsZTest(fn)
+      case "rankCorr"                                                                       => fuzzRankCorr(fn)
       case "reinterpret"                                                                    => fuzzReinterpret(fn)
       case "s2CapUnion" | "s2RectIntersection" | "s2RectUnion"                              => fuzzS2CapUnionLike(fn)
       case "sequenceCount" | "sequenceMatch"                                                => fuzzSequenceCountLike(fn)
@@ -2691,6 +2692,67 @@ object FuzzerHardcodedFunctions extends StrictLogging {
         modes = fn.modes ++ modes,
         settings = settings,
         function6s = function6s
+      )
+
+  private def fuzzRankCorr(
+      fn: CHFunctionFuzzResult
+  )(using client: CHClient, ec: ExecutionContext): Future[CHFunctionFuzzResult] =
+    val xyTypes = Seq(
+      (CHFuzzableType.UInt8, Seq("number::UInt8")),
+      (CHFuzzableType.UInt16, Seq("number::UInt16")),
+      (CHFuzzableType.UInt32, Seq("number::UInt32")),
+      (CHFuzzableType.UInt64, Seq("number::UInt64")),
+      (CHFuzzableType.UInt128, Seq("number::UInt128")),
+      (CHFuzzableType.UInt256, Seq("number::UInt256")),
+      (CHFuzzableType.Int8, Seq("number::Int8")),
+      (CHFuzzableType.Int16, Seq("number::Int16")),
+      (CHFuzzableType.Int32, Seq("number::Int32")),
+      (CHFuzzableType.Int64, Seq("number::Int64")),
+      (CHFuzzableType.Int128, Seq("number::Int128")),
+      (CHFuzzableType.Int256, Seq("number::Int256")),
+      (CHFuzzableType.Decimal32, Seq("number::Decimal32(1)")),
+      (CHFuzzableType.Decimal64, Seq("number::Decimal64(1)")),
+      (CHFuzzableType.Decimal128, Seq("number::Decimal128(1)")),
+      (CHFuzzableType.Decimal256, Seq("number::Decimal256(1)"))
+    )
+
+    for
+      function2s <-
+        fuzzSignatures(
+          fn.name,
+          crossJoin(
+            xyTypes,
+            xyTypes
+          ).map(_.toList),
+          sourceTable = Some("numbers(2)")
+        ).map { signatures =>
+          signatures.map { io =>
+            io._1 match
+              case Seq(arg1, arg2) => Function2(arg1, arg2, io._2)
+              case _               => throw Exception(s"Expected 2 arguments, but found ${io._1.size} arguments")
+          }
+        }
+
+      supportOverWindow <- Fuzzer.testSampleInputWithOverWindow(
+        fn.name,
+        args = "number, number",
+        sourceTable = Some("numbers(2)")
+      )
+      settings <- Fuzzer.detectMandatorySettingsFromSampleInput(
+        fn.name,
+        args = "number, number",
+        fuzzOverWindow = false,
+        sourceTable = Some("numbers(2)")
+      )
+    yield
+      val modes =
+        if supportOverWindow then Set(CHFunction.Mode.NoOverWindow, CHFunction.Mode.OverWindow)
+        else Set(CHFunction.Mode.NoOverWindow)
+
+      fn.copy(
+        modes = fn.modes ++ modes,
+        settings = settings,
+        function2s = function2s
       )
 
   private def fuzzReinterpret(
