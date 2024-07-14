@@ -43,7 +43,8 @@ enum CHFuzzableAbstractType(_fuzzingValues: Seq[String], _chFuzzableTypes: Seq[C
           "1::UInt16",
           "1::UInt32",
           "1::Int64",
-          "1::UInt64"
+          "1::UInt64",
+          "false"
         ),
         Seq(
           CHFuzzableType.BooleanType,
