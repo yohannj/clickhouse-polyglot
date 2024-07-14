@@ -22,6 +22,7 @@ enum CHSetting[T](val name: String):
   // e.g. `CHSetting.AllowDeprecatedErrorProneWindowFunctions(true)`
   def apply(value: T): CHSettingWithValue[T] = CHSettingWithValue(this, value)
 
+  case AllowCustomErrorCodeInThrowif extends CHSetting[Boolean]("allow_custom_error_code_in_throwif")
   case AllowDeprecatedErrorProneWindowFunctions
       extends CHSetting[Boolean]("allow_deprecated_error_prone_window_functions")
   case AllowExperimentalDynamicType extends CHSetting[Boolean]("allow_experimental_dynamic_type")
