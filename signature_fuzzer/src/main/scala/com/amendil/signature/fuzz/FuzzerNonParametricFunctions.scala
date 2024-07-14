@@ -12,6 +12,7 @@ import com.amendil.signature.fuzz.Fuzzer.*
 import com.typesafe.scalalogging.StrictLogging
 
 import scala.concurrent.{ExecutionContext, Future}
+import scala.util.Success
 
 object FuzzerNonParametricFunctions extends StrictLogging:
   private[fuzz] def fuzzingFunctionWithCost(
@@ -129,30 +130,31 @@ object FuzzerNonParametricFunctions extends StrictLogging:
         ).map((finiteFn, repeatedFn) => (Set.empty, Set.empty, finiteFn, repeatedFn))
       else
         // format: off
-        for {
-          // We don't yet know if the function requires/supports or not `OVER window` so we need to brute force them all
-          // First check without OVER window
-          (modes, finiteFn, repeatedFn) <-
-            fuzzNonParametricSingleMode(fn.name, argCount, fuzzOverWindow = false, fnConstructorFiniteArgs, fnConstructorRepeatedArgs)
-              .flatMap((finiteFn, repeatedFn) =>
-                // Success without OVER window, let's try a sample function with OVER window
-                val sampleFn = finiteFn.headOption.orElse(repeatedFn.headOption).get
+        fuzzNonParametricSingleMode(fn.name, argCount, fuzzOverWindow = false, fnConstructorFiniteArgs, fnConstructorRepeatedArgs)
+          .transformWith{
+            case Success((finiteFn, repeatedFn)) if finiteFn.nonEmpty || repeatedFn.nonEmpty =>
+              // Success without OVER window, let's try a sample function with OVER window
+              val sampleFn = finiteFn.headOption.orElse(repeatedFn.headOption).get
 
-                testSampleFunctionWithOverWindow(fn.name, sampleFn).map( supportOverWindow =>
-                  if supportOverWindow
-                  then (Set(CHFunction.Mode.OverWindow, CHFunction.Mode.NoOverWindow), finiteFn, repeatedFn)
-                  else (Set(CHFunction.Mode.NoOverWindow), finiteFn, repeatedFn)
-                )
-              ).recoverWith(_ =>
-                // Failure without OVER window, fuzz with OVER window
-                fuzzNonParametricSingleMode(fn.name, argCount, fuzzOverWindow = true, fnConstructorFiniteArgs, fnConstructorRepeatedArgs)
-                  .map((finiteFn, repeatedFn) => (Set(CHFunction.Mode.OverWindow), finiteFn, repeatedFn))
-                  .recover(_ => (Set.empty, Nil, Nil)) // Nothing worked
+              testSampleFunctionWithOverWindow(fn.name, sampleFn).map( supportOverWindow =>
+                if supportOverWindow
+                then (Set(CHFunction.Mode.OverWindow, CHFunction.Mode.NoOverWindow), finiteFn, repeatedFn)
+                else (Set(CHFunction.Mode.NoOverWindow), finiteFn, repeatedFn)
               )
+            case _ =>
+              // Failure without OVER window, fuzz with OVER window
+              fuzzNonParametricSingleMode(fn.name, argCount, fuzzOverWindow = true, fnConstructorFiniteArgs, fnConstructorRepeatedArgs)
+                .map((finiteFn, repeatedFn) => (Set(CHFunction.Mode.OverWindow), finiteFn, repeatedFn))
+                .recover(_ => (Set.empty, Nil, Nil)) // Nothing worked
+          }
+          .transformWith{
+            case Success((modes, finiteFn, repeatedFn)) if finiteFn.nonEmpty || repeatedFn.nonEmpty =>
+              val sampleFn = finiteFn.headOption.orElse(repeatedFn.headOption).get
+              detectMandatorySettingsFromSampleFunction(fn.name, sampleFn, fuzzOverWindow = !(fn.modes ++ modes).contains(CHFunction.Mode.NoOverWindow))
+                .map(settings => (modes, settings, finiteFn, repeatedFn))
 
-          sampleFn = finiteFn.headOption.orElse(repeatedFn.headOption).get
-          settings <- detectMandatorySettingsFromSampleFunction(fn.name, sampleFn, fuzzOverWindow = !(fn.modes ++ modes).contains(CHFunction.Mode.NoOverWindow))
-        } yield (modes, settings, finiteFn, repeatedFn)
+            case _ => Future.successful((Set.empty, Set.empty, Nil, Nil))
+          }
         // format: on
     )
 
@@ -317,50 +319,49 @@ object FuzzerNonParametricFunctions extends StrictLogging:
       abstractInputs: Seq[Seq[CHFuzzableAbstractType]],
       fuzzOverWindow: Boolean
   )(using client: CHClient, ec: ExecutionContext): Future[Seq[Seq[(CHFuzzableAbstractType, Seq[CHFuzzableType])]]] =
-    if abstractInputs.nonEmpty then
-      if abstractInputs.head.size <= 1 then
-        Future.successful(
-          abstractInputs.map(_.map(abstractType => (abstractType, abstractType.chFuzzableTypes)))
-        )
-      else
-        executeInParallel( // For each abstract input
-          abstractInputs,
-          (abstractInput: Seq[CHFuzzableAbstractType]) =>
-            executeInParallel( // For each argument (identified by its index)
-              Range.apply(0, abstractInput.size),
-              (idx: Int) =>
-                val indexedInput = abstractInput.zipWithIndex
-                val fuzzingValuesBeforeColumn = indexedInput.filter(_._2 < idx).map(_._1.exhaustiveFuzzingValues)
-                val currentArgumentAbstractType = indexedInput.find(_._2 == idx).get._1
-                val fuzzingValuesAfterColumn = indexedInput.filter(_._2 > idx).map(_._1.exhaustiveFuzzingValues)
+    if abstractInputs.isEmpty then Future.successful(Nil)
+    else if abstractInputs.head.size <= 1 then
+      Future.successful(
+        abstractInputs.map(_.map(abstractType => (abstractType, abstractType.chFuzzableTypes)))
+      )
+    else
+      executeInParallel( // For each abstract input
+        abstractInputs,
+        (abstractInput: Seq[CHFuzzableAbstractType]) =>
+          executeInParallel( // For each argument (identified by its index)
+            Range.apply(0, abstractInput.size),
+            (idx: Int) =>
+              val indexedInput = abstractInput.zipWithIndex
+              val fuzzingValuesBeforeColumn = indexedInput.filter(_._2 < idx).map(_._1.exhaustiveFuzzingValues)
+              val currentArgumentAbstractType = indexedInput.find(_._2 == idx).get._1
+              val fuzzingValuesAfterColumn = indexedInput.filter(_._2 > idx).map(_._1.exhaustiveFuzzingValues)
 
-                executeInSequenceOnlySuccess( // For each possible type of the current argument
-                  currentArgumentAbstractType.chFuzzableTypes,
-                  (fuzzableType: CHFuzzableType) =>
-                    val queries =
-                      buildFuzzingValuesArgs(
-                        (fuzzingValuesBeforeColumn :+ fuzzableType.fuzzingValues) ++ fuzzingValuesAfterColumn
-                      ).map(args => query(fnName, args, fuzzOverWindow))
+              executeInSequenceOnlySuccess( // For each possible type of the current argument
+                currentArgumentAbstractType.chFuzzableTypes,
+                (fuzzableType: CHFuzzableType) =>
+                  val queries =
+                    buildFuzzingValuesArgs(
+                      (fuzzingValuesBeforeColumn :+ fuzzableType.fuzzingValues) ++ fuzzingValuesAfterColumn
+                    ).map(args => query(fnName, args, fuzzOverWindow))
 
-                    executeInSequenceUntilSuccess( // Check if any value of the current possible type is valid
-                      queries,
-                      client.executeNoResult(_)
-                    ).map(_ => fuzzableType)
-                ).map { filteredFuzzableTypes =>
-                  if filteredFuzzableTypes.isEmpty then
-                    val errorMsg =
-                      s"No individual value found for argument idx $idx, while we know the combination [${abstractInput.mkString(", ")}] is valid."
-                    logger.error(errorMsg)
-                    throw Exception(errorMsg)
+                  executeInSequenceUntilSuccess( // Check if any value of the current possible type is valid
+                    queries,
+                    client.executeNoResult(_)
+                  ).map(_ => fuzzableType)
+              ).map { filteredFuzzableTypes =>
+                if filteredFuzzableTypes.isEmpty then
+                  val errorMsg =
+                    s"No individual value found for argument idx $idx, while we know the combination [${abstractInput.mkString(", ")}] is valid."
+                  logger.error(errorMsg)
+                  throw Exception(errorMsg)
 
-                  (currentArgumentAbstractType, filteredFuzzableTypes)
-                }
-              ,
-              maxConcurrency = abstractInputs.head.size
-            ),
-          maxConcurrency = Settings.ClickHouse.maxSupportedConcurrency / abstractInputs.head.size
-        )
-    else Future.successful(Nil)
+                (currentArgumentAbstractType, filteredFuzzableTypes)
+              }
+            ,
+            maxConcurrency = abstractInputs.head.size
+          ),
+        maxConcurrency = Settings.ClickHouse.maxSupportedConcurrency / abstractInputs.head.size
+      )
 
   /**
     * For each signature, it will expand one abstract argument into fuzzable types and
@@ -443,6 +444,9 @@ object FuzzerNonParametricFunctions extends StrictLogging:
       argsOfPreviouslyFoundSignatureOpt: Option[Seq[CHFuzzableType]]
   )(using client: CHClient, ec: ExecutionContext): Future[Boolean] =
     if fnName.equals("nth_value") then Future.successful(argCount != 2)
+    else if fnName.equals("trim") then Future.successful(argCount != 1)
+    else if fnName.equals("ltrim") then Future.successful(argCount != 1)
+    else if fnName.equals("rtrim") then Future.successful(argCount != 1)
     else if fnName.equals("arrayEnumerateRanked") then Future.successful(false) // Unsure about the expected arg count
     else
       val args = argsOfPreviouslyFoundSignatureOpt match

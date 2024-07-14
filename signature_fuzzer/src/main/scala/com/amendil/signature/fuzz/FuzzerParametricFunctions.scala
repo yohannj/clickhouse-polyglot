@@ -14,6 +14,7 @@ import com.typesafe.scalalogging.StrictLogging
 
 import scala.annotation.targetName
 import scala.concurrent.{ExecutionContext, Future}
+import scala.util.Success
 
 object FuzzerParametricFunctions extends StrictLogging:
 
@@ -674,12 +675,13 @@ object FuzzerParametricFunctions extends StrictLogging:
         )
       else
         // format: off
-        for {
-          // We don't yet know if the function requires/supports or not `OVER window` so we need to brute force them all
-          // First check without OVER window
-          (modes, finiteParamsFiniteArgsFn, repeatedParamsFiniteArgsFn, finiteParamsRepeatedArgsFn, repeatedParamsRepeatedArgsFn) <-
-            fuzzParametricSingleMode(fn.name, paramCount, argCount, fuzzOverWindow = false, fnConstructorFiniteParamsFiniteArgs, fnConstructorRepeatedParamsFiniteArgs, fnConstructorFiniteParamsRepeatedArgs, fnConstructorRepeatedParamsRepeatedArgs)
-              .flatMap((finiteParamsFiniteArgsFn, repeatedParamsFiniteArgsFn, finiteParamsRepeatedArgsFn, repeatedParamsRepeatedArgsFn) =>
+        // We don't yet know if the function requires/supports or not `OVER window` so we need to brute force them all
+        // First check without OVER window
+        fuzzParametricSingleMode(fn.name, paramCount, argCount, fuzzOverWindow = false, fnConstructorFiniteParamsFiniteArgs, fnConstructorRepeatedParamsFiniteArgs, fnConstructorFiniteParamsRepeatedArgs, fnConstructorRepeatedParamsRepeatedArgs)
+          .transformWith {
+            case Success((finiteParamsFiniteArgsFn, repeatedParamsFiniteArgsFn, finiteParamsRepeatedArgsFn, repeatedParamsRepeatedArgsFn))
+              if finiteParamsFiniteArgsFn.nonEmpty || repeatedParamsFiniteArgsFn.nonEmpty ||
+                finiteParamsRepeatedArgsFn.nonEmpty || repeatedParamsRepeatedArgsFn.nonEmpty =>
                 // Success without OVER window, let's try a sample function with OVER window
                 val sampleFn =
                   finiteParamsFiniteArgsFn.headOption
@@ -693,23 +695,31 @@ object FuzzerParametricFunctions extends StrictLogging:
                   then (Set(CHFunction.Mode.OverWindow, CHFunction.Mode.NoOverWindow), finiteParamsFiniteArgsFn, repeatedParamsFiniteArgsFn, finiteParamsRepeatedArgsFn, repeatedParamsRepeatedArgsFn)
                   else (Set(CHFunction.Mode.NoOverWindow), finiteParamsFiniteArgsFn, repeatedParamsFiniteArgsFn, finiteParamsRepeatedArgsFn, repeatedParamsRepeatedArgsFn)
                 )
-              ).recoverWith(_ =>
-                // Failure without OVER window, fuzz with OVER window
-                fuzzParametricSingleMode(fn.name, paramCount, argCount, fuzzOverWindow = true, fnConstructorFiniteParamsFiniteArgs, fnConstructorRepeatedParamsFiniteArgs, fnConstructorFiniteParamsRepeatedArgs, fnConstructorRepeatedParamsRepeatedArgs).map(
-                  (finiteParamsFiniteArgsFn, repeatedParamsFiniteArgsFn, finiteParamsRepeatedArgsFn, repeatedParamsRepeatedArgsFn) =>
-                    (Set(CHFunction.Mode.OverWindow), finiteParamsFiniteArgsFn, repeatedParamsFiniteArgsFn, finiteParamsRepeatedArgsFn, repeatedParamsRepeatedArgsFn)
-                ).recover(_ => (Set.empty, Nil, Nil, Nil, Nil)) // Nothing worked
-              )
 
-          sampleFn =
-            finiteParamsFiniteArgsFn.headOption
-              .orElse(repeatedParamsFiniteArgsFn.headOption)
-              .orElse(finiteParamsRepeatedArgsFn.headOption)
-              .orElse(repeatedParamsRepeatedArgsFn.headOption)
-              .get
+            case _ =>
+              // Failure without OVER window, fuzz with OVER window
+              fuzzParametricSingleMode(fn.name, paramCount, argCount, fuzzOverWindow = true, fnConstructorFiniteParamsFiniteArgs, fnConstructorRepeatedParamsFiniteArgs, fnConstructorFiniteParamsRepeatedArgs, fnConstructorRepeatedParamsRepeatedArgs).map(
+                (finiteParamsFiniteArgsFn, repeatedParamsFiniteArgsFn, finiteParamsRepeatedArgsFn, repeatedParamsRepeatedArgsFn) =>
+                  (Set(CHFunction.Mode.OverWindow), finiteParamsFiniteArgsFn, repeatedParamsFiniteArgsFn, finiteParamsRepeatedArgsFn, repeatedParamsRepeatedArgsFn)
+              ).recover(_ => (Set.empty, Nil, Nil, Nil, Nil)) // Nothing worked
+          }
+          .transformWith{
+            case Success((modes, finiteParamsFiniteArgsFn, repeatedParamsFiniteArgsFn, finiteParamsRepeatedArgsFn, repeatedParamsRepeatedArgsFn))
+              if finiteParamsFiniteArgsFn.nonEmpty || repeatedParamsFiniteArgsFn.nonEmpty ||
+                finiteParamsRepeatedArgsFn.nonEmpty || repeatedParamsRepeatedArgsFn.nonEmpty =>
 
-          settings <- detectMandatorySettingsFromSampleFunction(fn.name, sampleFn, fuzzOverWindow = !(fn.modes ++ modes).contains(CHFunction.Mode.NoOverWindow))
-        } yield (modes, settings, finiteParamsFiniteArgsFn, repeatedParamsFiniteArgsFn, finiteParamsRepeatedArgsFn, repeatedParamsRepeatedArgsFn)
+              val sampleFn =
+                finiteParamsFiniteArgsFn.headOption
+                  .orElse(repeatedParamsFiniteArgsFn.headOption)
+                  .orElse(finiteParamsRepeatedArgsFn.headOption)
+                  .orElse(repeatedParamsRepeatedArgsFn.headOption)
+                  .get
+
+              detectMandatorySettingsFromSampleFunction(fn.name, sampleFn, fuzzOverWindow = !(fn.modes ++ modes).contains(CHFunction.Mode.NoOverWindow))
+                .map(settings => (modes, settings, finiteParamsFiniteArgsFn, repeatedParamsFiniteArgsFn, finiteParamsRepeatedArgsFn, repeatedParamsRepeatedArgsFn))
+
+            case _ => Future.successful((Set.empty, Set.empty, Nil, Nil, Nil, Nil))
+          }
         // format: on
     )
 
