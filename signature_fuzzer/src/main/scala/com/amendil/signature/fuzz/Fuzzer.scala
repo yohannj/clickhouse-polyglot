@@ -50,7 +50,7 @@ object Fuzzer extends StrictLogging:
         // It requires the experimental "transactions" feature
         // https://clickhouse.com/docs/en/guides/developer/transactional#requirements
         Future.successful(fn)
-      case "__getScalar" =>
+      case "__getScalar" | "aggThrow" =>
         // Internal function
         Future.successful(fn)
       case _ =>
