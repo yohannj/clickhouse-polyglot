@@ -79,7 +79,8 @@ object FuzzerLambdaFunctions extends StrictLogging:
     if fn.isSpecialRepeatedFunction then Future.successful(fn)
     else
       val innerQuery = s"SELECT ${fn.name}(x, y -> 3, ['s'], [2]) as r, toTypeName(r) as type"
-      val query = s"SELECT if(type = 'UInt8' AND (r = 0 OR r = 1), 'Bool', type) as type FROM ($innerQuery)"
+      val query =
+        s"SELECT if(type = 'UInt8' AND (r::Dynamic = 0 OR r::Dynamic = 1), 'Bool', type) as type FROM ($innerQuery)"
 
       val resF =
         for
@@ -140,11 +141,13 @@ object FuzzerLambdaFunctions extends StrictLogging:
     if fn.isSpecialRepeatedFunction then Future.successful(fn)
     else
       val innerQuery1 = s"SELECT ${fn.name}(x, y -> 1, map(now(), today())) as r, toTypeName(r) as type"
-      val query1 = s"SELECT if(type = 'UInt8' AND (r = 0 OR r = 1), 'Bool', type) as type FROM ($innerQuery1)"
+      val query1 =
+        s"SELECT if(type = 'UInt8' AND (r::Dynamic = 0 OR r::Dynamic = 1), 'Bool', type) as type FROM ($innerQuery1)"
 
       val innerQuery2 =
         s"SELECT ${fn.name}(x, y -> ${CHFuzzableType.ArrayUUID.fuzzingValues.head}, map(now(), today())) as r, toTypeName(r) as type"
-      val query2 = s"SELECT if(type = 'UInt8' AND (r = 0 OR r = 1), 'Bool', type) as type FROM ($innerQuery2)"
+      val query2 =
+        s"SELECT if(type = 'UInt8' AND (r::Dynamic = 0 OR r::Dynamic = 1), 'Bool', type) as type FROM ($innerQuery2)"
 
       val resF =
         for
@@ -241,7 +244,8 @@ object FuzzerLambdaFunctions extends StrictLogging:
             t =>
               val innerQuery1 =
                 s"SELECT ${fn.name}(x, y -> 1, ${t.fuzzingValues.head}, map(now(), today())) as r, toTypeName(r) as type"
-              val query1 = s"SELECT if(type = 'UInt8' AND (r = 0 OR r = 1), 'Bool', type) as type FROM ($innerQuery1)"
+              val query1 =
+                s"SELECT if(type = 'UInt8' AND (r::Dynamic = 0 OR r::Dynamic = 1), 'Bool', type) as type FROM ($innerQuery1)"
 
               client.execute(innerQuery1).map((_, t))
             ,
@@ -257,7 +261,8 @@ object FuzzerLambdaFunctions extends StrictLogging:
 
           innerQuery2 =
             s"SELECT ${fn.name}(x, y -> ${CHFuzzableType.ArrayUUID.fuzzingValues.head}, ${resps1.head._2.fuzzingValues.head}, map(now(), today())) as r, toTypeName(r) as type"
-          query2 = s"SELECT if(type = 'UInt8' AND (r = 0 OR r = 1), 'Bool', type) as type FROM ($innerQuery2)"
+          query2 =
+            s"SELECT if(type = 'UInt8' AND (r::Dynamic = 0 OR r::Dynamic = 1), 'Bool', type) as type FROM ($innerQuery2)"
           resp2Opt <- client
             .execute(query2)
             .map(Some(_))
