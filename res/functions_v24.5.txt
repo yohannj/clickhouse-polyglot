@@ -5875,7 +5875,7 @@ dictGet
         (DictionaryName, TupleN(String), Any) => Any
 dictGetAll
     Modes: NoOverWindow
-    Settings: allow_deprecated_error_prone_window_functions=1, allow_experimental_funnel_functions=1, allow_experimental_nlp_functions=1, allow_introspection_functions=1
+    Settings: 
     Signatures:
         (DictionaryName, String, Any) => Any
         (DictionaryName, TupleN(String), Any) => Any

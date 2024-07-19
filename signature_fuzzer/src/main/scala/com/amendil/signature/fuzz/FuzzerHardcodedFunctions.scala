@@ -867,11 +867,26 @@ object FuzzerHardcodedFunctions extends StrictLogging {
       supportOverWindow <- Fuzzer.testSampleInputWithOverWindow(
         fn.name,
         args = s"'${CommonSettings.Type.FuzzerDictionaryNames.manyTypesDictionaryName}', 'dateValue', 1"
+      ).flatMap( supportOverWindow =>
+        if supportOverWindow then Future.successful(supportOverWindow)
+        else
+          Fuzzer.testSampleInputWithOverWindow(
+            fn.name,
+            args = s"'${CommonSettings.Type.FuzzerDictionaryNames.regexpDictionaryName}', 'name', 1"
+          )
       )
       settings <- Fuzzer.detectMandatorySettingsFromSampleInput(
         fn.name,
         args = s"'${CommonSettings.Type.FuzzerDictionaryNames.manyTypesDictionaryName}', 'dateValue', 1",
         fuzzOverWindow = false
+      ).flatMap( settings =>
+        if settings.size <= 1 then Future.successful(settings)
+        else
+          Fuzzer.detectMandatorySettingsFromSampleInput(
+            fn.name,
+            args = s"'${CommonSettings.Type.FuzzerDictionaryNames.regexpDictionaryName}', 'name', 1",
+            fuzzOverWindow = false
+          )
       )
     yield
       val modes =
