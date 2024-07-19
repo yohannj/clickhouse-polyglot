@@ -40,6 +40,7 @@ object CHClient:
 
   val unlockFunctionsSettingNames = Seq(
     CHSetting.AllowDeprecatedErrorProneWindowFunctions,
+    CHSetting.AllowDeprecatedSnowflakeConversionFunctions,
     CHSetting.AllowExperimentalFunnelFunctions,
     CHSetting.AllowExperimentalNlpFunctions,
     CHSetting.AllowIntrospectionFunctions
