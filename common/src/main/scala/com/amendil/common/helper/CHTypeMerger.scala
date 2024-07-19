@@ -488,7 +488,7 @@ object CHTypeMerger {
 
     (Set(CHFuzzableType.InputFormat, CHFuzzableType.OutputFormat), CHAggregatedType.Format),
 
-    (Set(CHFuzzableType.Point, CHFuzzableType.Ring, CHFuzzableType.Polygon, CHFuzzableType.MultiPolygon), CHAggregatedType.Geo),
+    (Set(CHFuzzableType.LineString, CHFuzzableType.Point, CHFuzzableType.Ring, CHFuzzableType.Polygon, CHFuzzableType.MultiPolygon), CHAggregatedType.Geo),
 
     (Set(CHFuzzableType.IntervalNanosecond, CHFuzzableType.IntervalMicrosecond, CHFuzzableType.IntervalMillisecond), CHAggregatedType.IntervalTime64),
     (Set(CHFuzzableType.IntervalSecond, CHFuzzableType.IntervalMinute, CHFuzzableType.IntervalHour), CHAggregatedType.IntervalTime),
@@ -743,8 +743,8 @@ object CHTypeMerger {
 
   private val supertypeDeduplicationRules: Map[Set[CHType], Seq[CHType]] = Map(
     // Array based
-    (Set(CHFuzzableType.ArrayTuple1UUID, CHFuzzableType.Point, CHFuzzableType.Ring, CHFuzzableType.Polygon, CHFuzzableType.MultiPolygon), Seq(CHFuzzableType.ArrayTuple1UUID)),
-    (Set(CHFuzzableType.Tuple1ArrayUUID, CHFuzzableType.Tuple1Point, CHFuzzableType.Tuple1Ring, CHFuzzableType.Tuple1Polygon, CHFuzzableType.Tuple1MultiPolygon), Seq(CHFuzzableType.Tuple1ArrayUUID)),
+    (Set(CHFuzzableType.ArrayTuple1UUID, CHFuzzableType.LineString, CHFuzzableType.Point, CHFuzzableType.Ring, CHFuzzableType.Polygon, CHFuzzableType.MultiPolygon), Seq(CHFuzzableType.ArrayTuple1UUID)),
+    (Set(CHFuzzableType.Tuple1ArrayUUID, CHFuzzableType.Tuple1LineString, CHFuzzableType.Tuple1Point, CHFuzzableType.Tuple1Ring, CHFuzzableType.Tuple1Polygon, CHFuzzableType.Tuple1MultiPolygon), Seq(CHFuzzableType.Tuple1ArrayUUID)),
 
     // Number based - cf method `getNumericType` in https://github.com/ClickHouse/ClickHouse/blob/master/src/DataTypes/getLeastSupertype.cpp
     // Number based - Enum

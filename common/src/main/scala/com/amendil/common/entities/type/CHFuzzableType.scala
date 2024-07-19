@@ -1728,6 +1728,7 @@ enum CHFuzzableType(
 
   // Special
   // Special - Geo
+  case LineString extends CHFuzzableType("LineString", Seq("[(1,1),(2,2)]::LineString"))
   case Point extends CHFuzzableType("Point", Seq("(0, 0)::Point"))
   case Ring
       extends CHFuzzableType(
@@ -1747,6 +1748,11 @@ enum CHFuzzableType(
         )
       )
 
+  case Tuple1LineString
+      extends CHFuzzableType(
+        "Tuple(LineString)",
+        Seq("tuple([(1,1),(2,2)])::Tuple(LineString)", "tuple([(1,1),(2,2)])::Tuple(a LineString)")
+      )
   case Tuple1Point
       extends CHFuzzableType(
         "Tuple(Point)",
@@ -1912,7 +1918,8 @@ enum CHFuzzableType(
           "'uint8Value'::FixedString(53)",
           "'uuidValue'::FixedString(53)",
           "'Dec'::FixedString(53)",
-          "'.'::FixedString(1)"
+          "'.'::FixedString(1)",
+          "'42 MiB'::FixedString(6)"
         )
       )
       with CHFuzzableTypeDuplicatedForPerfReasons
@@ -1939,7 +1946,8 @@ enum CHFuzzableType(
           "'LINESTRING (1 1, 2 2, 3 3, 1 1)'",
           "'column1 String, column2 UInt32, column3 Array(String)'",
           "'Dec'::String",
-          "'.'::String"
+          "'.'::String",
+          "'42 MiB'"
         )
       )
       with CHFuzzableTypeDuplicatedForPerfReasons

@@ -592,6 +592,9 @@ enum CHFuzzableAbstractType(_fuzzingValues: Seq[String], _chFuzzableTypes: Seq[C
 
   // Special
   // Special - Geo
+  case LineString
+      extends CHFuzzableAbstractType(Seq(CHFuzzableType.LineString.fuzzingValues.head), Seq(CHFuzzableType.LineString))
+      with CustomArrayBasedAbstractType
   case Point
       extends CHFuzzableAbstractType(Seq(CHFuzzableType.Point.fuzzingValues.head), Seq(CHFuzzableType.Point))
       with CustomArrayBasedAbstractType
@@ -608,6 +611,12 @@ enum CHFuzzableAbstractType(_fuzzingValues: Seq[String], _chFuzzableTypes: Seq[C
       )
       with CustomArrayBasedAbstractType
 
+  case Tuple1LineString
+      extends CHFuzzableAbstractType(
+        CHFuzzableType.Tuple1LineString.fuzzingValues,
+        Seq(CHFuzzableType.Tuple1LineString)
+      )
+      with CustomArrayBasedAbstractType
   case Tuple1Point
       extends CHFuzzableAbstractType(
         CHFuzzableType.Tuple1Point.fuzzingValues,
