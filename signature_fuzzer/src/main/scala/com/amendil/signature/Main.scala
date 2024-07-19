@@ -139,7 +139,7 @@ private def createDictionaries(regexpTreeLocalPath: String)(using CHClient, Exec
 private def createHierarchicalDictionary()(using client: CHClient, ec: ExecutionContext): Future[Unit] =
   for
     _ <- client.executeNoResultNoSettings(
-      s"""|CREATE TABLE IF NOT EXISTS ${CommonSettings.Type.FuzzerDictionaryNames.hierarchyDictionaryName}_source_table
+      s"""|CREATE OR REPLACE TABLE ${CommonSettings.Type.FuzzerDictionaryNames.hierarchyDictionaryName}_source_table
           |(
           |    childId UInt64,
           |    parentId UInt64
@@ -149,7 +149,7 @@ private def createHierarchicalDictionary()(using client: CHClient, ec: Execution
     )
 
     _ <- client.executeNoResultNoSettings(
-      s"""|CREATE DICTIONARY IF NOT EXISTS ${CommonSettings.Type.FuzzerDictionaryNames.hierarchyDictionaryName}
+      s"""|CREATE OR REPLACE DICTIONARY ${CommonSettings.Type.FuzzerDictionaryNames.hierarchyDictionaryName}
           |(
           |    childId UInt64,
           |    parentId UInt64 HIERARCHICAL
@@ -185,14 +185,14 @@ private def createManyTypesDictionary()(using client: CHClient, ec: ExecutionCon
        |)""".stripMargin.replace("\n", " ")
   for
     _ <- client.executeNoResultNoSettings(
-      s"""|CREATE TABLE IF NOT EXISTS ${CommonSettings.Type.FuzzerDictionaryNames.manyTypesDictionaryName}_source_table
+      s"""|CREATE OR REPLACE TABLE ${CommonSettings.Type.FuzzerDictionaryNames.manyTypesDictionaryName}_source_table
           |$columns
           |ENGINE = MergeTree()
           |ORDER BY id""".stripMargin.replace("\n", " ")
     )
 
     _ <- client.executeNoResultNoSettings(
-      s"""|CREATE DICTIONARY IF NOT EXISTS ${CommonSettings.Type.FuzzerDictionaryNames.manyTypesDictionaryName}
+      s"""|CREATE OR REPLACE DICTIONARY ${CommonSettings.Type.FuzzerDictionaryNames.manyTypesDictionaryName}
           |$columns
           |PRIMARY KEY id
           |SOURCE(CLICKHOUSE(TABLE '${CommonSettings.Type.FuzzerDictionaryNames.manyTypesDictionaryName}_source_table'))
@@ -206,7 +206,7 @@ private def createRegexpTreeDictionary(
     regexpTreeLocalPath: String
 )(using client: CHClient, ec: ExecutionContext): Future[Unit] =
   client.executeNoResultNoSettings(
-    s"""|CREATE DICTIONARY IF NOT EXISTS ${CommonSettings.Type.FuzzerDictionaryNames.regexpDictionaryName}
+    s"""|CREATE OR REPLACE DICTIONARY ${CommonSettings.Type.FuzzerDictionaryNames.regexpDictionaryName}
         |(
         |    regexp String,
         |    name String,
