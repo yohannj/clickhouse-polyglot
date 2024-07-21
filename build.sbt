@@ -39,18 +39,18 @@ lazy val signature_fuzzer = project
   .dependsOn(common)
 
 lazy val dependencies = new {
-  private val scalatestV = "3.2.18"
+  private val scalatestV = "3.2.19"
 
   // Logging
   val logbackClassic = "ch.qos.logback" % "logback-classic" % "1.5.6"
   val scalaLogging = "com.typesafe.scala-logging" %% "scala-logging" % "3.9.5"
 
   // Http
-  val jacksonModuleScala = "com.fasterxml.jackson.module" %% "jackson-module-scala" % "2.17.1"
+  val jacksonModuleScala = "com.fasterxml.jackson.module" %% "jackson-module-scala" % "2.17.2"
 
   // Misc
   val config = "com.typesafe" % "config" % "1.4.3"
-  val fastparse = "com.lihaoyi" %% "fastparse" % "3.1.0"
+  val fastparse = "com.lihaoyi" %% "fastparse" % "3.1.1"
   val scalaJava8Compact = "org.scala-lang.modules" %% "scala-java8-compat" % "1.0.2"
 
   // Test
