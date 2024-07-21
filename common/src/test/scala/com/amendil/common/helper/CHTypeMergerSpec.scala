@@ -27,9 +27,13 @@ class CHTypeMergerSpec extends AnyFreeSpec with Matchers:
       }
     }
     "should merge" - {
+      val unMergeableTypes = Set(
+        CHFuzzableType.Tuple2UInt64UInt64,
+        CHFuzzableType.Variant
+      )
       "input types" - {
         "to Any" in {
-          val actual = CHTypeMerger.mergeInputTypes(CHFuzzableType.values.toSet - CHFuzzableType.Variant)
+          val actual = CHTypeMerger.mergeInputTypes(CHFuzzableType.values.toSet -- unMergeableTypes)
           val expected = Set(CHAggregatedType.Any)
 
           actual shouldBe expected
@@ -40,7 +44,7 @@ class CHTypeMergerSpec extends AnyFreeSpec with Matchers:
               .filterNot(_.name.startsWith("Bitmap"))
               .filterNot(_.name.contains("Nullable"))
               .filterNot(_.name.contains("LowCardinality"))
-              .toSet - CHFuzzableType.Variant
+              .toSet -- unMergeableTypes
           )
           val expected = Set(CHAggregatedType.AnyNonBitmapNonNullableNonLowCardinality)
 
@@ -52,7 +56,7 @@ class CHTypeMergerSpec extends AnyFreeSpec with Matchers:
               .filterNot(_.name.startsWith("Map"))
               .filterNot(_.name.contains("Nullable"))
               .filterNot(_.name.contains("LowCardinality"))
-              .toSet - CHFuzzableType.Variant
+              .toSet -- unMergeableTypes
           )
           val expected = Set(CHAggregatedType.AnyNonMapNonNullableNonLowCardinality)
 
@@ -63,7 +67,7 @@ class CHTypeMergerSpec extends AnyFreeSpec with Matchers:
             CHFuzzableType.values
               .filterNot(_.name.contains("Nullable"))
               .filterNot(_.name.contains("LowCardinality"))
-              .toSet - CHFuzzableType.Variant
+              .toSet -- unMergeableTypes
           )
           val expected = Set(CHAggregatedType.AnyNonNullableNonLowCardinality)
 
@@ -625,7 +629,9 @@ class CHTypeMergerSpec extends AnyFreeSpec with Matchers:
           }
           "to Tuple1(UInt)" in {
             val actual1 =
-              CHTypeMerger.mergeInputTypes(CHFuzzableType.values.filter(_.name.startsWith("Tuple(UInt")).toSet)
+              CHTypeMerger.mergeInputTypes(
+                CHFuzzableType.values.filter(_.name.startsWith("Tuple(UInt")).toSet -- unMergeableTypes
+              )
             val actual2 =
               CHTypeMerger.mergeInputTypes(
                 Set(
@@ -654,7 +660,9 @@ class CHTypeMergerSpec extends AnyFreeSpec with Matchers:
           }
 
           "to Tuple2(Any, Any)" in {
-            val actual = CHTypeMerger.mergeInputTypes(tuplesTypes.filter(_._2.innerTypes.size == 2).map(_._1).toSet)
+            val actual = CHTypeMerger.mergeInputTypes(
+              tuplesTypes.filter(_._2.innerTypes.size == 2).map(_._1).toSet -- unMergeableTypes
+            )
 
             val expected = Set(CHSpecialType.Tuple(Seq(CHAggregatedType.Any, CHAggregatedType.Any)))
 
