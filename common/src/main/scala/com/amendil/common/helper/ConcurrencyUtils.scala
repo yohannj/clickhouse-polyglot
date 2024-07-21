@@ -41,10 +41,22 @@ object ConcurrencyUtils:
       if elements.size == 0 || maxConcurrency < 1 then 1
       else Math.ceil(elements.size.toFloat / maxConcurrency).toInt
 
+    val hasFailed = AtomicBoolean(false)
     val futures = elements
       .grouped(partitionSize)
       .map { (subElements: Seq[T]) =>
-        executeInSequence(subElements, el => fn(el))
+        executeInSequence(
+          subElements,
+          el =>
+            if hasFailed.get then
+              Future
+                .failed(Exception("Another element executed in parallel has failed, automatically failing this one."))
+            else
+              fn(el).recover { err =>
+                hasFailed.set(true)
+                throw err
+              }
+        )
       }
 
     Future.sequence(futures).map(_.flatten.toSeq)
