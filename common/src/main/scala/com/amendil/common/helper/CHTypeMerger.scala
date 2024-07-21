@@ -96,19 +96,39 @@ object CHTypeMerger {
           val tupleType1 = type1.asInstanceOf[CHSpecialType.Tuple]
           val tupleType2 = type2.asInstanceOf[CHSpecialType.Tuple]
 
-          if tupleType1.innerTypes.size != tupleType2.innerTypes.size then CHSpecialType.TupleN(Any)
+          if tupleType1.innerTypes.size != tupleType2.innerTypes.size then
+            val distinctTypes1 = tupleType1.innerTypes.distinct
+            val distinctTypes2 = tupleType2.innerTypes.distinct
+
+            if distinctTypes1.size == 1 && distinctTypes2.size == 1 && distinctTypes1.head == distinctTypes2.head then
+              CHSpecialType.TupleN(distinctTypes1.head)
+            else CHSpecialType.TupleN(Any)
           else
             CHSpecialType.Tuple(
               tupleType1.innerTypes.zip(tupleType2.innerTypes).map(mergeOutputType)
             )
         else if type1.isInstanceOf[CHSpecialType.TupleN] then
           type2 match
-            case _: CHSpecialType.TupleN | _: CHSpecialType.Tuple => CHSpecialType.TupleN(Any)
-            case _                                                => Any
+            case _: CHSpecialType.TupleN =>
+              CHSpecialType.TupleN(Any) // We know the TupleN are different so it can contain Any type
+            case CHSpecialType.Tuple(innerTypes)
+                if innerTypes.distinct.size == 1 && innerTypes.head == type1
+                  .asInstanceOf[CHSpecialType.TupleN]
+                  .innerType =>
+              type1
+            case _: CHSpecialType.Tuple => CHSpecialType.TupleN(Any)
+            case _                      => Any
         else if type2.isInstanceOf[CHSpecialType.TupleN] then
           type1 match
-            case _: CHSpecialType.TupleN | _: CHSpecialType.Tuple => CHSpecialType.TupleN(Any)
-            case _                                                => Any
+            case _: CHSpecialType.TupleN =>
+              CHSpecialType.TupleN(Any) // We know the TupleN are different so it can contain Any type
+            case CHSpecialType.Tuple(innerTypes)
+                if innerTypes.distinct.size == 1 && innerTypes.head == type2
+                  .asInstanceOf[CHSpecialType.TupleN]
+                  .innerType =>
+              type2
+            case _: CHSpecialType.Tuple => CHSpecialType.TupleN(Any)
+            case _                      => Any
         else if type1 == BooleanType then
           type2 match
             case UInt8 | UInt16 | UInt32 | UInt64 | UInt128 | UInt256 | Int16 | Int32 | Int64 | Int128 | Int256 =>
@@ -290,7 +310,7 @@ object CHTypeMerger {
           type2 match
             case DateTime64 => DateTime64
             case _          => Any
-        else if type2 == Date then
+        else if type2 == DateTime then
           type1 match
             case DateTime64 => DateTime64
             case _          => Any
@@ -299,6 +319,14 @@ object CHTypeMerger {
           type2 match
             case Enum8 | Enum16 | Enum => Enum
             case _                     => Any
+        else if type1 == StringType then
+          type2 match
+            case FixedString => StringType
+            case _           => Any
+        else if type2 == StringType then
+          type1 match
+            case FixedString => StringType
+            case _           => Any
         else Any
 
       mergedType
@@ -488,7 +516,8 @@ object CHTypeMerger {
 
     (Set(CHFuzzableType.InputFormat, CHFuzzableType.OutputFormat), CHAggregatedType.Format),
 
-    (Set(CHFuzzableType.LineString, CHFuzzableType.Point, CHFuzzableType.Ring, CHFuzzableType.Polygon, CHFuzzableType.MultiPolygon), CHAggregatedType.Geo),
+    (Set(CHFuzzableType.LineString, CHFuzzableType.Ring, CHFuzzableType.Polygon, CHFuzzableType.MultiPolygon), CHAggregatedType.GeoNoPoint),
+    (Set(CHAggregatedType.GeoNoPoint, CHFuzzableType.Point), CHAggregatedType.Geo),
 
     (Set(CHFuzzableType.IntervalNanosecond, CHFuzzableType.IntervalMicrosecond, CHFuzzableType.IntervalMillisecond), CHAggregatedType.IntervalTime64),
     (Set(CHFuzzableType.IntervalSecond, CHFuzzableType.IntervalMinute, CHFuzzableType.IntervalHour), CHAggregatedType.IntervalTime),
@@ -653,7 +682,8 @@ object CHTypeMerger {
 
     (Set(CHFuzzableType.Tuple1Enum8, CHFuzzableType.Tuple1Enum16), CHFuzzableType.Tuple1Enum),
 
-    (Set(CHFuzzableType.Tuple1Point, CHFuzzableType.Tuple1Ring, CHFuzzableType.Tuple1Polygon, CHFuzzableType.Tuple1MultiPolygon), CHSpecialType.Tuple(Seq(CHAggregatedType.Geo))),
+    (Set(CHFuzzableType.Tuple1LineString, CHFuzzableType.Tuple1Ring, CHFuzzableType.Tuple1Polygon, CHFuzzableType.Tuple1MultiPolygon), CHSpecialType.Tuple(Seq(CHAggregatedType.GeoNoPoint))),
+    (Set(CHSpecialType.Tuple(Seq(CHAggregatedType.GeoNoPoint)), CHFuzzableType.Tuple1Point), CHSpecialType.Tuple(Seq(CHAggregatedType.Geo))),
 
     (Set(CHFuzzableType.Tuple1IntervalNanosecond, CHFuzzableType.Tuple1IntervalMicrosecond, CHFuzzableType.Tuple1IntervalMillisecond), CHSpecialType.Tuple(Seq(CHAggregatedType.IntervalTime64))),
     (Set(CHFuzzableType.Tuple1IntervalSecond, CHFuzzableType.Tuple1IntervalMinute, CHFuzzableType.Tuple1IntervalHour), CHSpecialType.Tuple(Seq(CHAggregatedType.IntervalTime))),
@@ -793,7 +823,6 @@ object CHTypeMerger {
     (Set(CHFuzzableType.StringType, CHFuzzableType.InputFormat), Seq(CHFuzzableType.StringType)),
     (Set(CHFuzzableType.StringType, CHFuzzableType.OutputFormat), Seq(CHFuzzableType.StringType)),
     (Set(CHFuzzableType.StringType, CHFuzzableType.PValueComputationMethod), Seq(CHFuzzableType.StringType)),
-    (Set(CHFuzzableType.StringType, CHFuzzableType.SequencePattern), Seq(CHFuzzableType.StringType)),
     (Set(CHFuzzableType.StringType, CHFuzzableType.ServerPortName), Seq(CHFuzzableType.StringType)),
     (Set(CHFuzzableType.StringType, CHFuzzableType.SynonymExtensionName), Seq(CHFuzzableType.StringType)),
     (Set(CHFuzzableType.StringType, CHFuzzableType.TestAlternative), Seq(CHFuzzableType.StringType)),

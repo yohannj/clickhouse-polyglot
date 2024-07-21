@@ -4,8 +4,7 @@ import com.amendil.common.entities.`type`.CHFuzzableType
 import com.amendil.signature.Settings
 
 sealed trait CustomAbstractType
-sealed trait CustomArrayBasedAbstractType extends CustomAbstractType
-sealed trait CustomStringBasedAbstractType extends CustomAbstractType
+sealed trait ParametricCustomAbstractType extends CustomAbstractType
 
 enum CHFuzzableAbstractType(_fuzzingValues: Seq[String], _chFuzzableTypes: Seq[CHFuzzableType]):
   val chFuzzableTypes: Seq[CHFuzzableType] = _chFuzzableTypes.filter { chType =>
@@ -594,50 +593,50 @@ enum CHFuzzableAbstractType(_fuzzingValues: Seq[String], _chFuzzableTypes: Seq[C
   // Special - Geo
   case LineString
       extends CHFuzzableAbstractType(Seq(CHFuzzableType.LineString.fuzzingValues.head), Seq(CHFuzzableType.LineString))
-      with CustomArrayBasedAbstractType
+      with CustomAbstractType
   case Point
       extends CHFuzzableAbstractType(Seq(CHFuzzableType.Point.fuzzingValues.head), Seq(CHFuzzableType.Point))
-      with CustomArrayBasedAbstractType
+      with CustomAbstractType
   case Ring
       extends CHFuzzableAbstractType(Seq(CHFuzzableType.Ring.fuzzingValues.head), Seq(CHFuzzableType.Ring))
-      with CustomArrayBasedAbstractType
+      with CustomAbstractType
   case Polygon
       extends CHFuzzableAbstractType(Seq(CHFuzzableType.Polygon.fuzzingValues.head), Seq(CHFuzzableType.Polygon))
-      with CustomArrayBasedAbstractType
+      with CustomAbstractType
   case MultiPolygon
       extends CHFuzzableAbstractType(
         Seq(CHFuzzableType.MultiPolygon.fuzzingValues.head),
         Seq(CHFuzzableType.MultiPolygon)
       )
-      with CustomArrayBasedAbstractType
+      with CustomAbstractType
 
   case Tuple1LineString
       extends CHFuzzableAbstractType(
         CHFuzzableType.Tuple1LineString.fuzzingValues,
         Seq(CHFuzzableType.Tuple1LineString)
       )
-      with CustomArrayBasedAbstractType
+      with CustomAbstractType
   case Tuple1Point
       extends CHFuzzableAbstractType(
         CHFuzzableType.Tuple1Point.fuzzingValues,
         Seq(CHFuzzableType.Tuple1Point)
       )
-      with CustomArrayBasedAbstractType
+      with CustomAbstractType
   case Tuple1Ring
       extends CHFuzzableAbstractType(CHFuzzableType.Tuple1Ring.fuzzingValues, Seq(CHFuzzableType.Tuple1Ring))
-      with CustomArrayBasedAbstractType
+      with CustomAbstractType
   case Tuple1Polygon
       extends CHFuzzableAbstractType(
         CHFuzzableType.Tuple1Polygon.fuzzingValues,
         Seq(CHFuzzableType.Tuple1Polygon)
       )
-      with CustomArrayBasedAbstractType
+      with CustomAbstractType
   case Tuple1MultiPolygon
       extends CHFuzzableAbstractType(
         CHFuzzableType.Tuple1MultiPolygon.fuzzingValues,
         Seq(CHFuzzableType.Tuple1MultiPolygon)
       )
-      with CustomArrayBasedAbstractType
+      with CustomAbstractType
 
   // Special - Misc
   case Charset
@@ -645,13 +644,13 @@ enum CHFuzzableAbstractType(_fuzzingValues: Seq[String], _chFuzzableTypes: Seq[C
         CHFuzzableType.Charset.fuzzingValues,
         Seq(CHFuzzableType.Charset)
       )
-      with CustomStringBasedAbstractType
+      with CustomAbstractType
   case ClickHouseType
       extends CHFuzzableAbstractType(
         CHFuzzableType.ClickHouseType.fuzzingValues,
         Seq(CHFuzzableType.ClickHouseType)
       )
-      with CustomStringBasedAbstractType
+      with CustomAbstractType
   case DateTimeUnit
       extends CHFuzzableAbstractType(
         Seq(
@@ -661,13 +660,13 @@ enum CHFuzzableAbstractType(_fuzzingValues: Seq[String], _chFuzzableTypes: Seq[C
         ),
         Seq(CHFuzzableType.DateUnit, CHFuzzableType.TimeUnit, CHFuzzableType.Time64Unit)
       )
-      with CustomStringBasedAbstractType
+      with CustomAbstractType
   case DictionaryName
       extends CHFuzzableAbstractType(
         CHFuzzableType.DictionaryName.fuzzingValues,
         Seq(CHFuzzableType.DictionaryName)
       )
-      with CustomStringBasedAbstractType
+      with CustomAbstractType
   case Dynamic
       extends CHFuzzableAbstractType(
         CHFuzzableType.Dynamic.fuzzingValues,
@@ -679,25 +678,19 @@ enum CHFuzzableAbstractType(_fuzzingValues: Seq[String], _chFuzzableTypes: Seq[C
         CHFuzzableType.InputFormat.fuzzingValues,
         Seq(CHFuzzableType.InputFormat)
       )
-      with CustomStringBasedAbstractType
+      with CustomAbstractType
   case OutputFormat
       extends CHFuzzableAbstractType(
         CHFuzzableType.OutputFormat.fuzzingValues,
         Seq(CHFuzzableType.OutputFormat)
       )
-      with CustomStringBasedAbstractType
-  case SequencePattern
-      extends CHFuzzableAbstractType(
-        CHFuzzableType.SequencePattern.fuzzingValues,
-        Seq(CHFuzzableType.SequencePattern)
-      )
-      with CustomStringBasedAbstractType
+      with CustomAbstractType
   case ServerPortName
       extends CHFuzzableAbstractType(
         Seq("'tcp_port'"),
         Seq(CHFuzzableType.ServerPortName)
       )
-      with CustomStringBasedAbstractType
+      with CustomAbstractType
   case SpecialUInt64
       extends CHFuzzableAbstractType(
         Seq("599686042433355775::UInt64"),
@@ -708,7 +701,7 @@ enum CHFuzzableAbstractType(_fuzzingValues: Seq[String], _chFuzzableTypes: Seq[C
           CHFuzzableType.SpecialNullableUInt64
         )
       )
-      with CustomStringBasedAbstractType
+      with CustomAbstractType
   case SpecialString
       extends CHFuzzableAbstractType(
         CHFuzzableType.SpecialString.fuzzingValues :+ "'a/<@];!~p{jTj={)'::FixedString(16)",
@@ -717,37 +710,43 @@ enum CHFuzzableAbstractType(_fuzzingValues: Seq[String], _chFuzzableTypes: Seq[C
           CHFuzzableType.SpecialFixedString
         )
       )
-      with CustomStringBasedAbstractType
+      with CustomAbstractType
   case SpecialArrayString
       extends CHFuzzableAbstractType(
         Seq(s"[${SpecialString.fuzzingValues.head}]::Array(String)"),
         Seq(CHFuzzableType.SpecialArrayFixedString, CHFuzzableType.SpecialArrayString)
       )
-      with CustomStringBasedAbstractType
+      with CustomAbstractType
   case SynonymExtensionName
       extends CHFuzzableAbstractType(
         CHFuzzableType.SynonymExtensionName.fuzzingValues,
         Seq(CHFuzzableType.SynonymExtensionName)
       )
-      with CustomStringBasedAbstractType
+      with CustomAbstractType
   case TimeZone
       extends CHFuzzableAbstractType(
         Seq(CHFuzzableType.TimeZone.fuzzingValues.head),
         Seq(CHFuzzableType.TimeZone)
       )
-      with CustomStringBasedAbstractType
+      with CustomAbstractType
   case TopKOption
       extends CHFuzzableAbstractType(
         Seq(CHFuzzableType.TopKOption.fuzzingValues.head),
         Seq(CHFuzzableType.TopKOption)
       )
-      with CustomStringBasedAbstractType
+      with ParametricCustomAbstractType
+  case Tuple2UInt64UInt64
+      extends CHFuzzableAbstractType(
+        CHFuzzableType.Tuple2UInt64UInt64.fuzzingValues,
+        Seq(CHFuzzableType.Tuple2UInt64UInt64)
+      )
+      with CustomAbstractType
   case WindowFunctionMode
       extends CHFuzzableAbstractType(
         CHFuzzableType.WindowFunctionMode.fuzzingValues,
         Seq(CHFuzzableType.WindowFunctionMode)
       )
-      with CustomStringBasedAbstractType
+      with CustomAbstractType
 
 object CHFuzzableAbstractType:
   val nonCustomFuzzableAbstractTypes: Seq[CHFuzzableAbstractType] =

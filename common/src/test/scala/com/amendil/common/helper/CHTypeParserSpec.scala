@@ -8,6 +8,15 @@ import org.scalatest.matchers.should.Matchers
 class CHTypeParserSpec extends AnyFreeSpec with Matchers:
 
   "CHTypeParser" - {
+    "should normalize" - {
+      "Tuple(UInt64, UInt64)" in {
+        val actual = CHType.normalize(CHFuzzableType.Tuple2UInt64UInt64)
+        val expected = CHSpecialType.Tuple(Seq(CHFuzzableType.UInt64, CHFuzzableType.UInt64))
+
+        actual shouldBe expected
+      }
+    }
+
     "should parse" - {
       "Array(Tuple(bs_9_a String))" in {
         val actual = CHTypeParser.getByName("Array(Tuple(bs_9_a String))")

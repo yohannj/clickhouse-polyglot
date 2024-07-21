@@ -362,7 +362,8 @@ enum CHFuzzableType(
           "'azertyuiop'::FixedString(10)",
           "'2020-20-20'::FixedString(10)",
           "'2020-20-20 20:20:20'::FixedString(19)",
-          "'2020'::FixedString(4)"
+          "'2020'::FixedString(4)",
+          "'date32'::FixedString(6)"
         )
       )
   case IPv4 extends CHFuzzableType("IPv4", Seq("'116.106.34.242'::IPv4"))
@@ -385,8 +386,11 @@ enum CHFuzzableType(
         "String",
         Seq(
           "'a'::String",
+          "'azertyuiop'::String",
           "'2020-20-20'::String",
-          "'2020-20-20 20:20:20'::String"
+          "'2020-20-20 20:20:20'::String",
+          "'2020'::String",
+          "'date32'::String"
         )
       )
   case UUID
@@ -1833,11 +1837,6 @@ enum CHFuzzableType(
         "PValueComputationMethod",
         Seq("'exact'", "'asymp'", "'asymptotic'", "'auto'")
       )
-  case SequencePattern
-      extends CHFuzzableType(
-        "SequencePattern",
-        Seq("'(?1)'")
-      )
   case ServerPortName
       extends CHFuzzableType(
         "ServerPortName",
@@ -1900,23 +1899,6 @@ enum CHFuzzableType(
           "'POINT (1.2 3.4)'::FixedString(15)",
           "'LINESTRING (1 1, 2 2, 3 3, 1 1)'::FixedString(31)",
           "'column1 String, column2 UInt32, column3 Array(String)'::FixedString(53)",
-          "'id'::FixedString(53)",
-          "'dateValue'::FixedString(53)",
-          "'dateTimeValue'::FixedString(53)",
-          "'float32Value'::FixedString(53)",
-          "'float64Value'::FixedString(53)",
-          "'int16Value'::FixedString(53)",
-          "'int32Value'::FixedString(53)",
-          "'int64Value'::FixedString(53)",
-          "'int8Value'::FixedString(53)",
-          "'iPv4Value'::FixedString(53)",
-          "'iPv6Value'::FixedString(53)",
-          "'stringValue'::FixedString(53)",
-          "'uint16Value'::FixedString(53)",
-          "'uint32Value'::FixedString(53)",
-          "'uint64Value'::FixedString(53)",
-          "'uint8Value'::FixedString(53)",
-          "'uuidValue'::FixedString(53)",
           "'Dec'::FixedString(53)",
           "'.'::FixedString(1)",
           "'42 MiB'::FixedString(6)"
@@ -1996,6 +1978,11 @@ enum CHFuzzableType(
       extends CHFuzzableType(
         "TopKOption",
         Seq("'counts'")
+      )
+  case Tuple2UInt64UInt64
+      extends CHFuzzableType(
+        "Tuple(UInt64, UInt64)",
+        Seq("tuple(1, 2)::Tuple(UInt64, UInt64)")
       )
   case Usevar
       extends CHFuzzableType(

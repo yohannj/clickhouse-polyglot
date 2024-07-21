@@ -24,6 +24,7 @@ enum CHAggregatedType(val name: String) extends CHType:
   case DateTime64Unit extends CHAggregatedType("DateTime64Unit")
   case Format extends CHAggregatedType("Format")
   case Geo extends CHAggregatedType("Geo")
+  case GeoNoPoint extends CHAggregatedType("GeoNoPoint")
   case Integer64Like extends CHAggregatedType("Integer64Like")
   case Interval extends CHAggregatedType("Interval")
   case IntervalDate extends CHAggregatedType("IntervalDate")

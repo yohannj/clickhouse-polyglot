@@ -687,6 +687,35 @@ class CHTypeMergerSpec extends AnyFreeSpec with Matchers:
 
           actual shouldBe expected
         }
+
+        "DateTime64" in {
+          val actual1 = CHTypeMerger.mergeOutputType(CHFuzzableType.DateTime, CHFuzzableType.DateTime64)
+          val expected1 = CHFuzzableType.DateTime64
+
+          actual1 shouldBe expected1
+
+          val actual2 = CHTypeMerger.mergeOutputType(CHFuzzableType.DateTime64, CHFuzzableType.DateTime)
+          val expected2 = CHFuzzableType.DateTime64
+
+          actual2 shouldBe expected2
+        }
+
+        "String" in {
+          // String is the supertype of FixedString.
+          // This can be verified by calling `if` with fixed string of the same size or different sizes.
+          // When they have the same size, ClickHouse returns a FixedString, else a String.
+          // SELECT toTypeName(if(1, '2'::FixedString(1), '2'::FixedString(2)))
+          val expected = CHFuzzableType.StringType
+
+          val actual1 = CHTypeMerger.mergeOutputType(CHFuzzableType.FixedString, CHFuzzableType.StringType)
+          actual1 shouldBe expected
+
+          val actual2 = CHTypeMerger.mergeOutputType(CHFuzzableType.StringType, CHFuzzableType.FixedString)
+          actual2 shouldBe expected
+
+          val actual3 = CHTypeMerger.mergeOutputType(CHFuzzableType.StringType, CHFuzzableType.StringType)
+          actual3 shouldBe expected
+        }
       }
     }
 
