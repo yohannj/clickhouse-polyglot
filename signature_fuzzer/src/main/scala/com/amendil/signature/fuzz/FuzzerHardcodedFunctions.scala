@@ -50,36 +50,38 @@ object FuzzerHardcodedFunctions extends StrictLogging {
       case "dictGetDescendants"                                                             => fuzzDictGetDescendants(fn)
       case "dictIsIn"                                                                       => fuzzDictIsIn(fn)
       case "encrypt" | "aes_encrypt_mysql" | "decrypt" | "tryDecrypt" | "aes_decrypt_mysql" => fuzzEncryptDecrypt(fn)
-      case "geoDistance" | "greatCircleAngle" | "greatCircleDistance"                       => fuzzGeoDistanceLike(fn)
-      case "geohashesInBox"                                                                 => fuzzGeoHashesInBox(fn)
-      case "groupArrayInsertAt"                                                             => fuzzGroupArrayInsertAt(fn)
-      case "h3PointDistKm" | "h3PointDistM" | "h3PointDistRads"                             => fuzzH3Dist(fn)
-      case "hasColumnInTable"                                                               => fuzzHasColumnInTable(fn)
-      case "kolmogorovSmirnovTest"                                                          => fuzzKolmogorovSmirnovTest(fn)
-      case "makeDateTime"                                                                   => fuzzMakeDateTime(fn)
-      case "makeDateTime64"                                                                 => fuzzMakeDateTime64(fn)
-      case "mannWhitneyUTest"                                                               => fuzzMannWhitneyUTest(fn)
-      case "map"                                                                            => fuzzMap(fn)
-      case "mapApply" /* Any Map working with identity actually */                          => fuzzMapApply(fn)
-      case "meanZTest"                                                                      => fuzzMeanZTest(fn)
-      case "minSampleSizeContinous" | "minSampleSizeContinuous"                             => fuzzMinSampleSizeContinous(fn)
-      case "minSampleSizeConversion"                                                        => fuzzMinSampleSizeConversion(fn)
-      case "nested"                                                                         => fuzzNested(fn)
-      case "pointInEllipses"                                                                => fuzzPointInEllipses(fn)
-      case "proportionsZTest"                                                               => fuzzProportionsZTest(fn)
-      case "rankCorr"                                                                       => fuzzRankCorr(fn)
-      case "reinterpret"                                                                    => fuzzReinterpret(fn)
-      case "s2CapUnion" | "s2RectIntersection" | "s2RectUnion"                              => fuzzS2CapUnionLike(fn)
-      case "sequenceCount" | "sequenceMatch"                                                => fuzzSequenceCountLike(fn)
-      case "sequenceNextNode"                                                               => fuzzSequenceNextNode(fn)
-      case "seriesOutliersDetectTukey"                                                      => fuzzSeriesOutliersDetectTukey(fn)
-      case "toModifiedJulianDay"                                                            => fuzzToModifiedJulianDay(fn)
-      case "timeSlots"                                                                      => fuzzTimeSlots(fn)
-      case "tupleElement"                                                                   => fuzzTupleElement(fn)
-      case "variantElement"                                                                 => fuzzVariantElement(fn)
-      case "variantType"                                                                    => fuzzVariantType(fn)
-      case "widthBucket" | "width_bucket"                                                   => fuzzWidthBucket(fn)
-      case _                                                                                => Future.successful(fn)
+      case "extractKeyValuePairs" | "extractKeyValuePairsWithEscaping" | "mapFromString" | "str_to_map" =>
+        fuzzExtractKeyValuePairsLike(fn)
+      case "geoDistance" | "greatCircleAngle" | "greatCircleDistance" => fuzzGeoDistanceLike(fn)
+      case "geohashesInBox"                                           => fuzzGeoHashesInBox(fn)
+      case "groupArrayInsertAt"                                       => fuzzGroupArrayInsertAt(fn)
+      case "h3PointDistKm" | "h3PointDistM" | "h3PointDistRads"       => fuzzH3Dist(fn)
+      case "hasColumnInTable"                                         => fuzzHasColumnInTable(fn)
+      case "kolmogorovSmirnovTest"                                    => fuzzKolmogorovSmirnovTest(fn)
+      case "makeDateTime"                                             => fuzzMakeDateTime(fn)
+      case "makeDateTime64"                                           => fuzzMakeDateTime64(fn)
+      case "mannWhitneyUTest"                                         => fuzzMannWhitneyUTest(fn)
+      case "map"                                                      => fuzzMap(fn)
+      case "mapApply" /* Any Map working with identity actually */    => fuzzMapApply(fn)
+      case "meanZTest"                                                => fuzzMeanZTest(fn)
+      case "minSampleSizeContinous" | "minSampleSizeContinuous"       => fuzzMinSampleSizeContinous(fn)
+      case "minSampleSizeConversion"                                  => fuzzMinSampleSizeConversion(fn)
+      case "nested"                                                   => fuzzNested(fn)
+      case "pointInEllipses"                                          => fuzzPointInEllipses(fn)
+      case "proportionsZTest"                                         => fuzzProportionsZTest(fn)
+      case "rankCorr"                                                 => fuzzRankCorr(fn)
+      case "reinterpret"                                              => fuzzReinterpret(fn)
+      case "s2CapUnion" | "s2RectIntersection" | "s2RectUnion"        => fuzzS2CapUnionLike(fn)
+      case "sequenceCount" | "sequenceMatch"                          => fuzzSequenceCountLike(fn)
+      case "sequenceNextNode"                                         => fuzzSequenceNextNode(fn)
+      case "seriesOutliersDetectTukey"                                => fuzzSeriesOutliersDetectTukey(fn)
+      case "toModifiedJulianDay"                                      => fuzzToModifiedJulianDay(fn)
+      case "timeSlots"                                                => fuzzTimeSlots(fn)
+      case "tupleElement"                                             => fuzzTupleElement(fn)
+      case "variantElement"                                           => fuzzVariantElement(fn)
+      case "variantType"                                              => fuzzVariantType(fn)
+      case "widthBucket" | "width_bucket"                             => fuzzWidthBucket(fn)
+      case _                                                          => Future.successful(fn)
 
   /**
     * TODO
@@ -864,30 +866,34 @@ object FuzzerHardcodedFunctions extends StrictLogging {
 
       attributeNamesTypes = function3s.map(_.arg2).distinct
 
-      supportOverWindow <- Fuzzer.testSampleInputWithOverWindow(
-        fn.name,
-        args = s"'${CommonSettings.Type.FuzzerDictionaryNames.manyTypesDictionaryName}', 'dateValue', 1"
-      ).flatMap( supportOverWindow =>
-        if supportOverWindow then Future.successful(supportOverWindow)
-        else
-          Fuzzer.testSampleInputWithOverWindow(
-            fn.name,
-            args = s"'${CommonSettings.Type.FuzzerDictionaryNames.regexpDictionaryName}', 'name', 1"
-          )
-      )
-      settings <- Fuzzer.detectMandatorySettingsFromSampleInput(
-        fn.name,
-        args = s"'${CommonSettings.Type.FuzzerDictionaryNames.manyTypesDictionaryName}', 'dateValue', 1",
-        fuzzOverWindow = false
-      ).flatMap( settings =>
-        if settings.size <= 1 then Future.successful(settings)
-        else
-          Fuzzer.detectMandatorySettingsFromSampleInput(
-            fn.name,
-            args = s"'${CommonSettings.Type.FuzzerDictionaryNames.regexpDictionaryName}', 'name', 1",
-            fuzzOverWindow = false
-          )
-      )
+      supportOverWindow <- Fuzzer
+        .testSampleInputWithOverWindow(
+          fn.name,
+          args = s"'${CommonSettings.Type.FuzzerDictionaryNames.manyTypesDictionaryName}', 'dateValue', 1"
+        )
+        .flatMap(supportOverWindow =>
+          if supportOverWindow then Future.successful(supportOverWindow)
+          else
+            Fuzzer.testSampleInputWithOverWindow(
+              fn.name,
+              args = s"'${CommonSettings.Type.FuzzerDictionaryNames.regexpDictionaryName}', 'name', 1"
+            )
+        )
+      settings <- Fuzzer
+        .detectMandatorySettingsFromSampleInput(
+          fn.name,
+          args = s"'${CommonSettings.Type.FuzzerDictionaryNames.manyTypesDictionaryName}', 'dateValue', 1",
+          fuzzOverWindow = false
+        )
+        .flatMap(settings =>
+          if settings.size <= 1 then Future.successful(settings)
+          else
+            Fuzzer.detectMandatorySettingsFromSampleInput(
+              fn.name,
+              args = s"'${CommonSettings.Type.FuzzerDictionaryNames.regexpDictionaryName}', 'name', 1",
+              fuzzOverWindow = false
+            )
+        )
     yield
       val modes =
         if supportOverWindow then Set(CHFunction.Mode.NoOverWindow, CHFunction.Mode.OverWindow)
@@ -1445,6 +1451,95 @@ object FuzzerHardcodedFunctions extends StrictLogging {
         function3s = function3s,
         function4s = function4s,
         function5s = function5s
+      )
+
+  private def fuzzExtractKeyValuePairsLike(
+      fn: CHFunctionFuzzResult
+  )(using client: CHClient, ec: ExecutionContext): Future[CHFunctionFuzzResult] =
+    val strTypes = Seq(
+      (CHFuzzableType.StringType, Seq("'foo'::String", "':'::String", "' ,;'::String", "'\"'::String")),
+      (
+        CHFuzzableType.FixedString,
+        Seq("'foo'::FixedString(3)", "':'::FixedString(1)", "' ,;'::FixedString(3)", "'\"'::FixedString(1)")
+      )
+    )
+
+    for
+      function1s <-
+        fuzzSignatures(
+          fn.name,
+          strTypes.map(Seq(_))
+        ).map { signatures =>
+          signatures.map { io =>
+            io._1 match
+              case Seq(arg1) => Function1(arg1, io._2)
+              case _         => throw Exception(s"Expected 1 argument, but found ${io._1.size} arguments")
+          }
+        }
+
+      function2s <-
+        fuzzSignatures(
+          fn.name,
+          crossJoin(
+            strTypes,
+            strTypes
+          ).map(_.toList)
+        ).map { signatures =>
+          signatures.map { io =>
+            io._1 match
+              case Seq(arg1, arg2) => Function2(arg1, arg2, io._2)
+              case _               => throw Exception(s"Expected 2 arguments, but found ${io._1.size} arguments")
+          }
+        }
+
+      function3s <-
+        fuzzSignatures(
+          fn.name,
+          crossJoin(
+            strTypes,
+            strTypes,
+            strTypes
+          ).map(_.toList)
+        ).map { signatures =>
+          signatures.map { io =>
+            io._1 match
+              case Seq(arg1, arg2, arg3) => Function3(arg1, arg2, arg3, io._2)
+              case _                     => throw Exception(s"Expected 3 arguments, but found ${io._1.size} arguments")
+          }
+        }
+
+      function4s <-
+        fuzzSignatures(
+          fn.name,
+          crossJoin(
+            strTypes,
+            strTypes,
+            strTypes,
+            strTypes
+          ).map(_.toList)
+        ).map { signatures =>
+          signatures.map { io =>
+            io._1 match
+              case Seq(arg1, arg2, arg3, arg4) => Function4(arg1, arg2, arg3, arg4, io._2)
+              case _                           => throw Exception(s"Expected 4 arguments, but found ${io._1.size} arguments")
+          }
+        }
+
+      sampleIO = function1s.head
+      supportOverWindow <- Fuzzer.testSampleFunctionWithOverWindow(fn.name, sampleIO)
+      settings <- Fuzzer.detectMandatorySettingsFromSampleFunction(fn.name, sampleIO, fuzzOverWindow = false)
+    yield
+      val modes =
+        if supportOverWindow then Set(CHFunction.Mode.NoOverWindow, CHFunction.Mode.OverWindow)
+        else Set(CHFunction.Mode.NoOverWindow)
+
+      fn.copy(
+        modes = fn.modes ++ modes,
+        settings = settings,
+        function1s = function1s,
+        function2s = function2s,
+        function3s = function3s,
+        function4s = function4s
       )
 
   private def fuzzGeoDistanceLike(
