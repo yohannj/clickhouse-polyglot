@@ -170,7 +170,13 @@ object FuzzerNonParametricFunctions extends StrictLogging:
 
       fnHasRepeatedArgs: Boolean <-
         if functions.isEmpty || argCount == 0 then Future.successful(false)
-        else testRepeatedArgsFunctions(fnName, functions.head._1, fuzzOverWindow)
+        else
+          testRepeatedArgsFunctions(
+            fnName,
+            sampleInput = functions.head._1,
+            lastArgumentTypes = functions.map(_._1.last).toSet,
+            fuzzOverWindow
+          )
     yield
       if fnHasRepeatedArgs then (Nil, functions.map(fnConstructorRepeatedArgs))
       else (functions.map(fnConstructorFiniteArgs), Nil)
@@ -401,12 +407,13 @@ object FuzzerNonParametricFunctions extends StrictLogging:
             signature._1.map(_._1.exhaustiveFuzzingValues) ++ signature._2.map(_.fuzzingValues)
           ).map(args => query(fnName, args, fuzzOverWindow))
 
-          executeInSequenceUntilSuccess(
+          executeInParallelUntilSuccess(
             queries,
-            client.executeNoResult(_)
+            client.executeNoResult(_),
+            Settings.ClickHouse.maxSupportedConcurrencyInnerLoop
           ).map(_ => signature)
         ,
-        maxConcurrency = Settings.ClickHouse.maxSupportedConcurrency
+        maxConcurrency = Settings.ClickHouse.maxSupportedConcurrencyOuterLoop
       ).flatMap(fuzzAbstractTypeToType(fnName, _, fuzzOverWindow))
 
   /**
@@ -416,24 +423,51 @@ object FuzzerNonParametricFunctions extends StrictLogging:
     */
   private def testRepeatedArgsFunctions(
       fnName: String,
-      arguments: InputTypes,
+      sampleInput: InputTypes,
+      lastArgumentTypes: Set[CHFuzzableType],
       fuzzOverWindow: Boolean
   )(using client: CHClient, ec: ExecutionContext): Future[Boolean] =
     logger.trace(s"testRepeatedArgsFunctions - init")
-    require(arguments.nonEmpty, "Expected at least one defined argument, but none found.")
+    require(sampleInput.nonEmpty, "Expected at least one defined argument, but none found.")
 
-    // We shouldn't go to high, to avoid the following error:
-    // Maximum number of arguments for aggregate function with Nullable types is 8. (NUMBER_OF_ARGUMENTS_DOESNT_MATCH)
-    val argNv1 = Range(0, 5).toSeq.map(_ => Seq(arguments.last.fuzzingValues.head))
-    val argNv2 = Range(0, 6).toSeq.map(_ => Seq(arguments.last.fuzzingValues.head))
+    def buildArgs(lastType: CHFuzzableType): Seq[String] =
+      // We shouldn't go to high, to avoid the following error:
+      // Maximum number of arguments for aggregate function with Nullable types is 8. (NUMBER_OF_ARGUMENTS_DOESNT_MATCH)
+      val argNv1 =
+        Range(0, 4).toSeq.map(_ => Seq(sampleInput.last.fuzzingValues.head)) :+ Seq(lastType.fuzzingValues.head)
+      val argNv2 =
+        Range(0, 5).toSeq.map(_ => Seq(sampleInput.last.fuzzingValues.head)) :+ Seq(lastType.fuzzingValues.head)
 
-    val fuzzingValuesArgsV1 = buildFuzzingValuesArgs(arguments.map(_.fuzzingValues) ++ argNv1)
-    val fuzzingValuesArgsV2 = buildFuzzingValuesArgs(arguments.map(_.fuzzingValues) ++ argNv2)
+      val fuzzingValuesArgsV1 = buildFuzzingValuesArgs(sampleInput.map(_.fuzzingValues) ++ argNv1)
+      val fuzzingValuesArgsV2 = buildFuzzingValuesArgs(sampleInput.map(_.fuzzingValues) ++ argNv2)
 
-    executeInSequenceUntilSuccess(
-      (fuzzingValuesArgsV1 ++ fuzzingValuesArgsV2).map(args => query(fnName, args, fuzzOverWindow)),
-      client.executeNoResult(_)
-    ).map(_ => true).recover(_ => false)
+      fuzzingValuesArgsV1 ++ fuzzingValuesArgsV2
+
+    val resF =
+      for
+        // Try repeating the last argument N times
+        _ <-
+          executeInParallelUntilSuccess(
+            buildArgs(sampleInput.last).map(args => query(fnName, args, fuzzOverWindow)),
+            client.executeNoResult(_),
+            Settings.ClickHouse.maxSupportedConcurrency
+          )
+
+        otherValidTypes <-
+          executeInParallelOnlySuccess(
+            // Test all chType that were not found as valid for current argument
+            CHFuzzableAbstractType.nonCustomFuzzableTypes.filterNot(lastArgumentTypes),
+            chFuzzableType =>
+              executeInParallelUntilSuccess(
+                buildArgs(chFuzzableType).map(args => query(fnName, args, fuzzOverWindow)),
+                client.executeNoResult(_),
+                Settings.ClickHouse.maxSupportedConcurrencyInnerLoop
+              ).map(_ => chFuzzableType),
+            Settings.ClickHouse.maxSupportedConcurrencyOuterLoop
+          )
+      yield otherValidTypes.isEmpty // If no other types are valid, then current argument is the repeated one.
+
+    resF.recover(_ => false)
 
   /**
     * @return true if it might be possible to call the function with the provided number of arguments, false otherwise
@@ -447,6 +481,8 @@ object FuzzerNonParametricFunctions extends StrictLogging:
     else if fnName.equals("trim") then Future.successful(argCount != 1)
     else if fnName.equals("ltrim") then Future.successful(argCount != 1)
     else if fnName.equals("rtrim") then Future.successful(argCount != 1)
+    else if fnName.equals("hilbertEncode") then Future.successful(argCount == 3)
+    else if fnName.equals("mortonEncode") then Future.successful(argCount == 3)
     else if fnName.equals("arrayEnumerateRanked") then Future.successful(false) // Unsure about the expected arg count
     else
       val args = argsOfPreviouslyFoundSignatureOpt match

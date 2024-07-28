@@ -360,10 +360,9 @@ enum CHFuzzableType(
         Seq(
           "'a'::FixedString(1)",
           "'azertyuiop'::FixedString(10)",
-          "'2020-20-20'::FixedString(10)",
-          "'2020-20-20 20:20:20'::FixedString(19)",
-          "'2020'::FixedString(4)",
-          "'date32'::FixedString(6)"
+          "'2020-01-20'::FixedString(10)",
+          "'2020-01-20 20:20:20'::FixedString(19)",
+          "'2020'::FixedString(4)"
         )
       )
   case IPv4 extends CHFuzzableType("IPv4", Seq("'116.106.34.242'::IPv4"))
@@ -387,10 +386,9 @@ enum CHFuzzableType(
         Seq(
           "'a'::String",
           "'azertyuiop'::String",
-          "'2020-20-20'::String",
-          "'2020-20-20 20:20:20'::String",
-          "'2020'::String",
-          "'date32'::String"
+          "'2020-01-20'::String",
+          "'2020-01-20 20:20:20'::String",
+          "'2020'::String"
         )
       )
   case UUID

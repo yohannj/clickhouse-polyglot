@@ -114,7 +114,7 @@ final case class CHFunctionFuzzResult(
       .asInstanceOf[Seq[CHFunctionIO]]
 
   require(
-    functions.groupBy(f => (f.parameters, f.arguments)).values.filter(_.size != 1).isEmpty,
+    functions.groupBy(f => (f.parameters.map(_.name), f.arguments.map(_.name))).values.filter(_.size != 1).isEmpty,
     s"Function $name has multiple time the same signature"
   )
   logger.trace(s"CHFunctionFuzzResult - require validated")

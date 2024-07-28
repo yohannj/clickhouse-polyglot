@@ -160,6 +160,13 @@ class CHTypeParserSpec extends AnyFreeSpec with Matchers:
         actual shouldBe expected
       }
 
+      "Tuple()" in {
+        val actual = CHTypeParser.getByName("Tuple()")
+        val expected = CHSpecialType.Tuple(Nil)
+
+        actual shouldBe expected
+      }
+
       "Tuple(d_statistic Float64)" in {
         val actual = CHTypeParser.getByName("Tuple(d_statistic Float64)")
         val expected = CHSpecialType.Tuple(Seq(CHFuzzableType.Float64))

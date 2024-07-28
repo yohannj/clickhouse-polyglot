@@ -73,9 +73,9 @@ object CHTypeParser extends StrictLogging:
   private def map[$: P]: P[CHType] = P("Map(" ~/ any ~ "," ~ " ".? ~ any ~ ")").map(CHSpecialType.Map(_, _))
   private def nullable[$: P]: P[CHType] = P("Nullable(" ~/ any ~ ")").map(CHSpecialType.Nullable(_))
   private def tuple[$: P]: P[CHType] =
-    P("Tuple(" ~/ tupleElement ~ ("," ~ " ".? ~ tupleElement).rep ~ ")").map((head, tail) =>
+    P("Tuple(" ~ tupleElement ~ ("," ~ " ".? ~ tupleElement).rep ~ ")").map((head, tail) =>
       CHSpecialType.Tuple(head +: tail)
-    )
+    ) | P("Tuple()").map(_ => CHSpecialType.Tuple(Nil))
   private def tupleN[$: P]: P[CHType] = P("TupleN(" ~/ any ~ ")").map(CHSpecialType.TupleN(_))
 
   // Internal

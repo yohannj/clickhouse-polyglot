@@ -776,6 +776,7 @@ object CHTypeMerger {
     (Set(CHFuzzableType.ArrayTuple1UUID, CHFuzzableType.LineString, CHFuzzableType.Point, CHFuzzableType.Ring, CHFuzzableType.Polygon, CHFuzzableType.MultiPolygon), Seq(CHFuzzableType.ArrayTuple1UUID)),
     (Set(CHFuzzableType.Tuple1ArrayUUID, CHFuzzableType.Tuple1LineString, CHFuzzableType.Tuple1Point, CHFuzzableType.Tuple1Ring, CHFuzzableType.Tuple1Polygon, CHFuzzableType.Tuple1MultiPolygon), Seq(CHFuzzableType.Tuple1ArrayUUID)),
     (Set(CHFuzzableType.Tuple1UInt64, CHFuzzableType.Tuple2UInt64UInt64), Seq(CHFuzzableType.Tuple1UInt64)),
+    (Set(CHFuzzableType.Point, CHFuzzableType.Tuple2UInt64UInt64), Seq(CHFuzzableType.Point)),
 
     // Number based - cf method `getNumericType` in https://github.com/ClickHouse/ClickHouse/blob/master/src/DataTypes/getLeastSupertype.cpp
     // Number based - Enum

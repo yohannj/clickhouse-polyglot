@@ -49,6 +49,7 @@ object FuzzerHardcodedFunctions extends StrictLogging {
       case "dictGetChildren" | "dictGetHierarchy"                                           => fuzzDictGetHierarchyLike(fn)
       case "dictGetDescendants"                                                             => fuzzDictGetDescendants(fn)
       case "dictIsIn"                                                                       => fuzzDictIsIn(fn)
+      case "dynamicElement"                                                                 => fuzzDynamicElement(fn)
       case "encrypt" | "aes_encrypt_mysql" | "decrypt" | "tryDecrypt" | "aes_decrypt_mysql" => fuzzEncryptDecrypt(fn)
       case "extractKeyValuePairs" | "extractKeyValuePairsWithEscaping" | "mapFromString" | "str_to_map" =>
         fuzzExtractKeyValuePairsLike(fn)
@@ -1356,6 +1357,43 @@ object FuzzerHardcodedFunctions extends StrictLogging {
         modes = fn.modes ++ modes,
         settings = settings,
         function3s = function3s
+      )
+
+  private def fuzzDynamicElement(
+      fn: CHFunctionFuzzResult
+  )(using client: CHClient, ec: ExecutionContext): Future[CHFunctionFuzzResult] =
+    val dynamicType = (CHFuzzableType.Dynamic, CHFuzzableType.Dynamic.fuzzingValues)
+    val chTypeType = (CHFuzzableType.ClickHouseType, CHFuzzableType.ClickHouseType.fuzzingValues)
+
+    for
+      function2s <-
+        fuzzSignatures(
+          fn.name,
+          crossJoin(
+            Seq(dynamicType),
+            Seq(chTypeType)
+          ).map(_.toList)
+        ).map { signatures =>
+          signatures.map { io =>
+            io._1 match
+              case Seq(arg1, arg2) if io._2 == CHAggregatedType.Any => Function2(arg1, arg2, CHAggregatedType.Any)
+              case Seq(_, _)                                        => throw Exception(s"Expected output type to be Nullable, but found ${io._2.name}")
+              case _                                                => throw Exception(s"Expected 2 arguments, but found ${io._1.size} arguments")
+          }
+        }
+
+      sampleIO = function2s.head
+      supportOverWindow <- Fuzzer.testSampleFunctionWithOverWindow(fn.name, sampleIO)
+      settings <- Fuzzer.detectMandatorySettingsFromSampleFunction(fn.name, sampleIO, fuzzOverWindow = false)
+    yield
+      val modes =
+        if supportOverWindow then Set(CHFunction.Mode.NoOverWindow, CHFunction.Mode.OverWindow)
+        else Set(CHFunction.Mode.NoOverWindow)
+
+      fn.copy(
+        modes = fn.modes ++ modes,
+        settings = settings,
+        function2s = function2s
       )
 
   private def fuzzEncryptDecrypt(
