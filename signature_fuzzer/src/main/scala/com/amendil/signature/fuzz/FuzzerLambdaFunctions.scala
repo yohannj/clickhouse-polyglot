@@ -41,7 +41,7 @@ object FuzzerLambdaFunctions extends StrictLogging:
     else
       val resF =
         for
-          _ <- client.executeNoResult(s"SELECT toTypeName(${fn.name}(x -> today(), ['s']))")
+          _ <- client.executeNoResult(s"SELECT toTypeName(${fn.name}(x -> today(), ['s']))") // TODO use UUID to better detect type
           supportOverWindow <- Fuzzer.testSampleInputWithOverWindow(fn.name, args = "x -> today(), ['s']")
           settings <- detectMandatorySettingsFromSampleInput(
             fn.name,

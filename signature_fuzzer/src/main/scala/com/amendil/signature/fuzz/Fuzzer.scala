@@ -170,6 +170,29 @@ object Fuzzer extends StrictLogging:
           !nonParametricErrorMessages.exists(err.getMessage().contains)
         }
 
+  private[fuzz] def deduplicateAbstractInputCombinations(
+    abstractInputCombinations: Seq[Seq[CHFuzzableAbstractType]]
+  ): Seq[Seq[CHFuzzableAbstractType]] =
+    if abstractInputCombinations.isEmpty then Nil
+    else
+      val customAbstractTypeColumnIdxs =
+        abstractInputCombinations.map(combination =>
+          combination.zipWithIndex.filter(_._1.isInstanceOf[CustomAbstractType]).map(_._2).toSet
+        ).reduce(_ union _)
+
+      val nonCustomAbstractTypeColumnIdxs =
+        abstractInputCombinations.map(combination =>
+          combination.zipWithIndex.filterNot(_._1.isInstanceOf[CustomAbstractType]).map(_._2).toSet
+        ).reduce(_ union _)
+
+      val columnIdxsWithDuplication = customAbstractTypeColumnIdxs intersect nonCustomAbstractTypeColumnIdxs
+
+      abstractInputCombinations.filterNot{ combination =>
+        combination.zipWithIndex.exists{ (col, colIdx) =>
+          columnIdxsWithDuplication.contains(colIdx) && col.isInstanceOf[CustomAbstractType]
+        }
+      }
+
   private[fuzz] def detectMandatorySettingsFromSampleInput(
       fnName: String,
       paramsOpt: Option[String] = None,

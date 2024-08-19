@@ -1910,6 +1910,7 @@ enum CHFuzzableType(
         "String",
         Seq(
           s"'${Settings.Type.catboostPath}'::String",
+          s"'${Settings.Type.diskName}'::String",
           "'01GNB2S2FGN2P93QPXDNB4EN2A'::String",
           "'public_suffix_list'::String",
           "'a/<@];!~p{jTj={)'::String",

@@ -9,6 +9,7 @@ object Settings:
     private val typeSettings = config.getConfig("type")
 
     val catboostPath: String = typeSettings.getString("catboost-path")
+    val diskName: String = typeSettings.getString("disk-name")
     lazy val dictionaryNames: Seq[String] = Seq(
       FuzzerDictionaryNames.hierarchyDictionaryName,
       FuzzerDictionaryNames.manyTypesDictionaryName,

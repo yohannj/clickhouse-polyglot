@@ -296,7 +296,7 @@ object FuzzerNonParametricFunctions extends StrictLogging:
       _ = logger.trace(
         s"getValidAbstractTypeCombinations - detected ${abstractInputCombinations.size} abstract input combinations"
       )
-    yield abstractInputCombinations
+    yield Fuzzer.deduplicateAbstractInputCombinations(abstractInputCombinations)
 
   /**
     * Query ClickHouse for all given combinations and we returning those that succeeded at least once.

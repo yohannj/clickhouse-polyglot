@@ -245,7 +245,7 @@ Values in that file will overwrite settings in `reference.conf`, so you can set 
 In addition, `application.conf` is part of the gitignore so no worries about commiting it by mistake.
 
 #### Updating fuzzing settings
-Few settings can be tweaked in `signature_fuzzer/src/main/ressources/reference.conf`.<br>
+Few settings can be tweaked in `common/src/main/ressources/reference.conf` and `signature_fuzzer/src/main/ressources/reference.conf`.<br>
 If you only want to change values for your own usage, similarly as for catboost, create an `application.conf` to overwrite the different settings.
 
 Part of the settings are the host/port where to contact ClickHouse (expects that a default account with no password can query ClickHouse).<br>
