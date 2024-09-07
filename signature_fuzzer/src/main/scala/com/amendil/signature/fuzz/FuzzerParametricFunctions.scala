@@ -977,26 +977,24 @@ object FuzzerParametricFunctions extends StrictLogging:
     }
 
   /**
-    * @return true if a NUMBER_OF_ARGUMENTS_DOESNT_MATCH error was returned by ClickHouse, false otherwise
+    * @return true if an error indicating a wrong number of arguments is returned by ClickHouse when sending dummy arguments, false otherwise
     */
   private def checkArgMismatch(fnName: String, paramCount: Int, argCount: Int)(
       using client: CHClient,
       ec: ExecutionContext
   ): Future[Boolean] =
-    if fnName.equals("ntile") && argCount != 1 then Future.successful(true)
-    else
-      client
-        .executeNoResult(
-          parametricQuery(fnName, Range(0, paramCount).mkString(", "), Range(0, argCount).mkString(", "), false)
-        )
-        .map(_ => false)
-        .recover { err =>
-          Seq(
-            "(TOO_FEW_ARGUMENTS_FOR_FUNCTION)",
-            "(NUMBER_OF_ARGUMENTS_DOESNT_MATCH)",
-            "(TOO_MANY_ARGUMENTS_FOR_FUNCTION)"
-          ).exists(err.getMessage().contains)
-        }
+    client
+      .executeNoResult(
+        parametricQuery(fnName, Range(0, paramCount).mkString(", "), Range(0, argCount).mkString(", "), false)
+      )
+      .map(_ => false)
+      .recover { err =>
+        Seq(
+          "(TOO_FEW_ARGUMENTS_FOR_FUNCTION)",
+          "(NUMBER_OF_ARGUMENTS_DOESNT_MATCH)",
+          "(TOO_MANY_ARGUMENTS_FOR_FUNCTION)"
+        ).exists(err.getMessage().contains)
+      }
 
   private def toFn[T <: CHFunctionIO](
       io: (ParametricFunctionInput, OutputType),

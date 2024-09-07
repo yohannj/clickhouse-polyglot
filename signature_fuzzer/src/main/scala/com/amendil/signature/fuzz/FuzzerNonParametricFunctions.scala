@@ -470,19 +470,16 @@ object FuzzerNonParametricFunctions extends StrictLogging:
     resF.recover(_ => false)
 
   /**
-    * @return true if it might be possible to call the function with the provided number of arguments, false otherwise
+    * @return true if an error indicating a wrong number of arguments is returned by ClickHouse when sending dummy arguments, false otherwise
     */
   private def checkArgMismatch(
       fnName: String,
       argCount: Int,
       argsOfPreviouslyFoundSignatureOpt: Option[Seq[CHFuzzableType]]
   )(using client: CHClient, ec: ExecutionContext): Future[Boolean] =
-    if fnName.equals("nth_value") then Future.successful(argCount != 2)
-    else if fnName.equals("trim") then Future.successful(argCount != 1)
+    if fnName.equals("trim") then Future.successful(argCount != 1)
     else if fnName.equals("ltrim") then Future.successful(argCount != 1)
     else if fnName.equals("rtrim") then Future.successful(argCount != 1)
-    else if fnName.equals("hilbertEncode") then Future.successful(argCount == 3)
-    else if fnName.equals("mortonEncode") then Future.successful(argCount == 3)
     else if fnName.equals("arrayEnumerateRanked") then Future.successful(false) // Unsure about the expected arg count
     else
       val args = argsOfPreviouslyFoundSignatureOpt match
