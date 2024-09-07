@@ -115,9 +115,9 @@ When using a String, could be as an argument of a method, the name of a column i
   - [ ] Gather information about all available functions
     - [X] Run ClickHouse locally with a configuration allowing calling all functions
     - [X] Fuzz methods without combinators
-    - [ ] 🚧 Aggregate method signatures
-    - [ ] Determine which flags must be activated to use a function (e.g. `allow_experimental_funnel_functions=1`)
-    - [ ] Parse ClickHouse documentation to determine argument names
+    - [X] Aggregate method signatures
+    - [X] Determine which flags must be activated to use a function (e.g. `allow_experimental_funnel_functions=1`)
+    - [ ] 🚧 Parse ClickHouse documentation to determine argument names
   - [ ] Test that all fuzzed signature are working
   - [ ] Specify the serialized structure of the AST of the query
   - [ ] Build a first dynamically typed DSL
