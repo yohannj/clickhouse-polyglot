@@ -1,0 +1,1143 @@
+Any
+    Array(Array(UUID))
+    Array(Date)
+    Array(Date32)
+    Array(DateTime)
+    Array(DateTime64)
+    Array(Decimal128)
+    Array(Decimal256)
+    Array(Decimal32)
+    Array(Decimal64)
+    Array(FixedString)
+    Array(Float32)
+    Array(Float64)
+    Array(Int128)
+    Array(Int16)
+    Array(Int256)
+    Array(Int32)
+    Array(Int64)
+    Array(Int8)
+    Array(IntervalDay)
+    Array(IntervalHour)
+    Array(IntervalMicrosecond)
+    Array(IntervalMillisecond)
+    Array(IntervalMinute)
+    Array(IntervalMonth)
+    Array(IntervalNanosecond)
+    Array(IntervalQuarter)
+    Array(IntervalSecond)
+    Array(IntervalWeek)
+    Array(IntervalYear)
+    Array(JSON)
+    Array(Map(UUID, UnknownType))
+    Array(Object('json'))
+    Array(String)
+    Array(Tuple(UUID))
+    Array(UInt128)
+    Array(UInt16)
+    Array(UInt256)
+    Array(UInt32)
+    Array(UInt64)
+    Array(UInt8)
+    Array(UUID)
+    Bitmap(Int16)
+    Bitmap(Int32)
+    Bitmap(Int64)
+    Bitmap(Int8)
+    Bitmap(UInt16)
+    Bitmap(UInt32)
+    Bitmap(UInt64)
+    Bitmap(UInt8)
+    Date
+    Date32
+    DateTime
+    DateTime64
+    Decimal128
+    Decimal256
+    Decimal32
+    Decimal64
+    FixedString
+    Float32
+    Float64
+    Int128
+    Int16
+    Int256
+    Int32
+    Int64
+    Int8
+    IntervalDay
+    IntervalHour
+    IntervalMicrosecond
+    IntervalMillisecond
+    IntervalMinute
+    IntervalMonth
+    IntervalNanosecond
+    IntervalQuarter
+    IntervalSecond
+    IntervalWeek
+    IntervalYear
+    JSON
+    LowCardinality(Date)
+    LowCardinality(Date32)
+    LowCardinality(DateTime)
+    LowCardinality(FixedString)
+    LowCardinality(Float32)
+    LowCardinality(Float64)
+    LowCardinality(Int128)
+    LowCardinality(Int16)
+    LowCardinality(Int256)
+    LowCardinality(Int32)
+    LowCardinality(Int64)
+    LowCardinality(Int8)
+    LowCardinality(IntervalDay)
+    LowCardinality(IntervalHour)
+    LowCardinality(IntervalMicrosecond)
+    LowCardinality(IntervalMillisecond)
+    LowCardinality(IntervalMinute)
+    LowCardinality(IntervalMonth)
+    LowCardinality(IntervalNanosecond)
+    LowCardinality(IntervalQuarter)
+    LowCardinality(IntervalSecond)
+    LowCardinality(IntervalWeek)
+    LowCardinality(IntervalYear)
+    LowCardinality(Nullable(Date))
+    LowCardinality(Nullable(Date32))
+    LowCardinality(Nullable(DateTime))
+    LowCardinality(Nullable(FixedString))
+    LowCardinality(Nullable(Float32))
+    LowCardinality(Nullable(Float64))
+    LowCardinality(Nullable(Int128))
+    LowCardinality(Nullable(Int16))
+    LowCardinality(Nullable(Int256))
+    LowCardinality(Nullable(Int32))
+    LowCardinality(Nullable(Int64))
+    LowCardinality(Nullable(Int8))
+    LowCardinality(Nullable(IntervalDay))
+    LowCardinality(Nullable(IntervalHour))
+    LowCardinality(Nullable(IntervalMicrosecond))
+    LowCardinality(Nullable(IntervalMillisecond))
+    LowCardinality(Nullable(IntervalMinute))
+    LowCardinality(Nullable(IntervalMonth))
+    LowCardinality(Nullable(IntervalNanosecond))
+    LowCardinality(Nullable(IntervalQuarter))
+    LowCardinality(Nullable(IntervalSecond))
+    LowCardinality(Nullable(IntervalWeek))
+    LowCardinality(Nullable(IntervalYear))
+    LowCardinality(Nullable(String))
+    LowCardinality(Nullable(UInt128))
+    LowCardinality(Nullable(UInt16))
+    LowCardinality(Nullable(UInt256))
+    LowCardinality(Nullable(UInt32))
+    LowCardinality(Nullable(UInt64))
+    LowCardinality(Nullable(UInt8))
+    LowCardinality(Nullable(UUID))
+    LowCardinality(String)
+    LowCardinality(UInt128)
+    LowCardinality(UInt16)
+    LowCardinality(UInt256)
+    LowCardinality(UInt32)
+    LowCardinality(UInt64)
+    LowCardinality(UInt8)
+    LowCardinality(UUID)
+    Map(Date, UnknownType)
+    Map(Date32, UnknownType)
+    Map(DateTime, UnknownType)
+    Map(FixedString, UnknownType)
+    Map(Int128, UnknownType)
+    Map(Int16, UnknownType)
+    Map(Int256, UnknownType)
+    Map(Int32, UnknownType)
+    Map(Int64, UnknownType)
+    Map(Int8, UnknownType)
+    Map(IntervalDay, UnknownType)
+    Map(IntervalHour, UnknownType)
+    Map(IntervalMicrosecond, UnknownType)
+    Map(IntervalMillisecond, UnknownType)
+    Map(IntervalMinute, UnknownType)
+    Map(IntervalMonth, UnknownType)
+    Map(IntervalNanosecond, UnknownType)
+    Map(IntervalQuarter, UnknownType)
+    Map(IntervalSecond, UnknownType)
+    Map(IntervalWeek, UnknownType)
+    Map(IntervalYear, UnknownType)
+    Map(String, UnknownType)
+    Map(UInt128, UnknownType)
+    Map(UInt16, UnknownType)
+    Map(UInt256, UnknownType)
+    Map(UInt32, UnknownType)
+    Map(UInt64, UnknownType)
+    Map(UInt8, UnknownType)
+    Map(UUID, UnknownType)
+    Nullable(Date)
+    Nullable(Date32)
+    Nullable(DateTime)
+    Nullable(DateTime64)
+    Nullable(Decimal128)
+    Nullable(Decimal256)
+    Nullable(Decimal32)
+    Nullable(Decimal64)
+    Nullable(FixedString)
+    Nullable(Float32)
+    Nullable(Float64)
+    Nullable(Int128)
+    Nullable(Int16)
+    Nullable(Int256)
+    Nullable(Int32)
+    Nullable(Int64)
+    Nullable(Int8)
+    Nullable(IntervalDay)
+    Nullable(IntervalHour)
+    Nullable(IntervalMicrosecond)
+    Nullable(IntervalMillisecond)
+    Nullable(IntervalMinute)
+    Nullable(IntervalMonth)
+    Nullable(IntervalNanosecond)
+    Nullable(IntervalQuarter)
+    Nullable(IntervalSecond)
+    Nullable(IntervalWeek)
+    Nullable(IntervalYear)
+    Nullable(String)
+    Nullable(UInt128)
+    Nullable(UInt16)
+    Nullable(UInt256)
+    Nullable(UInt32)
+    Nullable(UInt64)
+    Nullable(UInt8)
+    Nullable(UUID)
+    Object('json')
+    String
+    Tuple(Array(UUID))
+    Tuple(Date)
+    Tuple(Date32)
+    Tuple(DateTime)
+    Tuple(DateTime64)
+    Tuple(Decimal128)
+    Tuple(Decimal256)
+    Tuple(Decimal32)
+    Tuple(Decimal64)
+    Tuple(FixedString)
+    Tuple(Float32)
+    Tuple(Float64)
+    Tuple(Int128)
+    Tuple(Int16)
+    Tuple(Int256)
+    Tuple(Int32)
+    Tuple(Int64)
+    Tuple(Int8)
+    Tuple(IntervalDay)
+    Tuple(IntervalHour)
+    Tuple(IntervalMicrosecond)
+    Tuple(IntervalMillisecond)
+    Tuple(IntervalMinute)
+    Tuple(IntervalMonth)
+    Tuple(IntervalNanosecond)
+    Tuple(IntervalQuarter)
+    Tuple(IntervalSecond)
+    Tuple(IntervalWeek)
+    Tuple(IntervalYear)
+    Tuple(JSON)
+    Tuple(Map(UUID, UnknownType))
+    Tuple(Object('json'))
+    Tuple(String)
+    Tuple(UInt128)
+    Tuple(UInt16)
+    Tuple(UInt256)
+    Tuple(UInt32)
+    Tuple(UInt64)
+    Tuple(UInt8)
+    Tuple(UUID)
+    UInt128
+    UInt16
+    UInt256
+    UInt32
+    UInt64
+    UInt8
+    UUID
+AnyLowCardinalityInnerType
+    Date
+    Date32
+    DateTime
+    FixedString
+    Float32
+    Float64
+    Int128
+    Int16
+    Int256
+    Int32
+    Int64
+    Int8
+    IntervalDay
+    IntervalHour
+    IntervalMicrosecond
+    IntervalMillisecond
+    IntervalMinute
+    IntervalMonth
+    IntervalNanosecond
+    IntervalQuarter
+    IntervalSecond
+    IntervalWeek
+    IntervalYear
+    String
+    UInt128
+    UInt16
+    UInt256
+    UInt32
+    UInt64
+    UInt8
+    UUID
+AnyNonBitmapNonNullableNonLowCardinality
+    Array(Array(UUID))
+    Array(Date)
+    Array(Date32)
+    Array(DateTime)
+    Array(DateTime64)
+    Array(Decimal128)
+    Array(Decimal256)
+    Array(Decimal32)
+    Array(Decimal64)
+    Array(FixedString)
+    Array(Float32)
+    Array(Float64)
+    Array(Int128)
+    Array(Int16)
+    Array(Int256)
+    Array(Int32)
+    Array(Int64)
+    Array(Int8)
+    Array(IntervalDay)
+    Array(IntervalHour)
+    Array(IntervalMicrosecond)
+    Array(IntervalMillisecond)
+    Array(IntervalMinute)
+    Array(IntervalMonth)
+    Array(IntervalNanosecond)
+    Array(IntervalQuarter)
+    Array(IntervalSecond)
+    Array(IntervalWeek)
+    Array(IntervalYear)
+    Array(JSON)
+    Array(Map(UUID, UnknownType))
+    Array(Object('json'))
+    Array(String)
+    Array(Tuple(UUID))
+    Array(UInt128)
+    Array(UInt16)
+    Array(UInt256)
+    Array(UInt32)
+    Array(UInt64)
+    Array(UInt8)
+    Array(UUID)
+    Date
+    Date32
+    DateTime
+    DateTime64
+    Decimal128
+    Decimal256
+    Decimal32
+    Decimal64
+    FixedString
+    Float32
+    Float64
+    Int128
+    Int16
+    Int256
+    Int32
+    Int64
+    Int8
+    IntervalDay
+    IntervalHour
+    IntervalMicrosecond
+    IntervalMillisecond
+    IntervalMinute
+    IntervalMonth
+    IntervalNanosecond
+    IntervalQuarter
+    IntervalSecond
+    IntervalWeek
+    IntervalYear
+    JSON
+    Map(Date, UnknownType)
+    Map(Date32, UnknownType)
+    Map(DateTime, UnknownType)
+    Map(FixedString, UnknownType)
+    Map(Int128, UnknownType)
+    Map(Int16, UnknownType)
+    Map(Int256, UnknownType)
+    Map(Int32, UnknownType)
+    Map(Int64, UnknownType)
+    Map(Int8, UnknownType)
+    Map(IntervalDay, UnknownType)
+    Map(IntervalHour, UnknownType)
+    Map(IntervalMicrosecond, UnknownType)
+    Map(IntervalMillisecond, UnknownType)
+    Map(IntervalMinute, UnknownType)
+    Map(IntervalMonth, UnknownType)
+    Map(IntervalNanosecond, UnknownType)
+    Map(IntervalQuarter, UnknownType)
+    Map(IntervalSecond, UnknownType)
+    Map(IntervalWeek, UnknownType)
+    Map(IntervalYear, UnknownType)
+    Map(String, UnknownType)
+    Map(UInt128, UnknownType)
+    Map(UInt16, UnknownType)
+    Map(UInt256, UnknownType)
+    Map(UInt32, UnknownType)
+    Map(UInt64, UnknownType)
+    Map(UInt8, UnknownType)
+    Map(UUID, UnknownType)
+    Object('json')
+    String
+    Tuple(Array(UUID))
+    Tuple(Date)
+    Tuple(Date32)
+    Tuple(DateTime)
+    Tuple(DateTime64)
+    Tuple(Decimal128)
+    Tuple(Decimal256)
+    Tuple(Decimal32)
+    Tuple(Decimal64)
+    Tuple(FixedString)
+    Tuple(Float32)
+    Tuple(Float64)
+    Tuple(Int128)
+    Tuple(Int16)
+    Tuple(Int256)
+    Tuple(Int32)
+    Tuple(Int64)
+    Tuple(Int8)
+    Tuple(IntervalDay)
+    Tuple(IntervalHour)
+    Tuple(IntervalMicrosecond)
+    Tuple(IntervalMillisecond)
+    Tuple(IntervalMinute)
+    Tuple(IntervalMonth)
+    Tuple(IntervalNanosecond)
+    Tuple(IntervalQuarter)
+    Tuple(IntervalSecond)
+    Tuple(IntervalWeek)
+    Tuple(IntervalYear)
+    Tuple(JSON)
+    Tuple(Map(UUID, UnknownType))
+    Tuple(Object('json'))
+    Tuple(String)
+    Tuple(UInt128)
+    Tuple(UInt16)
+    Tuple(UInt256)
+    Tuple(UInt32)
+    Tuple(UInt64)
+    Tuple(UInt8)
+    Tuple(UUID)
+    UInt128
+    UInt16
+    UInt256
+    UInt32
+    UInt64
+    UInt8
+    UUID
+AnyNonMapNonNullableNonLowCardinality
+    Array(Array(UUID))
+    Array(Date)
+    Array(Date32)
+    Array(DateTime)
+    Array(DateTime64)
+    Array(Decimal128)
+    Array(Decimal256)
+    Array(Decimal32)
+    Array(Decimal64)
+    Array(FixedString)
+    Array(Float32)
+    Array(Float64)
+    Array(Int128)
+    Array(Int16)
+    Array(Int256)
+    Array(Int32)
+    Array(Int64)
+    Array(Int8)
+    Array(IntervalDay)
+    Array(IntervalHour)
+    Array(IntervalMicrosecond)
+    Array(IntervalMillisecond)
+    Array(IntervalMinute)
+    Array(IntervalMonth)
+    Array(IntervalNanosecond)
+    Array(IntervalQuarter)
+    Array(IntervalSecond)
+    Array(IntervalWeek)
+    Array(IntervalYear)
+    Array(JSON)
+    Array(Map(UUID, UnknownType))
+    Array(Object('json'))
+    Array(String)
+    Array(Tuple(UUID))
+    Array(UInt128)
+    Array(UInt16)
+    Array(UInt256)
+    Array(UInt32)
+    Array(UInt64)
+    Array(UInt8)
+    Array(UUID)
+    Bitmap(Int16)
+    Bitmap(Int32)
+    Bitmap(Int64)
+    Bitmap(Int8)
+    Bitmap(UInt16)
+    Bitmap(UInt32)
+    Bitmap(UInt64)
+    Bitmap(UInt8)
+    Date
+    Date32
+    DateTime
+    DateTime64
+    Decimal128
+    Decimal256
+    Decimal32
+    Decimal64
+    FixedString
+    Float32
+    Float64
+    Int128
+    Int16
+    Int256
+    Int32
+    Int64
+    Int8
+    IntervalDay
+    IntervalHour
+    IntervalMicrosecond
+    IntervalMillisecond
+    IntervalMinute
+    IntervalMonth
+    IntervalNanosecond
+    IntervalQuarter
+    IntervalSecond
+    IntervalWeek
+    IntervalYear
+    JSON
+    Object('json')
+    String
+    Tuple(Array(UUID))
+    Tuple(Date)
+    Tuple(Date32)
+    Tuple(DateTime)
+    Tuple(DateTime64)
+    Tuple(Decimal128)
+    Tuple(Decimal256)
+    Tuple(Decimal32)
+    Tuple(Decimal64)
+    Tuple(FixedString)
+    Tuple(Float32)
+    Tuple(Float64)
+    Tuple(Int128)
+    Tuple(Int16)
+    Tuple(Int256)
+    Tuple(Int32)
+    Tuple(Int64)
+    Tuple(Int8)
+    Tuple(IntervalDay)
+    Tuple(IntervalHour)
+    Tuple(IntervalMicrosecond)
+    Tuple(IntervalMillisecond)
+    Tuple(IntervalMinute)
+    Tuple(IntervalMonth)
+    Tuple(IntervalNanosecond)
+    Tuple(IntervalQuarter)
+    Tuple(IntervalSecond)
+    Tuple(IntervalWeek)
+    Tuple(IntervalYear)
+    Tuple(JSON)
+    Tuple(Map(UUID, UnknownType))
+    Tuple(Object('json'))
+    Tuple(String)
+    Tuple(UInt128)
+    Tuple(UInt16)
+    Tuple(UInt256)
+    Tuple(UInt32)
+    Tuple(UInt64)
+    Tuple(UInt8)
+    Tuple(UUID)
+    UInt128
+    UInt16
+    UInt256
+    UInt32
+    UInt64
+    UInt8
+    UUID
+AnyNonNullableNonLowCardinality
+    Array(Array(UUID))
+    Array(Date)
+    Array(Date32)
+    Array(DateTime)
+    Array(DateTime64)
+    Array(Decimal128)
+    Array(Decimal256)
+    Array(Decimal32)
+    Array(Decimal64)
+    Array(FixedString)
+    Array(Float32)
+    Array(Float64)
+    Array(Int128)
+    Array(Int16)
+    Array(Int256)
+    Array(Int32)
+    Array(Int64)
+    Array(Int8)
+    Array(IntervalDay)
+    Array(IntervalHour)
+    Array(IntervalMicrosecond)
+    Array(IntervalMillisecond)
+    Array(IntervalMinute)
+    Array(IntervalMonth)
+    Array(IntervalNanosecond)
+    Array(IntervalQuarter)
+    Array(IntervalSecond)
+    Array(IntervalWeek)
+    Array(IntervalYear)
+    Array(JSON)
+    Array(Map(UUID, UnknownType))
+    Array(Object('json'))
+    Array(String)
+    Array(Tuple(UUID))
+    Array(UInt128)
+    Array(UInt16)
+    Array(UInt256)
+    Array(UInt32)
+    Array(UInt64)
+    Array(UInt8)
+    Array(UUID)
+    Bitmap(Int16)
+    Bitmap(Int32)
+    Bitmap(Int64)
+    Bitmap(Int8)
+    Bitmap(UInt16)
+    Bitmap(UInt32)
+    Bitmap(UInt64)
+    Bitmap(UInt8)
+    Date
+    Date32
+    DateTime
+    DateTime64
+    Decimal128
+    Decimal256
+    Decimal32
+    Decimal64
+    FixedString
+    Float32
+    Float64
+    Int128
+    Int16
+    Int256
+    Int32
+    Int64
+    Int8
+    IntervalDay
+    IntervalHour
+    IntervalMicrosecond
+    IntervalMillisecond
+    IntervalMinute
+    IntervalMonth
+    IntervalNanosecond
+    IntervalQuarter
+    IntervalSecond
+    IntervalWeek
+    IntervalYear
+    JSON
+    Map(Date, UnknownType)
+    Map(Date32, UnknownType)
+    Map(DateTime, UnknownType)
+    Map(FixedString, UnknownType)
+    Map(Int128, UnknownType)
+    Map(Int16, UnknownType)
+    Map(Int256, UnknownType)
+    Map(Int32, UnknownType)
+    Map(Int64, UnknownType)
+    Map(Int8, UnknownType)
+    Map(IntervalDay, UnknownType)
+    Map(IntervalHour, UnknownType)
+    Map(IntervalMicrosecond, UnknownType)
+    Map(IntervalMillisecond, UnknownType)
+    Map(IntervalMinute, UnknownType)
+    Map(IntervalMonth, UnknownType)
+    Map(IntervalNanosecond, UnknownType)
+    Map(IntervalQuarter, UnknownType)
+    Map(IntervalSecond, UnknownType)
+    Map(IntervalWeek, UnknownType)
+    Map(IntervalYear, UnknownType)
+    Map(String, UnknownType)
+    Map(UInt128, UnknownType)
+    Map(UInt16, UnknownType)
+    Map(UInt256, UnknownType)
+    Map(UInt32, UnknownType)
+    Map(UInt64, UnknownType)
+    Map(UInt8, UnknownType)
+    Map(UUID, UnknownType)
+    Object('json')
+    String
+    Tuple(Array(UUID))
+    Tuple(Date)
+    Tuple(Date32)
+    Tuple(DateTime)
+    Tuple(DateTime64)
+    Tuple(Decimal128)
+    Tuple(Decimal256)
+    Tuple(Decimal32)
+    Tuple(Decimal64)
+    Tuple(FixedString)
+    Tuple(Float32)
+    Tuple(Float64)
+    Tuple(Int128)
+    Tuple(Int16)
+    Tuple(Int256)
+    Tuple(Int32)
+    Tuple(Int64)
+    Tuple(Int8)
+    Tuple(IntervalDay)
+    Tuple(IntervalHour)
+    Tuple(IntervalMicrosecond)
+    Tuple(IntervalMillisecond)
+    Tuple(IntervalMinute)
+    Tuple(IntervalMonth)
+    Tuple(IntervalNanosecond)
+    Tuple(IntervalQuarter)
+    Tuple(IntervalSecond)
+    Tuple(IntervalWeek)
+    Tuple(IntervalYear)
+    Tuple(JSON)
+    Tuple(Map(UUID, UnknownType))
+    Tuple(Object('json'))
+    Tuple(String)
+    Tuple(UInt128)
+    Tuple(UInt16)
+    Tuple(UInt256)
+    Tuple(UInt32)
+    Tuple(UInt64)
+    Tuple(UInt8)
+    Tuple(UUID)
+    UInt128
+    UInt16
+    UInt256
+    UInt32
+    UInt64
+    UInt8
+    UUID
+AnyNullableInnerType
+    Date
+    Date32
+    DateTime
+    DateTime64
+    Decimal128
+    Decimal256
+    Decimal32
+    Decimal64
+    FixedString
+    Float32
+    Float64
+    Int128
+    Int16
+    Int256
+    Int32
+    Int64
+    Int8
+    IntervalDay
+    IntervalHour
+    IntervalMicrosecond
+    IntervalMillisecond
+    IntervalMinute
+    IntervalMonth
+    IntervalNanosecond
+    IntervalQuarter
+    IntervalSecond
+    IntervalWeek
+    IntervalYear
+    String
+    UInt128
+    UInt16
+    UInt256
+    UInt32
+    UInt64
+    UInt8
+    UUID
+Date32OrDateTime64
+    Date32
+    DateTime64
+DateLike
+    Date
+    Date32
+DateLikeOrDateTime
+    Date
+    Date32
+    DateTime
+DateLikeOrDateTimeLike
+    Date
+    Date32
+    DateTime
+    DateTime64
+DateOrDateTime
+    Date
+    DateTime
+DateTime64Unit
+DateTimeLike
+    DateTime
+    DateTime64
+DateTimeUnit
+    DateUnit
+    Time64Unit
+    TimeUnit
+DecimalLike
+    Decimal128
+    Decimal256
+    Decimal32
+    Decimal64
+Float
+    Float32
+    Float64
+Format
+    InputFormat
+    OutputFormat
+Geo
+    LineString
+    MultiPolygon
+    Point
+    Polygon
+    Ring
+GeoNoPoint
+    LineString
+    MultiPolygon
+    Polygon
+    Ring
+IP
+    IPv4
+    IPv6
+Int
+    Int128
+    Int16
+    Int256
+    Int32
+    Int64
+    Int8
+IntMax128Bits
+    Int128
+    Int16
+    Int32
+    Int64
+    Int8
+IntMax16Bits
+    Int16
+    Int8
+IntMax32Bits
+    Int16
+    Int32
+    Int8
+IntMax64Bits
+    Int16
+    Int32
+    Int64
+    Int8
+Integer64Like
+    Date
+    Date32
+    DateTime
+    Int16
+    Int32
+    Int64
+    Int8
+    IntervalDay
+    IntervalHour
+    IntervalMicrosecond
+    IntervalMillisecond
+    IntervalMinute
+    IntervalMonth
+    IntervalNanosecond
+    IntervalQuarter
+    IntervalSecond
+    IntervalWeek
+    IntervalYear
+    UInt16
+    UInt32
+    UInt64
+    UInt8
+Interval
+    IntervalDay
+    IntervalHour
+    IntervalMicrosecond
+    IntervalMillisecond
+    IntervalMinute
+    IntervalMonth
+    IntervalNanosecond
+    IntervalQuarter
+    IntervalSecond
+    IntervalWeek
+    IntervalYear
+IntervalDate
+    IntervalDay
+    IntervalMonth
+    IntervalQuarter
+    IntervalWeek
+    IntervalYear
+IntervalTime
+    IntervalHour
+    IntervalMinute
+    IntervalSecond
+IntervalTime64
+    IntervalMicrosecond
+    IntervalMillisecond
+    IntervalNanosecond
+IntervalTimeOrTime64
+    IntervalHour
+    IntervalMicrosecond
+    IntervalMillisecond
+    IntervalMinute
+    IntervalNanosecond
+    IntervalSecond
+MapKey
+    Date
+    Date32
+    DateTime
+    FixedString
+    Int128
+    Int16
+    Int256
+    Int32
+    Int64
+    Int8
+    IntervalDay
+    IntervalHour
+    IntervalMicrosecond
+    IntervalMillisecond
+    IntervalMinute
+    IntervalMonth
+    IntervalNanosecond
+    IntervalQuarter
+    IntervalSecond
+    IntervalWeek
+    IntervalYear
+    String
+    UInt128
+    UInt16
+    UInt256
+    UInt32
+    UInt64
+    UInt8
+    UUID
+NonDecimal
+    Float32
+    Float64
+    Int128
+    Int16
+    Int256
+    Int32
+    Int64
+    Int8
+    UInt128
+    UInt16
+    UInt256
+    UInt32
+    UInt64
+    UInt8
+NonDecimalMax32Bits
+    Float32
+    Int16
+    Int32
+    Int8
+    UInt16
+    UInt32
+    UInt8
+NonDecimalMax64Bits
+    Float32
+    Float64
+    Int16
+    Int32
+    Int64
+    Int8
+    UInt16
+    UInt32
+    UInt64
+    UInt8
+NonDecimalNorFloat
+    Int128
+    Int16
+    Int256
+    Int32
+    Int64
+    Int8
+    UInt128
+    UInt16
+    UInt256
+    UInt32
+    UInt64
+    UInt8
+NonDecimalNorFloatMax16Bits
+    Int16
+    Int8
+    UInt16
+    UInt8
+NonDecimalNorFloatMax32Bits
+    Int16
+    Int32
+    Int8
+    UInt16
+    UInt32
+    UInt8
+NonDecimalNorFloatMax64Bits
+    Int16
+    Int32
+    Int64
+    Int8
+    UInt16
+    UInt32
+    UInt64
+    UInt8
+NonDecimalNorFloatMax8Bits
+    Int8
+    UInt8
+NonFloat32NorDecimalMax64Bits
+    Float64
+    Int16
+    Int32
+    Int64
+    Int8
+    UInt16
+    UInt32
+    UInt64
+    UInt8
+NonFloat32Number
+    Decimal128
+    Decimal256
+    Decimal32
+    Decimal64
+    Float64
+    Int128
+    Int16
+    Int256
+    Int32
+    Int64
+    Int8
+    UInt128
+    UInt16
+    UInt256
+    UInt32
+    UInt64
+    UInt8
+NonFloat64NorDecimalMax64Bits
+    Float32
+    Int16
+    Int32
+    Int64
+    Int8
+    UInt16
+    UInt32
+    UInt64
+    UInt8
+NonFloat64Number
+    Decimal128
+    Decimal256
+    Decimal32
+    Decimal64
+    Float32
+    Int128
+    Int16
+    Int256
+    Int32
+    Int64
+    Int8
+    UInt128
+    UInt16
+    UInt256
+    UInt32
+    UInt64
+    UInt8
+Number
+    Decimal128
+    Decimal256
+    Decimal32
+    Decimal64
+    Float32
+    Float64
+    Int128
+    Int16
+    Int256
+    Int32
+    Int64
+    Int8
+    UInt128
+    UInt16
+    UInt256
+    UInt32
+    UInt64
+    UInt8
+NumberMax64Bits
+    Decimal32
+    Decimal64
+    Float32
+    Float64
+    Int16
+    Int32
+    Int64
+    Int8
+    UInt16
+    UInt32
+    UInt64
+    UInt8
+NumberOrDateLikeOrDateTimeOrInterval
+    Date
+    Date32
+    DateTime
+    Decimal128
+    Decimal256
+    Decimal32
+    Decimal64
+    Float32
+    Float64
+    Int128
+    Int16
+    Int256
+    Int32
+    Int64
+    Int8
+    IntervalDay
+    IntervalHour
+    IntervalMicrosecond
+    IntervalMillisecond
+    IntervalMinute
+    IntervalMonth
+    IntervalNanosecond
+    IntervalQuarter
+    IntervalSecond
+    IntervalWeek
+    IntervalYear
+    UInt128
+    UInt16
+    UInt256
+    UInt32
+    UInt64
+    UInt8
+StringLike
+    FixedString
+    String
+TimeOrTime64Unit
+    Time64Unit
+    TimeUnit
+UInt
+    UInt128
+    UInt16
+    UInt256
+    UInt32
+    UInt64
+    UInt8
+UIntMax128Bits
+    UInt128
+    UInt16
+    UInt32
+    UInt64
+    UInt8
+UIntMax16Bits
+    UInt16
+    UInt8
+UIntMax32Bits
+    UInt16
+    UInt32
+    UInt8
+UIntMax64Bits
+    UInt16
+    UInt32
+    UInt64
+    UInt8

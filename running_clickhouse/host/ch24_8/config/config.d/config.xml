@@ -1,0 +1,80 @@
+<clickhouse>
+    <logger>
+        <!-- Possible levels [1]:
+
+          - none (turns off logging)
+          - fatal
+          - critical
+          - error
+          - warning
+          - notice
+          - information
+          - debug
+          - trace
+          - test (not for production usage)
+
+            [1]: https://github.com/pocoproject/poco/blob/poco-1.9.4-release/Foundation/include/Poco/Logger.h#L105-L114
+        -->
+        <level>critical</level>
+        <errorlog remove="1"/>
+        <size>100M</size>
+        <count>2</count>
+    </logger>
+
+    <!-- On memory constrained environments you may have to set this to value larger than 1.
+      -->
+    <max_server_memory_usage_to_ram_ratio>0.4</max_server_memory_usage_to_ram_ratio>
+
+    <!-- Size of cache of uncompressed blocks of data, used in tables of MergeTree family.
+         In bytes. Cache is single for server. Memory is allocated only on demand.
+         Cache is used when 'use_uncompressed_cache' user setting turned on (off by default).
+         Uncompressed cache is advantageous only for very short queries and in rare cases.
+
+         Note: uncompressed cache can be pointless for lz4, because memory bandwidth
+         is slower than multi-core decompression on some server configurations.
+         Enabling it can sometimes paradoxically make queries slower.
+      -->
+    <uncompressed_cache_size>536870912</uncompressed_cache_size>
+
+    <!-- Approximate size of mark cache, used in tables of MergeTree family.
+         In bytes. Cache is single for server. Memory is allocated only on demand.
+         You should not lower this value.
+      -->
+    <mark_cache_size>536870912</mark_cache_size>
+
+    <!-- For marks of secondary indices.
+      -->
+    <index_mark_cache_size>536870912</index_mark_cache_size>
+
+    <!-- Server time zone could be set here.
+
+         Time zone is used when converting between String and DateTime types,
+          when printing DateTime in text formats and parsing DateTime from text,
+          it is used in date and time related functions, if specific time zone was not passed as an argument.
+
+         Time zone is specified as identifier from IANA time zone database, like UTC or Africa/Abidjan.
+         If not specified, system time zone at server startup is used.
+
+         Please note, that server could display time zone alias instead of specified name.
+         Example: Zulu is an alias for UTC.
+    -->
+    <timezone>UTC</timezone>
+
+    <!-- Configuration for the query cache -->
+    <query_cache>
+        <max_size_in_bytes>1</max_size_in_bytes>
+        <max_entries>1</max_entries>
+        <max_entry_size_in_bytes>1</max_entry_size_in_bytes>
+        <max_entry_size_in_rows>1</max_entry_size_in_rows>
+    </query_cache>
+
+
+    <!-- Substitutions for parameters of replicated tables.
+          Optional. If you don't use replicated tables, you could omit that.
+
+         See https://clickhouse.com/docs/en/engines/table-engines/mergetree-family/replication/#creating-replicated-tables
+      -->
+    <macros>
+        <log_queries>Value</log_queries>
+    </macros>
+</clickhouse>

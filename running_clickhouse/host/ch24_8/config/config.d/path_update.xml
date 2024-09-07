@@ -1,0 +1,77 @@
+<clickhouse>
+    <logger>
+        <log>/vagrant/ClickHouse/fuzz/running_clickhouse/host/ch24_8/var/log/clickhouse-server/clickhouse-server.log</log>
+    </logger>
+
+    <!-- Cache path for custom (created from SQL) cached disks -->
+    <custom_cached_disks_base_directory>/vagrant/ClickHouse/fuzz/running_clickhouse/host/ch24_8/var/lib/clickhouse/caches/</custom_cached_disks_base_directory>
+
+    <!-- Path to data directory, with trailing slash. -->
+    <path>/vagrant/ClickHouse/fuzz/running_clickhouse/host/ch24_8/var/lib/clickhouse/</path>
+
+    <!-- Path to temporary data for processing hard queries. -->
+    <tmp_path>/vagrant/ClickHouse/fuzz/running_clickhouse/host/ch24_8/var/lib/clickhouse/tmp/</tmp_path>
+
+    <!-- Directory with user provided files that are accessible by 'file' table function. -->
+    <user_files_path>/vagrant/ClickHouse/fuzz/running_clickhouse/host/ch24_8/var/lib/clickhouse/user_files/</user_files_path>
+
+    <!-- Sources to read users, roles, access rights, profiles of settings, quotas. -->
+    <user_directories>
+        <users_xml>
+            <!-- Path to configuration file with predefined users. -->
+            <path>users.xml</path>
+        </users_xml>
+        <local_directory>
+            <!-- Path to folder where users created by SQL commands are stored. -->
+            <path>/vagrant/ClickHouse/fuzz/running_clickhouse/host/ch24_8/var/lib/clickhouse/access/</path>
+        </local_directory>
+    </user_directories>
+
+    <!-- Allow to execute distributed DDL queries (CREATE, DROP, ALTER, RENAME) on cluster.
+         Works only if ZooKeeper is enabled. Comment it if such functionality isn't required. -->
+    <distributed_ddl>
+        <!-- Path in ZooKeeper to queue with DDL queries -->
+        <path>/vagrant/ClickHouse/fuzz/running_clickhouse/host/ch24_8/clickhouse/task_queue/ddl</path>
+    </distributed_ddl>
+
+    <!-- Directory in <clickhouse-path> containing schema files for various input formats.
+         The directory will be created if it doesn't exist.
+      -->
+    <format_schema_path>/vagrant/ClickHouse/fuzz/running_clickhouse/host/ch24_8/var/lib/clickhouse/format_schemas/</format_schema_path>
+
+    <!-- Directory containing the proto files for the well-known Protobuf types.
+      -->
+    <google_protos_path>/vagrant/ClickHouse/fuzz/running_clickhouse/host/ch24_8/usr/share/clickhouse/protos/</google_protos_path>
+
+
+    <!-- ADDED SETTINGS FOR CLICKHOUSE-FUZZER -->
+    <top_level_domains_path>/vagrant/ClickHouse/fuzz/running_clickhouse/host/ch24_8/var/lib/clickhouse/top_level_domains/</top_level_domains_path>
+    <top_level_domains_lists>
+        <public_suffix_list>public_suffix_list.dat</public_suffix_list>
+    </top_level_domains_lists>
+
+    <path_to_regions_hierarchy_file>/vagrant/ClickHouse/fuzz/running_clickhouse/host/ch24_8/var/lib/clickhouse/user_files/geo/regions_hierarchy.txt</path_to_regions_hierarchy_file>
+    <path_to_regions_names_files>/vagrant/ClickHouse/fuzz/running_clickhouse/host/ch24_8/var/lib/clickhouse/user_files/geo/</path_to_regions_names_files>
+
+    <catboost_lib_path>/vagrant/ClickHouse/fuzz/running_clickhouse/host/ch24_8/var/lib/clickhouse/model/libcatboostmodel.so</catboost_lib_path>
+
+    <lemmatizers>
+        <lemmatizer>
+            <lang>en</lang>
+            <path>/vagrant/ClickHouse/fuzz/running_clickhouse/host/ch24_8/var/lib/clickhouse/user_files/lemmatizer_en.bin</path>
+        </lemmatizer>
+    </lemmatizers>
+
+    <synonyms_extensions>
+	    <extension>
+	        <name>plain_en</name>
+	        <type>plain</type>
+	        <path>/vagrant/ClickHouse/fuzz/running_clickhouse/host/ch24_8/var/lib/clickhouse/user_files/synonym_en.txt</path>
+	    </extension>
+	    <extension>
+	        <name>wordnet</name>
+	        <type>wordnet</type>
+	        <path>/vagrant/ClickHouse/fuzz/running_clickhouse/host/ch24_8/var/lib/clickhouse/user_files/wordnet/</path>
+	    </extension>
+	</synonyms_extensions>
+</clickhouse>
