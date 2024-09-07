@@ -420,17 +420,17 @@ object CHTypeMerger {
 
     (Set(
       CHAggregatedType.MapKey, CHSpecialType.Bitmap(CHAggregatedType.NonDecimalNorFloatMax64Bits), CHFuzzableType.DateTime64,
-      CHAggregatedType.DecimalLike, CHAggregatedType.Float, CHFuzzableType.Json, CHSpecialType.Array(CHAggregatedType.Any),
-      CHSpecialType.Tuple(Seq(CHAggregatedType.Any))
+      CHAggregatedType.DecimalLike, CHAggregatedType.Float, CHFuzzableType.Json, CHFuzzableType.ObjectJson,
+      CHSpecialType.Array(CHAggregatedType.Any), CHSpecialType.Tuple(Seq(CHAggregatedType.Any))
     ), CHAggregatedType.AnyNonMapNonNullableNonLowCardinality),
 
     (Set(
       CHAggregatedType.AnyNullableInnerType, CHSpecialType.Bitmap(CHAggregatedType.NonDecimalNorFloatMax64Bits),
-      CHFuzzableType.Json, CHSpecialType.Array(CHAggregatedType.Any), CHSpecialType.Tuple(Seq(CHAggregatedType.Any))
+      CHFuzzableType.Json, CHFuzzableType.ObjectJson, CHSpecialType.Array(CHAggregatedType.Any), CHSpecialType.Tuple(Seq(CHAggregatedType.Any))
     ), CHAggregatedType.AnyNonMapNonNullableNonLowCardinality),
 
     (Set(
-      CHAggregatedType.AnyNullableInnerType, CHFuzzableType.Json, CHSpecialType.Array(CHAggregatedType.Any),
+      CHAggregatedType.AnyNullableInnerType, CHFuzzableType.Json, CHFuzzableType.ObjectJson, CHSpecialType.Array(CHAggregatedType.Any),
       CHSpecialType.Map(CHAggregatedType.MapKey, CHSpecialType.UnknownType), CHSpecialType.Tuple(Seq(CHAggregatedType.Any))
     ), CHAggregatedType.AnyNonBitmapNonNullableNonLowCardinality),
 
@@ -597,7 +597,7 @@ object CHTypeMerger {
     ), CHSpecialType.Array(CHAggregatedType.AnyNullableInnerType)),
 
     (Set(
-      CHSpecialType.Array(CHAggregatedType.AnyNullableInnerType), CHFuzzableType.ArrayJson,
+      CHSpecialType.Array(CHAggregatedType.AnyNullableInnerType), CHFuzzableType.ArrayJson, CHFuzzableType.ArrayObjectJson,
       CHFuzzableType.ArrayArrayUUID, CHFuzzableType.ArrayMapUUIDInt, CHFuzzableType.ArrayTuple1UUID
     ), CHSpecialType.Array(CHAggregatedType.Any)),
 
@@ -698,7 +698,7 @@ object CHTypeMerger {
     (Set(
       CHSpecialType.Tuple(Seq(CHAggregatedType.Number)), CHSpecialType.Tuple(Seq(CHAggregatedType.DateLikeOrDateTimeLike)),
       CHSpecialType.Tuple(Seq(CHAggregatedType.Interval)), CHSpecialType.Tuple(Seq(CHAggregatedType.StringLike)), CHFuzzableType.Tuple1Json,
-      CHFuzzableType.Tuple1UUID, CHFuzzableType.Tuple1ArrayUUID, CHFuzzableType.Tuple1MapUUIDInt
+      CHFuzzableType.Tuple1ObjectJson, CHFuzzableType.Tuple1UUID, CHFuzzableType.Tuple1ArrayUUID, CHFuzzableType.Tuple1MapUUIDInt
     ), CHSpecialType.Tuple(Seq(CHAggregatedType.Any))),
 
     (Set(

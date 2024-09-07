@@ -50,6 +50,7 @@ enum CHBaseType(val name: String):
   case JSON extends CHBaseType("JSON")
   case LowCardinality extends CHBaseType("LowCardinality")
   case Map extends CHBaseType("Map")
+  case MultiLineString extends CHBaseType("MultiLineString")
   case MultiPolygon extends CHBaseType("MultiPolygon")
   case Nested extends CHBaseType("Nested")
   case Nothing extends CHBaseType("Nothing")

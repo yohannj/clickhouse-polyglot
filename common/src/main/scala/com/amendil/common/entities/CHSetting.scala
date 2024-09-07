@@ -25,9 +25,11 @@ enum CHSetting[T](val name: String):
   case AllowCustomErrorCodeInThrowif extends CHSetting[Boolean]("allow_custom_error_code_in_throwif")
   case AllowDeprecatedErrorProneWindowFunctions
       extends CHSetting[Boolean]("allow_deprecated_error_prone_window_functions")
-  case AllowDeprecatedSnowflakeConversionFunctions extends CHSetting[Boolean]("allow_deprecated_snowflake_conversion_functions")
+  case AllowDeprecatedSnowflakeConversionFunctions
+      extends CHSetting[Boolean]("allow_deprecated_snowflake_conversion_functions")
   case AllowExperimentalDynamicType extends CHSetting[Boolean]("allow_experimental_dynamic_type")
   case AllowExperimentalFunnelFunctions extends CHSetting[Boolean]("allow_experimental_funnel_functions")
+  case AllowExperimentalJsonType extends CHSetting[Boolean]("allow_experimental_json_type")
   case AllowExperimentalNlpFunctions extends CHSetting[Boolean]("allow_experimental_nlp_functions")
   case AllowExperimentalObjectType extends CHSetting[Boolean]("allow_experimental_object_type")
   case AllowExperimentalVariantType extends CHSetting[Boolean]("allow_experimental_variant_type")

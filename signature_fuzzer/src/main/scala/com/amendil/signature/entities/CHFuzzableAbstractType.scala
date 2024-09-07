@@ -273,7 +273,11 @@ enum CHFuzzableAbstractType(_fuzzingValues: Seq[String], _chFuzzableTypes: Seq[C
         Seq(CHFuzzableType.IPv6.fuzzingValues.head),
         Seq(CHFuzzableType.IPv6, CHFuzzableType.NullableIPv6)
       )
-  case Json extends CHFuzzableAbstractType(CHFuzzableType.Json.fuzzingValues.headOption.toSeq, Seq(CHFuzzableType.Json))
+  case Json
+      extends CHFuzzableAbstractType(
+        Seq(CHFuzzableType.Json.fuzzingValues.headOption, CHFuzzableType.ObjectJson.fuzzingValues.headOption).flatten,
+        Seq(CHFuzzableType.Json, CHFuzzableType.ObjectJson)
+      )
   // case Nothing extends CHFuzzableAbstractType(CHFuzzableType.NullableNothing.fuzzingValues, Seq(CHFuzzableType.NullableNothing))
   case String
       extends CHFuzzableAbstractType(
@@ -365,8 +369,11 @@ enum CHFuzzableAbstractType(_fuzzingValues: Seq[String], _chFuzzableTypes: Seq[C
       extends CHFuzzableAbstractType(Seq(s"[${IPv6.fuzzingValues.head}]::Array(IPv6)"), Seq(CHFuzzableType.ArrayIPv6))
   case ArrayJson
       extends CHFuzzableAbstractType(
-        CHFuzzableType.Json.fuzzingValues.headOption.map(v => s"[$v]::Array(JSON)").toSeq,
-        Seq(CHFuzzableType.ArrayJson)
+        Seq(
+          CHFuzzableType.Json.fuzzingValues.headOption.map(v => s"[$v]::Array(JSON)"),
+          CHFuzzableType.ObjectJson.fuzzingValues.headOption.map(v => s"[$v]::Array(Object('json'))")
+        ).flatten,
+        Seq(CHFuzzableType.ArrayJson, CHFuzzableType.ArrayObjectJson)
       )
   // case ArrayNothing extends CHFuzzableAbstractType(CHFuzzableType.ArrayNothing.fuzzingValues, Seq(CHFuzzableType.ArrayNothing))
   case ArrayString
@@ -538,8 +545,10 @@ enum CHFuzzableAbstractType(_fuzzingValues: Seq[String], _chFuzzableTypes: Seq[C
       extends CHFuzzableAbstractType(
         CHFuzzableType.Json.fuzzingValues.headOption.toSeq.flatMap(v =>
           Seq(s"tuple($v)::Tuple(JSON)", s"tuple($v)::Tuple(a JSON)")
+        ) ++ CHFuzzableType.ObjectJson.fuzzingValues.headOption.toSeq.flatMap(v =>
+          Seq(s"tuple($v)::Tuple(Object('json'))", s"tuple($v)::Tuple(a Object('json'))")
         ),
-        Seq(CHFuzzableType.Tuple1Json)
+        Seq(CHFuzzableType.Tuple1Json, CHFuzzableType.Tuple1ObjectJson)
       )
   // case Tuple1Nothing extends CHFuzzableAbstractType(CHFuzzableType.Tuple1Nothing.fuzzingValues, Seq(CHFuzzableType.Tuple1Nothing))
   case Tuple1String

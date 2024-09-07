@@ -30,6 +30,7 @@ object CHClient:
   val baseSettings = Seq(
     CHSetting.AllowCustomErrorCodeInThrowif(true),
     CHSetting.AllowExperimentalDynamicType(true),
+    CHSetting.AllowExperimentalJsonType(true),
     CHSetting.AllowExperimentalObjectType(true),
     CHSetting.AllowExperimentalVariantType(true),
     CHSetting.AllowGetClientHttpHeader(true),

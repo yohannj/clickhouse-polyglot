@@ -31,7 +31,7 @@ object CHTypeParser extends StrictLogging:
   // ClickHouse types
   private def any[$: P]: P[CHType] = P(
     aggregateFunction | array | bitmap | datetime64 | datetimeTZ | datetime64TZ | decimal | enum16 | enum8 | fixedstring |
-      json | lowcardinality | map | nullable | tuple | tupleN | _internal
+      lowcardinality | map | nullable | objectJson | tuple | tupleN | _internal
   )
   private def aggregateFunction[$: P]: P[CHType] =
     P("AggregateFunction(" ~/ CharsWhile(_ != ',').! ~ ", " ~ any ~ ")").map { (fnName, innerType) =>
@@ -68,10 +68,10 @@ object CHTypeParser extends StrictLogging:
   private def enum8[$: P]: P[CHType] =
     P("Enum8(" ~/ enumElement ~ ("," ~ " ".? ~ enumElement).rep ~ ")").map(_ => CHFuzzableType.Enum8)
   private def fixedstring[$: P]: P[CHType] = P("FixedString(" ~/ digits ~ ")").map(_ => CHFuzzableType.FixedString)
-  private def json[$: P]: P[CHType] = P("Object('json')").map(_ => CHFuzzableType.Json)
   private def lowcardinality[$: P]: P[CHType] = P("LowCardinality(" ~/ any ~ ")").map(CHSpecialType.LowCardinality(_))
   private def map[$: P]: P[CHType] = P("Map(" ~/ any ~ "," ~ " ".? ~ any ~ ")").map(CHSpecialType.Map(_, _))
   private def nullable[$: P]: P[CHType] = P("Nullable(" ~/ any ~ ")").map(CHSpecialType.Nullable(_))
+  private def objectJson[$: P]: P[CHType] = P("Object('json')").map(_ => CHFuzzableType.ObjectJson)
   private def tuple[$: P]: P[CHType] =
     P("Tuple(" ~ tupleElement ~ ("," ~ " ".? ~ tupleElement).rep ~ ")").map((head, tail) =>
       CHSpecialType.Tuple(head +: tail)

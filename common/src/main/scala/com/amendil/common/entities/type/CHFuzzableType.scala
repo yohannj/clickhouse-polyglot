@@ -377,6 +377,11 @@ enum CHFuzzableType(
       )
   case Json
       extends CHFuzzableType(
+        "JSON",
+        Seq("""'{"a": 1, "b": { "c": "foo", "d": [1, 2, 3] }, "c": null}'::JSON""")
+      )
+  case ObjectJson
+      extends CHFuzzableType(
         "Object('json')",
         Seq("""'{"a": 1, "b": { "c": "foo", "d": [1, 2, 3] }, "c": null}'::Object('json')""")
       )
@@ -1217,10 +1222,18 @@ enum CHFuzzableType(
       )
   case ArrayJson
       extends CHFuzzableType(
+        "Array(JSON)",
+        Seq(
+          s"[${Json.fuzzingValues.mkString(", ")}]::Array(JSON)",
+          s"[${Json.fuzzingValues.head}]::Array(JSON)"
+        )
+      )
+  case ArrayObjectJson
+      extends CHFuzzableType(
         "Array(Object('json'))",
         Seq(
-          s"[${Json.fuzzingValues.mkString(", ")}]::Array(Object('json'))",
-          s"[${Json.fuzzingValues.head}]::Array(Object('json'))"
+          s"[${ObjectJson.fuzzingValues.mkString(", ")}]::Array(Object('json'))",
+          s"[${ObjectJson.fuzzingValues.head}]::Array(Object('json'))"
         )
       )
   case ArrayString
@@ -1661,10 +1674,18 @@ enum CHFuzzableType(
       )
   case Tuple1Json
       extends CHFuzzableType(
+        "Tuple(JSON)",
+        Seq(
+          s"tuple(${Json.fuzzingValues.head})::Tuple(JSON)",
+          s"tuple(${Json.fuzzingValues.head})::Tuple(a JSON)"
+        )
+      )
+  case Tuple1ObjectJson
+      extends CHFuzzableType(
         "Tuple(Object('json'))",
         Seq(
-          s"tuple(${Json.fuzzingValues.head})::Tuple(Object('json'))",
-          s"tuple(${Json.fuzzingValues.head})::Tuple(a Object('json'))"
+          s"tuple(${ObjectJson.fuzzingValues.head})::Tuple(Object('json'))",
+          s"tuple(${ObjectJson.fuzzingValues.head})::Tuple(a Object('json'))"
         )
       )
   // case Tuple1Nothing
@@ -1741,6 +1762,11 @@ enum CHFuzzableType(
       extends CHFuzzableType(
         "Polygon",
         Seq("[[(20, 20), (50, 20), (50, 50), (20, 50)], [(30, 30), (50, 50), (50, 30)]]::Polygon")
+      )
+  case MultiLineString
+      extends CHFuzzableType(
+        "MultiLineString",
+        Seq("[[(0, 0), (10, 0), (10, 10), (0, 10)], [(1, 1), (2, 2), (3, 3)]]::MultiLineString")
       )
   case MultiPolygon
       extends CHFuzzableType(
@@ -1892,6 +1918,7 @@ enum CHFuzzableType(
           "'127.0.0.0/8'::FixedString(11)",
           "'en'::FixedString(2)",
           "'11s+22min'::FixedString(9)",
+          "'MULTILINESTRING ((1 1, 2 2, 3 3), (4 4, 5 5, 6 6))'::FixedString(50)",
           "'MULTIPOLYGON(((2 0,10 0,10 10,0 10,2 0),(4 4,5 4,5 5,4 5,4 4)),((-10 -10,-10 -9,-9 10,-10 -10)))'::FixedString(96)",
           "'POLYGON((2 0,10 0,10 10,0 10,2 0))'::FixedString(34)",
           "'POINT (1.2 3.4)'::FixedString(15)",
@@ -1921,6 +1948,7 @@ enum CHFuzzableType(
           "'127.0.0.0/8'::String",
           "'en'::String",
           "'11s+22min'::String",
+          "'MULTILINESTRING ((1 1, 2 2, 3 3), (4 4, 5 5, 6 6))'",
           "'MULTIPOLYGON(((2 0,10 0,10 10,0 10,2 0),(4 4,5 4,5 5,4 5,4 4)),((-10 -10,-10 -9,-9 10,-10 -10)))'",
           "'POLYGON((2 0,10 0,10 10,0 10,2 0))'",
           "'POINT (1.2 3.4)'",
