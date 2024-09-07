@@ -8,6 +8,16 @@ import com.typesafe.scalalogging.StrictLogging
   */
 trait CHType:
   def name: String
+  def isArrayType: Boolean = name.startsWith("Array(")
+  def isArrayArrayType: Boolean = name.startsWith("Array(Array(")
+  def isArrayTupleType: Boolean = name.startsWith("Array(Tuple(")
+  def isBitmapType: Boolean = name.startsWith("Bitmap(")
+  def isLowCardinalityType: Boolean = name.startsWith("LowCardinality(")
+  def isLowCardinalityNullableType: Boolean = name.startsWith("LowCardinality(Nullable(")
+  def isMapType: Boolean = name.startsWith("Map(")
+  def isMapTupleType: Boolean = name.startsWith("Map(Tuple(")
+  def isNullableType: Boolean = name.startsWith("Nullable(")
+  def isTupleType: Boolean = name.startsWith("Tuple(")
 
 object CHType extends StrictLogging:
 

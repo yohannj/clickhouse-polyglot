@@ -36,6 +36,7 @@ object CHFunctionIOAggregator extends StrictLogging:
     aggregatedSignatures = aggregateArrayArgumentsWithMapOutput(aggregatedSignatures)
     aggregatedSignatures = aggregateArrayArgumentsWithTupleArrayNullableOutput(aggregatedSignatures)
     aggregatedSignatures = aggregateArrayArgumentsWithTupleArrayOutput(aggregatedSignatures)
+    aggregatedSignatures = aggregateMapArgumentsWithMapTupleOutput(aggregatedSignatures)
 
     if aggregatedSignatures.size == functions.size then functions.map(removeUUIDFromNestedTypes)
     else aggregate(aggregatedSignatures)
@@ -107,6 +108,13 @@ object CHFunctionIOAggregator extends StrictLogging:
         override def isParametric: Boolean = signature.isParametric
         override def output: CHType = newOutput
 
+  /**
+    * This method aims to identify parameters, arguments, output having the same type for ALL signatures.
+    * 
+    * There is some partial detection of common types being part of a nested type.
+    * E.g. Map(UInt8, UnknownType) might become a Tuple(UInt8, UInt8) in the output.
+    *
+    */
   private def aggregateSimilarIOs(signatures: Seq[CHFunctionIO])(using supportJson: SupportJson): Seq[CHFunctionIO] =
     var aggregatedSignatureIOs: Seq[Seq[CHType]] =
       signatures.map(s => (s.parameters ++ s.arguments :+ s.output).map(CHType.normalize))
@@ -124,17 +132,17 @@ object CHFunctionIOAggregator extends StrictLogging:
             .map(_(idx))
             .distinct
             .forall(t =>
-              t.name.startsWith("Array(") ||
-                t.name.startsWith("Bitmap(") ||
-                t.name.startsWith("Map(") ||
-                t.name.startsWith("Tuple(")
+              t.isArrayType ||
+                t.isBitmapType ||
+                t.isMapType ||
+                t.isTupleType
             )
         then
           Seq(
-            aggregatedSignatureIOs.filter(_(idx).name.startsWith("Array(")),
-            aggregatedSignatureIOs.filter(_(idx).name.startsWith("Bitmap(")),
-            aggregatedSignatureIOs.filter(_(idx).name.startsWith("Map(")),
-            aggregatedSignatureIOs.filter(_(idx).name.startsWith("Tuple("))
+            aggregatedSignatureIOs.filter(_(idx).isArrayType),
+            aggregatedSignatureIOs.filter(_(idx).isBitmapType),
+            aggregatedSignatureIOs.filter(_(idx).isMapType),
+            aggregatedSignatureIOs.filter(_(idx).isTupleType)
           ).filter(_.nonEmpty)
         else Seq(aggregatedSignatureIOs)
 
@@ -483,14 +491,22 @@ object CHFunctionIOAggregator extends StrictLogging:
   )(using supportJson: SupportJson): Seq[CHFunctionIO] =
     var aggregatedSignatures: Seq[CHFunctionIO] = functions
     Range.apply(0, functions.head.arguments.size).foreach { argumentIdx =>
-      val argAndOutput = aggregatedSignatures.map(fn =>
+      val (handledSignatures, unHandledSignatures) =
+        if aggregatedSignatures.forall(fn =>
+            val arg = fn.arguments(argumentIdx)
+            arg.isArrayType || arg.isBitmapType || arg.isMapType || arg.isTupleType
+          )
+        then aggregatedSignatures.partition(fn => fn.arguments(argumentIdx).isArrayType)
+        else (aggregatedSignatures, Nil)
+
+      val argAndOutput = handledSignatures.map(fn =>
         (
           CHType.normalize(fn.arguments(argumentIdx)),
           fn.output
         )
       )
 
-      if argAndOutput.forall((i, o) => i.name.startsWith("Array(") && o.isInstanceOf[CHSpecialType.Map]) then
+      if argAndOutput.forall((i, o) => i.isArrayType && o.isMapType) then
         logger
           .trace(s"aggregateArrayArgumentsWithMapOutput - we may have the ability to aggregate argument $argumentIdx")
         // I'm sorry if you stumble on a bug to investigate in this part of the codebase.
@@ -527,20 +543,20 @@ object CHFunctionIOAggregator extends StrictLogging:
             )
             // Value type is unique, great, we can aggregate those maps.
             aggregatedSignatures = aggregateWithGenericType(
-              aggregatedSignatures,
+              handledSignatures,
               argumentIdx = argumentIdx,
-              typeSelector = fn => fn.arguments(argumentIdx).asInstanceOf[CHSpecialType.Array],
+              typeSelector = fn => fn.arguments(argumentIdx),
               aggregatedTypeGenerator = t => CHType.normalize(t).asInstanceOf[CHSpecialType.Array].innerType,
               inputTypeGenerator = t => CHSpecialType.Array(t),
               outputTypeGenerator = t => CHSpecialType.Map(t, outputMapValueTypes.head)
-            )
+            ) ++ unHandledSignatures
           else
             logger.trace(
               s"aggregateArrayArgumentsWithMapOutput - we may have the ability to aggregate argument $argumentIdx, looking for another column to help"
             )
             // Value type is not unique, but maybe it's defined by another column?
             Range.apply(0, functions.head.arguments.size).filter(_ != argumentIdx).foreach { argumentIdx2 =>
-              val arg2AndOutput = aggregatedSignatures.map(fn =>
+              val arg2AndOutput = handledSignatures.map(fn =>
                 (
                   CHType.normalize(fn.arguments(argumentIdx2)),
                   fn.output.asInstanceOf[CHSpecialType.Map]
@@ -591,7 +607,7 @@ object CHFunctionIOAggregator extends StrictLogging:
 
                 // Aggregate
                 aggregatedSignatures = aggregateWithGenericTypes(
-                  aggregatedSignatures.filter(_.arguments(argumentIdx2).name.startsWith("Array(")),
+                  handledSignatures.filter(_.arguments(argumentIdx2).isArrayType),
                   argumentIdx1 = argumentIdx,
                   argumentIdx2 = argumentIdx2,
                   typeSelector1 = fn => fn.arguments(argumentIdx),
@@ -603,7 +619,7 @@ object CHFunctionIOAggregator extends StrictLogging:
                   outputTypeGenerator = (t1, t2) => CHSpecialType.Map(t1, t2)
                 ) ++
                   aggregateWithGenericTypes(
-                    aggregatedSignatures.filter(_.arguments(argumentIdx2).name.startsWith("Map(")),
+                    handledSignatures.filter(_.arguments(argumentIdx2).isMapType),
                     argumentIdx1 = argumentIdx,
                     argumentIdx2 = argumentIdx2,
                     typeSelector1 = fn => fn.arguments(argumentIdx),
@@ -614,7 +630,7 @@ object CHFunctionIOAggregator extends StrictLogging:
                     inputTypeGenerator2 = t2 => CHSpecialType.Map(t2, mapValueFinalType),
                     outputTypeGenerator =
                       (t1, t2) => CHSpecialType.Map(t1, CHSpecialType.Tuple(Seq(t2, mapValueFinalType)))
-                  )
+                  ) ++ unHandledSignatures
             }
     }
     aggregatedSignatures
@@ -971,6 +987,152 @@ object CHFunctionIOAggregator extends StrictLogging:
 
     aggregatedSignatures
 
+  private def aggregateMapArgumentsWithMapTupleOutput(
+      functions: Seq[CHFunctionIO]
+  )(using supportJson: SupportJson): Seq[CHFunctionIO] =
+    var aggregatedSignatures: Seq[CHFunctionIO] = functions
+    Range.apply(0, functions.head.arguments.size).foreach { argumentIdx =>
+      val (handledSignatures, unHandledSignatures) =
+        if aggregatedSignatures.forall(fn =>
+            val arg = fn.arguments(argumentIdx)
+            arg.isArrayType || arg.isBitmapType || arg.isMapType || arg.isTupleType
+          )
+        then aggregatedSignatures.partition(fn => fn.arguments(argumentIdx).isMapType)
+        else (aggregatedSignatures, Nil)
+
+      val argAndOutput = handledSignatures.map(fn =>
+        (
+          CHType.normalize(fn.arguments(argumentIdx)),
+          fn.output
+        )
+      )
+
+      if argAndOutput.forall((i, o) =>  i.isMapType && o.isMapTupleType && o.asInstanceOf[CHSpecialType.Map].keyType.asInstanceOf[CHSpecialType.Tuple].innerTypes.size == 2) then
+        logger
+          .trace(s"aggregateMapArgumentsWithMapTupleOutput - we may have the ability to aggregate argument $argumentIdx")
+        // I'm sorry if you stumble on a bug to investigate in this part of the codebase.
+        // Here are kittens to comfort you: ≡<^_^>≡
+        //   ∧,,,,,,∧
+        //  (  ̳• · • ̳)
+        //  /       づ♡
+
+        val argAndOutputTyped = argAndOutput.map { case (i, o) =>
+          (
+            CHType.normalize(i).asInstanceOf[CHSpecialType.Map],
+            (o.asInstanceOf[CHSpecialType.Map].keyType.asInstanceOf[CHSpecialType.Tuple], o.asInstanceOf[CHSpecialType.Map].valueType)
+          )
+        }
+
+        // Confirm our input map has indeed been transformed into the Tuple
+        if argAndOutputTyped.forall { case (iMap, (oKeyTuple, _)) => equalOrUnknown(iMap.keyType, oKeyTuple.innerTypes(0)) } &&
+          argAndOutputTyped
+            .collect { case (_, (CHSpecialType.Tuple(innerTypes), _)) => innerTypes(1) }
+            .distinct
+            .size <= 1
+        then
+          // The is a common type between the input map and the output.
+          // Let's see if we can find some info about the value type of the output Map.
+
+          val outputMapValueTypes = argAndOutputTyped.map{ case (_, (_, t)) => t }
+          if outputMapValueTypes.distinct.size == 1 then
+            logger.trace(
+              s"aggregateMapArgumentsWithMapTupleOutput - ability to aggregate argument $argumentIdx with a single generic type"
+            )
+
+            // Value type is unique, great, we can aggregate those maps.
+            aggregatedSignatures = aggregateWithGenericType(
+              handledSignatures,
+              argumentIdx = argumentIdx,
+              typeSelector = fn => fn.arguments(argumentIdx),
+              aggregatedTypeGenerator = t => CHType.normalize(t).asInstanceOf[CHSpecialType.Map].keyType,
+              inputTypeGenerator = t => CHSpecialType.Map(t, CHSpecialType.UnknownType),
+              outputTypeGenerator = t => CHSpecialType.Map(CHSpecialType.Tuple(Seq(t, CHSpecialType.UnknownType)), outputMapValueTypes.head)
+            ) ++ unHandledSignatures
+          else
+            logger.trace(
+              s"aggregateMapArgumentsWithMapTupleOutput - we may have the ability to aggregate argument $argumentIdx, looking for another column to help"
+            )
+            // Value type is not unique, but maybe it's defined by another column?
+            Range.apply(0, functions.head.arguments.size).filter(_ != argumentIdx).foreach { argumentIdx2 =>
+              val arg2AndOutput = handledSignatures.map(fn =>
+                (
+                  CHType.normalize(fn.arguments(argumentIdx2)),
+                  fn.output.asInstanceOf[CHSpecialType.Map]
+                )
+              )
+
+              // Match on `argument2's inner type` == `output's value type`
+              // and `argument2's KV types` == `output's tuple's types`,
+              // and Map value types are all the same.
+              if arg2AndOutput.forall { case (j, CHSpecialType.Map(_, outputValueType)) =>
+                  j match
+                    case CHSpecialType.Array(innerType) => equalOrUnknown(innerType, outputValueType)
+                    case CHSpecialType.Map(keyType, valueType) =>
+                      outputValueType match
+                        case CHSpecialType.Tuple(Seq(t1, t2)) =>
+                          equalOrUnknown(keyType, t1) && equalOrUnknown(valueType, t2)
+                        case _ => false
+                    case _ => false
+                } && arg2AndOutput
+                  .collect {
+                    case (
+                          CHSpecialType.Map(_, CHSpecialType.UnknownType),
+                          CHSpecialType.Map(_, CHSpecialType.Tuple(Seq(_, t2)))
+                        ) =>
+                      Seq(t2)
+                    case (
+                          CHSpecialType.Map(_, t1),
+                          CHSpecialType.Map(_, CHSpecialType.Tuple(Seq(_, t2)))
+                        ) =>
+                      Seq(t1, t2)
+                  }
+                  .flatten
+                  .distinct
+                  .size <= 1
+              then
+                logger.trace(
+                  s"aggregateMapArgumentsWithMapTupleOutput - ability to aggregate arguments $argumentIdx and $argumentIdx2"
+                )
+
+                // Determine the unique map value
+                val mapValueTypes = arg2AndOutput.collect {
+                  case (CHSpecialType.Map(_, t1), CHSpecialType.Map(_, CHSpecialType.Tuple(Seq(_, t2)))) => Seq(t1, t2)
+                }.flatten
+                val mapValueFinalType =
+                  if mapValueTypes.isEmpty then
+                    CHSpecialType.UnknownType // This variable is only used when there is a map
+                  else mapValueTypes.find(_ == CHSpecialType.UnknownType).getOrElse(mapValueTypes.head)
+
+                // Aggregate
+                aggregatedSignatures = aggregateWithGenericTypes(
+                  handledSignatures.filter(_.arguments(argumentIdx2).isArrayType),
+                  argumentIdx1 = argumentIdx,
+                  argumentIdx2 = argumentIdx2,
+                  typeSelector1 = fn => fn.arguments(argumentIdx),
+                  typeSelector2 = fn => fn.arguments(argumentIdx2),
+                  aggregatedTypeGenerator1 = t => CHType.normalize(t).asInstanceOf[CHSpecialType.Map].keyType,
+                  aggregatedTypeGenerator2 = t => CHType.normalize(t).asInstanceOf[CHSpecialType.Array].innerType,
+                  inputTypeGenerator1 = t1 => CHSpecialType.Map(t1, CHSpecialType.UnknownType),
+                  inputTypeGenerator2 = t2 => CHSpecialType.Array(t2),
+                  outputTypeGenerator = (t1, t2) => CHSpecialType.Map(CHSpecialType.Tuple(Seq(t1, CHSpecialType.UnknownType)), t2)
+                ) ++
+                  aggregateWithGenericTypes(
+                    handledSignatures.filter(_.arguments(argumentIdx2).isMapType),
+                    argumentIdx1 = argumentIdx,
+                    argumentIdx2 = argumentIdx2,
+                    typeSelector1 = fn => fn.arguments(argumentIdx),
+                    typeSelector2 = fn => fn.arguments(argumentIdx2),
+                    aggregatedTypeGenerator1 = t => CHType.normalize(t).asInstanceOf[CHSpecialType.Map].keyType,
+                    aggregatedTypeGenerator2 = t => CHType.normalize(t).asInstanceOf[CHSpecialType.Map].keyType,
+                    inputTypeGenerator1 = t1 => CHSpecialType.Map(t1, CHSpecialType.UnknownType),
+                    inputTypeGenerator2 = t2 => CHSpecialType.Map(t2, mapValueFinalType),
+                    outputTypeGenerator =
+                      (t1, t2) => CHSpecialType.Map(CHSpecialType.Tuple(Seq(t1, CHSpecialType.UnknownType)), CHSpecialType.Tuple(Seq(t2, mapValueFinalType)))
+                  ) ++ unHandledSignatures
+            }
+    }
+    aggregatedSignatures
+
   private def aggregateWithGenericType(
       functions: Seq[CHFunctionIO],
       argumentIdx: Int,
@@ -1295,9 +1457,9 @@ object CHFunctionIOAggregator extends StrictLogging:
 
   object CHTypeConverter:
     private[CHFunctionIOAggregator] def getConverter(types: Seq[CHType]) =
-      if types.forall(_.name.startsWith("Array(Array(")) then CHTypeConverter.ArrayArrayTypeConverter
+      if types.forall(_.isArrayArrayType) then CHTypeConverter.ArrayArrayTypeConverter
       else if types.forall(t =>
-          t.name.startsWith("Array(Tuple(") &&
+          t.isArrayTupleType &&
             t.asInstanceOf[CHSpecialType.Array].innerType.asInstanceOf[CHSpecialType.Tuple].innerTypes.size == 2 &&
             t.asInstanceOf[CHSpecialType.Array]
               .innerType
@@ -1307,19 +1469,19 @@ object CHFunctionIOAggregator extends StrictLogging:
         )
       then CHTypeConverter.ArrayTupleStringTypeConverter(Nil)
       else if types.forall(t =>
-          t.name.startsWith("Array(Tuple(") &&
+          t.isArrayTupleType &&
             t.asInstanceOf[CHSpecialType.Array].innerType.asInstanceOf[CHSpecialType.Tuple].innerTypes.size == 1
         )
       then CHTypeConverter.ArrayTupleTypeConverter(Nil)
-      else if types.forall(_.name.startsWith("Array(")) then CHTypeConverter.ArrayTypeConverter
-      else if types.forall(_.name.startsWith("Bitmap(")) then CHTypeConverter.BitmapTypeConverter
-      else if types.forall(_.name.startsWith("LowCardinality(Nullable(")) then
+      else if types.forall(_.isArrayType) then CHTypeConverter.ArrayTypeConverter
+      else if types.forall(_.isBitmapType) then CHTypeConverter.BitmapTypeConverter
+      else if types.forall(_.isLowCardinalityNullableType) then
         CHTypeConverter.LowCardinalityNullableTypeConverter
-      else if types.forall(_.name.startsWith("LowCardinality(")) then CHTypeConverter.LowCardinalityTypeConverter
-      else if types.forall(_.name.startsWith("Map(")) then CHTypeConverter.MapTypeConverter(CHSpecialType.UnknownType)
-      else if types.forall(_.name.startsWith("Nullable(")) then CHTypeConverter.NullableTypeConverter
+      else if types.forall(_.isLowCardinalityType) then CHTypeConverter.LowCardinalityTypeConverter
+      else if types.forall(_.isMapType) then CHTypeConverter.MapTypeConverter(CHSpecialType.UnknownType)
+      else if types.forall(_.isNullableType) then CHTypeConverter.NullableTypeConverter
       else if types.forall(t =>
-          t.name.startsWith("Tuple(") &&
+          t.isTupleType &&
             t.asInstanceOf[CHSpecialType.Tuple].innerTypes.size == 1
         )
       then CHTypeConverter.TupleTypeConverter(Nil)

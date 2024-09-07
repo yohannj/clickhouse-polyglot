@@ -312,7 +312,7 @@ object FuzzerHardcodedFunctions extends StrictLogging {
       fn: CHFunctionFuzzResult
   )(using client: CHClient, ec: ExecutionContext): Future[CHFunctionFuzzResult] =
     val anyNonArrayTypes = CHFuzzableAbstractType.nonCustomFuzzableTypes
-      .filterNot(_.name.startsWith("Array("))
+      .filterNot(_.isArrayType)
       .map(t => (t, t.fuzzingValues))
 
     val arrTypes = Seq((CHFuzzableType.ArrayInt8, Seq("[1]")))
